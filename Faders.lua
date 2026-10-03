@@ -126,6 +126,7 @@ function ns.MarkQuestXP(xp)
 end
 
 local function XPShouldShow()
+    if ns.OnlyOnHover("xp") then return false end
     if ns.ShowAll() then return true end
     if lastQuestXP and type(GetTime) == "function" then
         return GetTime() - lastQuestXP < XP_AFTER_QUEST
@@ -1057,7 +1058,7 @@ function ns.UpdateFaders(elapsed)
     local function UpdateVisible(name, frames, usual, noHover, exception)
         local hovered = HoverFrames(name, frames)
         if ns.OnlyOnHover(name) then
-            UpdateGroup(frames, ns.InEditMode() or glance or exception or hovered, elapsed)
+            UpdateGroup(frames, ns.InEditMode() or exception or hovered, elapsed)
         else
             UpdateGroup(frames, usual or ns.Pinned(name) or glance, elapsed, noHover)
         end

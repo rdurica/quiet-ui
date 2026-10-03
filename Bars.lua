@@ -819,7 +819,7 @@ local haveBarShow = false
 local function RowForced(id, showAllForced)
     local mode = ns.GroupVisibility(ns.BarGroup(id))
     if mode == "always" then return true end
-    if mode == "hover" then return ns.XPForced() or ns.Glancing() end
+    if mode == "hover" then return ns.XPForced() end
     return showAllForced
 end
 
