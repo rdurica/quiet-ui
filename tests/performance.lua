@@ -39,6 +39,8 @@ ns.InCombat = function() return combat end
 ns.PlayerStyle = function() return 'classic' end
 ns.GroupAuras = function() return true end
 ns.AlwaysShowDebuffs = function() return true end
+ns.ShowPlayerFrameInParty = function() return true end
+ns.ForceFramesInInstance = function() return true end
 loadAddon('Faders.lua', ns)
 ns.FindFaders(false)
 local function reset()

@@ -235,7 +235,7 @@ function ns.InGroup()
 end
 
 function ns.InForcedInstance()
-    return world.instance
+    return world.instance and ns.ForceFramesInInstance()
 end
 
 function ns.InVehicle()
@@ -300,7 +300,7 @@ end
 
 -- Action bars are fully visible while this is true.
 function ns.ShowAll()
-    return world.combat or ns.InEditMode() or world.vehicle or world.instance
+    return world.combat or ns.InEditMode() or world.vehicle or ns.InForcedInstance()
         or FlyoutOpen() or ns.CursorBusy()
 end
 

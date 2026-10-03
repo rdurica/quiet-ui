@@ -90,6 +90,16 @@ function ns.AlwaysShowDebuffs()
     return (ns.Settings and ns.Settings() or ns.CharDB()).alwaysShowDebuffs ~= false
 end
 
+-- Missing means on. Only an explicit false hides the player frame in party.
+function ns.ShowPlayerFrameInParty()
+    return (ns.Settings and ns.Settings() or ns.CharDB()).showPlayerFrameInParty ~= false
+end
+
+-- Missing means on. Only an explicit false keeps frames hidden in instance.
+function ns.ForceFramesInInstance()
+    return (ns.Settings and ns.Settings() or ns.CharDB()).forceFramesInInstance ~= false
+end
+
 -- Missing means on. Only an explicit false turns the modern chat off.
 function ns.ModernChat()
     return (ns.Settings and ns.Settings() or ns.CharDB()).chat ~= false
@@ -242,6 +252,12 @@ local function Paint()
     if frame.alwaysShowDebuffs then
         PaintBox(frame.alwaysShowDebuffs.box, draft.alwaysShowDebuffs)
     end
+    if frame.showPlayerFrameInParty then
+        PaintBox(frame.showPlayerFrameInParty.box, draft.showPlayerFrameInParty)
+    end
+    if frame.forceFramesInInstance then
+        PaintBox(frame.forceFramesInInstance.box, draft.forceFramesInInstance)
+    end
     if frame.chat then
         PaintBox(frame.chat.box, draft.chat)
     end
@@ -353,6 +369,8 @@ local function ReadDraft(source)
     draft.requireLivingTarget = source.requireLivingTarget == true
     draft.groupAuras = source.groupAuras ~= false
     draft.alwaysShowDebuffs = source.alwaysShowDebuffs ~= false
+    draft.showPlayerFrameInParty = source.showPlayerFrameInParty ~= false
+    draft.forceFramesInInstance = source.forceFramesInInstance ~= false
     draft.chat = source.chat ~= false
     local fade = source.chatFade
     draft.chatFade = type(fade) == "number" and fade == fade and math.floor(math.max(0, math.min(60, fade)) / 5) * 5 or 10
@@ -435,6 +453,8 @@ local function DraftSettings()
         db.groupAuras = false
     end
     if not draft.alwaysShowDebuffs then db.alwaysShowDebuffs = false end
+    if not draft.showPlayerFrameInParty then db.showPlayerFrameInParty = false end
+    if not draft.forceFramesInInstance then db.forceFramesInInstance = false end
     if draft.chat then
         db.chat = nil
     else
@@ -1171,6 +1191,12 @@ local function CreateSetup()
         widget.rows[#widget.rows + 1] = row
     end
 
+    widget.forceFramesInInstance = Choice(visible, "Force frames in instance", function()
+        draft.forceFramesInInstance = not draft.forceFramesInInstance
+        Paint()
+    end)
+    widget.forceFramesInInstance:SetPoint("TOPLEFT", visible, "TOPLEFT", 0, y - 24)
+
     local bars = widget.pages[3]
     widget.groupHeader = Section(bars, "Fade together")
     widget.groupHeader:SetPoint("TOPLEFT", bars, "TOPLEFT", 0, 0)
@@ -1281,25 +1307,30 @@ local function CreateSetup()
         Paint()
     end)
     widget.alwaysShowDebuffs:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -92)
+    widget.showPlayerFrameInParty = Choice(player, "Always show player frame in party", function()
+        draft.showPlayerFrameInParty = not draft.showPlayerFrameInParty
+        Paint()
+    end)
+    widget.showPlayerFrameInParty:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -116)
     widget.rangeHeader = Section(player, "Range")
-    widget.rangeHeader:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -118)
+    widget.rangeHeader:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -142)
     widget.range = Choice(player, "In range", function()
         draft.range = not draft.range
         Paint()
     end)
-    widget.range:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -138)
+    widget.range:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -162)
     widget.rangeYards = Stepper(player, "Within", function(sign)
         NudgeRangeYards(sign)
     end)
-    widget.rangeYards:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -162)
+    widget.rangeYards:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -186)
     widget.rangeYards.value:SetWidth(92)
     widget.rangeKind = Stepper(player, "Who", function()
         NudgeRangeKind()
     end)
-    widget.rangeKind:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -186)
+    widget.rangeKind:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -210)
     widget.rangeKind.value:SetWidth(92)
     widget.rangeSpell = SpellField(player)
-    widget.rangeSpell:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -210)
+    widget.rangeSpell:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -234)
 
     local chat = widget.pages[6]
     widget.chatHeader = Section(chat, "Chat")
