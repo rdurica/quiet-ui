@@ -134,7 +134,7 @@ local function XPShouldShow()
 end
 
 local function MeterShouldShow()
-    if ns.InCombat() or ns.InForcedInstance() or ns.InGroup() or ns.InEditMode() then return true end
+    if ns.InCombat() or ns.InForcedInstance() or ns.InEditMode() then return true end
     if lastCombat and type(GetTime) == "function" then
         return GetTime() - lastCombat < METER_AFTER_COMBAT
     end
@@ -1057,14 +1057,14 @@ function ns.UpdateFaders(elapsed)
     local function UpdateVisible(name, frames, usual, noHover, exception)
         local hovered = HoverFrames(name, frames)
         if ns.OnlyOnHover(name) then
-            UpdateGroup(frames, ns.InEditMode() or glance or exception or hovered, elapsed)
+            UpdateGroup(frames, usual or  ns.InEditMode() or exception or hovered, elapsed)
         else
             UpdateGroup(frames, usual or ns.Pinned(name) or glance, elapsed, noHover)
         end
     end
     Run("xp bar", UpdateVisible, "xp", statusFrames, XPShouldShow(), false, ns.XPForced())
     Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true)
-    Run("damage meter", UpdateVisible, "meter", meterFrames, MeterShouldShow(), true)
+    Run("damage meter", UpdateVisible, "meter", meterFrames, MeterShouldShow())
     Run("quest catcher", PlaceQuestCatcher)
     local questHot = questCatcher and ns.Hit(questCatcher)
     Run("quest tracker", UpdateGroup, questFrames, ns.VisibilityShow("quests", false, questHot), elapsed)
