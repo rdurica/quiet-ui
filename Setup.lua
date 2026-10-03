@@ -13,6 +13,7 @@ local ROWS = {
     { key = "auras", label = "Buffs and debuffs" },
     { key = "menu", label = "Bag button" },
     { key = "micro", label = "Micro menu" },
+    { key = "raid manager", label = "Raid manager" },
 }
 
 local CONTENT_W = 560

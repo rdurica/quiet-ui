@@ -15,6 +15,7 @@ end
 QuietUIDB = { enabled = true }
 UIParent = frame()
 PlayerFrame, PetFrame = frame(UIParent), frame(UIParent)
+CompactRaidFrameManager = frame(UIParent)
 BuffFrame, PersonalResourceDisplayFrame = frame(UIParent), frame(UIParent)
 local powerCalls, healthCalls, typeCalls, curves = 0, 0, 0, 0
 local power = { secret = true }

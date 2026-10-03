@@ -23,6 +23,12 @@ local RESOURCE_NAMES = {
     "PersonalResourceDisplayFrame",
 }
 
+local PARTY_NAMES = {
+    "CompactPartyFrameContainer",
+    "CompactRaidFrameContainer",
+    "PartyFrame",
+}
+
 local QUEST_NAMES = {
     "ObjectiveTrackerFrame",
     "QuestWatchFrame",
@@ -50,6 +56,7 @@ local RESTS_AT_MAX = { [0] = true, [2] = true, [3] = true }
 local statusFrames = {}
 local cooldownFrames = {}
 local resourceFrames = {}
+local partyFrames = {}
 local questFrames = {}
 local auraFrames = {}
 local meterFrames = {}
@@ -101,6 +108,7 @@ function ns.FindFaders(deep)
     FindNamed(resourceFrames, RESOURCE_NAMES)
     FindNamed(questFrames, QUEST_NAMES)
     FindNamed(auraFrames, AURA_NAMES)
+    FindNamed(partyFrames, PARTY_NAMES)
     for i = 1, #resourceFrames do
         resourceFrames[i]._quietKids = nil
     end
@@ -139,6 +147,20 @@ local function MeterShouldShow()
         return GetTime() - lastCombat < METER_AFTER_COMBAT
     end
     return false
+end
+
+local function PartyShouldShow()
+    if ns.InEditMode() then return true end
+    return ns.Glancing()
+        or ns.InCombat()
+        or (ns.InGroup() and ns.ShowPlayerFrameInParty())
+        or ns.InForcedInstance()
+        or ns.InVehicle()
+        or ns.HasTarget()
+end
+
+local function RaidManagerShouldShow()
+    if ns.InEditMode() then return true end
 end
 
 -- Catch hover even when Blizzard's container is not mouse-enabled.
@@ -542,6 +564,30 @@ local function UpdatePlayer(elapsed)
     end
 end
 
+local function UpdateParty(elapsed)
+    local hovered = false
+    for _, frame in ipairs(partyFrames) do
+        if ns.Hit(frame) then hovered = true; break end
+    end
+    local show = ns.VisibilityShow("party", PartyShouldShow(), hovered)
+    for _, frame in ipairs(partyFrames) do
+        if IsFadeable(frame) and frame:IsShown() then
+            ns.EaseAlpha(frame, show, elapsed)
+        end
+    end
+end
+
+local function UpdateRaidManager(elapsed)
+    local hovered = false
+
+    if ns.Hit(CompactRaidFrameManager) then hovered = true end
+    
+    local show = ns.VisibilityShow("raid manager", RaidManagerShouldShow(), hovered)
+    if IsFadeable(CompactRaidFrameManager) and CompactRaidFrameManager:IsShown() then
+        ns.EaseAlpha(CompactRaidFrameManager, show, elapsed)
+    end
+end
+
 -- Cooldowns matter only when fighting or grouped, so hover does not count.
 local function CooldownsShouldShow()
     return ns.InCombat() or ns.InForcedInstance() or ns.InGroup() or ns.InEditMode()
@@ -668,6 +714,8 @@ function ns.UpdateSmooth(elapsed)
     samplingPower = true
     Run("resource bar", UpdateResource, elapsed)
     Run("player frame", UpdatePlayer, elapsed)
+    Run("party frames", UpdateParty, elapsed)
+    Run("raid manager", UpdateRaidManager, elapsed)
     Run("buffs", UpdateAuras, elapsed)
     samplingPower = false
 end
