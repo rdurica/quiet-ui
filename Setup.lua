@@ -13,6 +13,7 @@ local ROWS = {
     { key = "auras", label = "Buffs and debuffs" },
     { key = "menu", label = "Bag button" },
     { key = "micro", label = "Micro menu" },
+    { key = "party", label = "Party and raid frames", noHover = true },
 }
 
 local CONTENT_W = 560
@@ -63,6 +64,10 @@ function ns.VisibilityShow(name, usual, hovered)
     if ns.InEditMode() or ns.Glancing() then return true end
     if ns.OnlyOnHover(name) then return hovered and true or false end
     return ns.Pinned(name) or usual or hovered or false
+end
+
+function ns.AutoHideParty()
+    return (ns.Settings and ns.Settings() or ns.CharDB()).autoHideParty == true
 end
 
 function ns.Pinned(name)
@@ -346,7 +351,12 @@ local function ReadDraft(source)
     draft.hoverOnly = {}
     for _, row in ipairs(ROWS) do
         draft.hoverOnly[row.key] = ns.HoverSetting(source, row.key)
-        draft[row.key] = type(source.visible) == "table" and source.visible[row.key] == true and not draft.hoverOnly[row.key]
+        if row.noHover then
+            draft.hoverOnly[row.key] = false
+            draft[row.key] = source.autoHideParty ~= true
+        else
+            draft[row.key] = type(source.visible) == "table" and source.visible[row.key] == true and not draft.hoverOnly[row.key]
+        end
     end
     draft.forceLayout = source.forceLayout == true
     draft.player = source.player ~= "resource"
@@ -399,14 +409,15 @@ local function DraftSettings()
     local db = {}
     local visible
     for _, row in ipairs(ROWS) do
-        if draft[row.key] then
+        if not row.noHover and draft[row.key] then
             visible = visible or {}
             visible[row.key] = true
         end
     end
     db.visible = visible
+    if not draft.party then db.autoHideParty = true end
     for _, row in ipairs(ROWS) do
-        if draft.hoverOnly[row.key] or (row.key == "xp" and not draft[row.key]) then
+        if not row.noHover and (draft.hoverOnly[row.key] or (row.key == "xp" and not draft[row.key])) then
             db.hoverOnly = db.hoverOnly or {}
             db.hoverOnly[row.key] = draft.hoverOnly[row.key] and true or false
         end
@@ -691,13 +702,34 @@ local function SpellField(parent)
     return row
 end
 
-local function Section(parent, text)
+local function Help(parent, label, title, text)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(18, 18)
+    button:SetPoint("LEFT", label, "RIGHT", 4, 0)
+    button:SetNormalTexture("Interface\\Common\\help-i")
+    button:SetHighlightTexture("Interface\\Common\\help-i")
+    button:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(title, 1, 1, 1)
+        GameTooltip:AddLine(text, 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    button:SetScript("OnHide", function(self)
+        if GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+    end)
+    return button
+end
+
+local function Section(parent, text, help)
     -- Gold title only. The old group-indicator bar is the classic paperdoll and collides with the column titles.
     local row = CreateFrame("Frame", nil, parent)
     row:SetSize(CONTENT_W, 16)
     row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     row.label:SetPoint("TOPLEFT", 0, 0)
     row.label:SetText(text)
+    if help then row.help = Help(row, row.label, text, help) end
     return row
 end
 
@@ -1051,7 +1083,8 @@ local function CreateSetup()
     end
 
     local general = widget.pages[1]
-    widget.presetHeader = Section(general, "Shared preset")
+    widget.presetHeader = Section(general, "Shared preset",
+        "Share settings and an Edit Mode layout across characters. Save updates the selected preset for everyone using it. Without a preset, settings belong to this character.")
     widget.presetHeader:SetPoint("TOPLEFT", general, "TOPLEFT", 0, 0)
     widget.presetSelector = ActionButton(general, "<no preset>", function()
         if widget.layoutMenu then widget.layoutMenu:Hide() end
@@ -1107,7 +1140,8 @@ local function CreateSetup()
         end)
     end)
     widget.deletePreset:SetPoint("TOPRIGHT", general, "TOPRIGHT", 0, -58)
-    widget.layoutHeader = Section(general, "Layout")
+    widget.layoutHeader = Section(general, "Layout",
+        "A preset uses the selected Edit Mode layout. Choosing one previews it immediately; Save keeps it, while closing cancels the preview. Without a preset, Force QuietUI layout selects the bundled layout on enable and restores your previous layout on disable.")
     widget.layoutHeader:SetPoint("TOPLEFT", general, "TOPLEFT", 0, -104)
     widget.layoutSelector = ActionButton(general, "Choose layout", function()
         if widget.presetMenu then widget.presetMenu:Hide() end
@@ -1138,7 +1172,8 @@ local function CreateSetup()
     widget.presetHelp:SetPoint("TOPLEFT", general, "TOPLEFT", 0, -174)
 
     local visible = widget.pages[2]
-    widget.always = Section(visible, "Visibility")
+    widget.always = Section(visible, "Visibility",
+        "Always visible keeps an element on screen. Only on hover overrides its automatic triggers; Glance and Edit Mode still reveal it. With both unchecked, its usual rules apply. Party and raid frames use their own exploration fade rules.")
     widget.always:SetPoint("TOPLEFT", visible, "TOPLEFT", 0, 0)
     local alwaysHeader = ColumnLabel(visible, "Always visible")
     alwaysHeader:SetPoint("TOP", visible, "TOPLEFT", 380, 0)
@@ -1159,6 +1194,7 @@ local function CreateSetup()
             Paint()
         end)
         row.hover = TargetBox(row, function()
+            if info.noHover then return end
             draft.hoverOnly[key] = not draft.hoverOnly[key]
             if draft.hoverOnly[key] then draft[key] = false end
             Paint()
@@ -1166,13 +1202,22 @@ local function CreateSetup()
         row.always:SetPoint("CENTER", row, "LEFT", 380, 0)
         row.hover:SetPoint("CENTER", row, "LEFT", 484, 0)
         row.key = key
+        if info.noHover then
+            row.hover:Disable()
+            row.hover:SetAlpha(0.35)
+            local width = row.label.GetStringWidth and row.label:GetStringWidth()
+            row.label:SetWidth(type(width) == "number" and width or 180)
+            row.help = Help(row, row.label, "Party and raid frames",
+                "Uncheck Always visible to fade these frames while exploring.\nCombat, instances, hover, Glance and Edit Mode reveal them.")
+        end
         row:SetPoint("TOPLEFT", visible, "TOPLEFT", 0, y)
         y = y - 24
         widget.rows[#widget.rows + 1] = row
     end
 
     local bars = widget.pages[3]
-    widget.groupHeader = Section(bars, "Fade together")
+    widget.groupHeader = Section(bars, "Fade together",
+        "Bars with the same Group number appear together on hover and fade together. Enemy and Friend keep an individual bar visible for a matching living target. Use the Groups tab to control visibility for the entire group.")
     widget.groupHeader:SetPoint("TOPLEFT", bars, "TOPLEFT", 0, 0)
     widget.groupRows = {}
     y = -20
@@ -1210,7 +1255,8 @@ local function CreateSetup()
     widget.groupColumn:SetPoint("TOP", first.step, "TOP", 0, 20)
 
     local groups = widget.pages[4]
-    widget.visibilityHeader = Section(groups, "Group visibility")
+    widget.visibilityHeader = Section(groups, "Group visibility",
+        "Always visible keeps every member of the group on screen. Only on hover reveals the whole group when any member is hovered and overrides automatic triggers. Glance, Edit Mode, spell flyouts and cursor items still reveal it. Group modes override Enemy and Friend.")
     widget.visibilityHeader:SetPoint("TOPLEFT", groups, "TOPLEFT", 0, 0)
     local groupAlwaysHeader = ColumnLabel(groups, "Always visible")
     groupAlwaysHeader:SetPoint("TOP", groups, "TOPLEFT", 380, 0)
@@ -1259,7 +1305,8 @@ local function CreateSetup()
     help:SetPoint("TOPLEFT", groups, "TOPLEFT", 0, -24 - GROUP_VIEW_H - 10)
 
     local player = widget.pages[5]
-    widget.player = Section(player, "Player frame")
+    widget.player = Section(player, "Player frame",
+        "Control the player portrait and pet, and whether buffs follow their visibility. Always show debuffs keeps debuffs visible independently. Require a living target fades the player, pet and target frames for a dead target, except in Edit Mode.")
     widget.player:SetPoint("TOPLEFT", player, "TOPLEFT", 0, 0)
     widget.playerRow = Choice(player, "Player frame", function()
         draft.player = not draft.player
@@ -1281,7 +1328,8 @@ local function CreateSetup()
         Paint()
     end)
     widget.alwaysShowDebuffs:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -92)
-    widget.rangeHeader = Section(player, "Range")
+    widget.rangeHeader = Section(player, "Range",
+        "Adds a green indicator to the current target's nameplate health bar while in range and the action bars are down. Choose 10 yards, 28 yards or Spell. An empty spell field uses the longest matching spell on Bar 1.")
     widget.rangeHeader:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -118)
     widget.range = Choice(player, "In range", function()
         draft.range = not draft.range
@@ -1302,7 +1350,8 @@ local function CreateSetup()
     widget.rangeSpell:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -210)
 
     local chat = widget.pages[6]
-    widget.chatHeader = Section(chat, "Chat")
+    widget.chatHeader = Section(chat, "Chat",
+        "Modern chat replaces the chat chrome with fading message bubbles. Fade after controls how long new lines remain visible; 0 keeps them. Hover and scrolling reveal older messages. Turning Modern chat off restores the original chat.")
     widget.chatHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, 0)
     widget.chat = Choice(chat, "Modern chat", function()
         draft.chat = not draft.chat
@@ -1319,7 +1368,8 @@ local function CreateSetup()
     widget.about:SetPoint("TOPLEFT", info, "TOPLEFT", 0, 0)
     widget.aboutBody = Body(info, "While you explore, fewer frames stay on screen. They come back when you need them: talking to someone, a quest, a dungeon, or PvP.")
     widget.aboutBody:SetPoint("TOPLEFT", widget.about, "BOTTOMLEFT", 0, -4)
-    widget.glanceHeader = Section(info, "Glance")
+    widget.glanceHeader = Section(info, "Glance",
+        "Press the Glance binding or use /quiet glance to reveal the hidden HUD, including hover-only elements. Press again to return to the usual visibility rules. Chat is unchanged and Glance is not saved.")
     widget.glanceHeader:SetPoint("TOPLEFT", widget.aboutBody, "BOTTOMLEFT", 0, -12)
     widget.glanceBody = Body(info, "Press ` to show what has faded. Press it again and the choices on the other tabs apply. Change the key under QuietUI in Key Bindings. You can also use /quiet glance in a macro for your controller.")
     widget.glanceBody:SetPoint("TOPLEFT", widget.glanceHeader, "BOTTOMLEFT", 0, -4)

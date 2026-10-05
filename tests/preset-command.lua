@@ -1,5 +1,7 @@
 -- Run from the addon directory: lua tests/preset-command.lua
 local ns = {}
+ns.FindFaders = function() end
+ns.UpdateParty = function() end
 local db, char = { enabled = true }, {}
 ns.DB = function() return db end
 ns.CharDB = function() return char end

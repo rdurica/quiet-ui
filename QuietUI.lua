@@ -126,6 +126,7 @@ end
 
 local function RestoreAll()
     if ns.HideHoverCatchers then ns.HideHoverCatchers() end
+    if ns.UpdateParty then ns.UpdateParty(0) end
     if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
     glancing = false
     ns.HideQuestCatcher()
@@ -170,6 +171,8 @@ local function ApplyAll()
         ns.RestoreChat()
     end
     UpdateFades(0)
+    ns.FindFaders(false)
+    ns.UpdateParty(0)
     ns.UpdateBagSlots()
 end
 
@@ -275,6 +278,7 @@ end
 
 function handlers.PLAYER_REGEN_DISABLED()
     ns.NoteCombat(true)
+    ns.UpdateParty(0)
     UpdateFades(0)
 end
 
@@ -306,6 +310,8 @@ handlers.UPDATE_FLOATING_CHAT_WINDOWS = handlers.UPDATE_CHAT_WINDOWS
 
 function handlers.GROUP_ROSTER_UPDATE()
     ns.RefreshWorld()
+    ns.FindFaders(false)
+    ns.UpdateParty(0)
 end
 
 function handlers.PLAYER_TARGET_CHANGED()

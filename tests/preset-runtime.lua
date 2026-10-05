@@ -1,4 +1,6 @@
 local ns = {}
+ns.FindFaders = function() end
+ns.UpdateParty = function() end
 local enabled, combat, ready = true, false, true
 ns.DB = function() return { enabled = enabled } end
 ns.CharDB = function() return { previousLayout = 3, presetLayoutManaged = true } end

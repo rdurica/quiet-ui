@@ -267,13 +267,19 @@ function ns.HoldAlpha(frame, alpha)
     ns.PushAlpha(frame, alpha)
 end
 
-function ns.ReleaseAlpha(frame)
-    if not frame or not frame.SetAlpha then return end
+function ns.ReleaseAlpha(frame, forget)
+    if not ns.Usable(frame) or type(frame.SetAlpha) ~= "function" then
+        if forget then savedAlpha[frame] = nil end
+        return
+    end
     frame._quietAlpha = nil
     frame._quietSecret = nil
     frame._quietApplying = true
-    frame:SetAlpha(savedAlpha[frame] or 1)
+    local ok, err = pcall(frame.SetAlpha, frame, savedAlpha[frame] or 1)
     frame._quietApplying = false
+    if not ok then ns.Report("restore alpha", err); return end
+    -- Optional fading must capture a fresh baseline when enabled again.
+    if forget then savedAlpha[frame] = nil end
 end
 
 function ns.NoteChat(obj)
@@ -405,13 +411,10 @@ end
 ------------------------------------------------------------------------------
 -- Restore
 ------------------------------------------------------------------------------
+
 function ns.RestoreAlpha()
     for _, frame in ipairs(hooked) do
-        frame._quietAlpha = nil
-        frame._quietSecret = nil
-        frame._quietApplying = true
-        frame:SetAlpha(savedAlpha[frame] or 1)
-        frame._quietApplying = false
+        if savedAlpha[frame] ~= nil then ns.ReleaseAlpha(frame) end
     end
     for tex, alpha in pairs(textureAlpha) do
         tex._quietApplying = true

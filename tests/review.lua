@@ -685,4 +685,119 @@ test('XP defaults to hover and unchecking persists usual combat visibility', fun
     MainStatusTrackingBarContainer = nil
 end)
 
+test('Party autohide keeps combat, instance and explicit reveal priorities', function()
+    local ns = namespace()
+    loadAddon('Setup.lua', ns)
+    loadAddon('Faders.lua', ns)
+    PartyFrame = frame(UIParent)
+    PartyFrame.alpha = 0.6
+    CompactRaidFrameContainer = frame(PartyFrame)
+    CompactRaidFrameContainer.alpha = 0.8
+    PartyMemberFrame1 = frame(PartyFrame)
+    PartyMemberFrame1.alpha = 0.7
+    CompactPartyFrameContainer = frame(UIParent)
+    CompactPartyFrameContainer.alpha = 0.9
+    local catchers = {}
+    CreateFrame = function()
+        local box = frame(UIParent)
+        function box:SetMouseMotionEnabled(value) self.motion = value end
+        function box:SetMouseClickEnabled(value) self.clicks = value end
+        catchers[#catchers + 1] = box
+        return box
+    end
+    ns.Hit = function(obj) return obj and obj.hot == true end
+    ns.FindFaders(false)
+    ns.UpdateParty(1)
+    assert(PartyFrame.alpha == 0.6 and not PartyFrame._quietAlphaHook,
+        'Default settings must leave Blizzard alpha untouched')
+    assert(#catchers == 0, 'Always visible needs no hover catcher')
+    QuietUICharDB.autoHideParty = true
+    ns.InGroup = function() return true end
+    ns.HasTarget = function() return true end
+    ns.UpdateParty(0.1)
+    assert(PartyFrame.alpha > 0 and PartyFrame.alpha < 0.6, 'Hide must fade, not disappear immediately')
+    ns.UpdateParty(0.3)
+    assert(PartyFrame.alpha == 0 and CompactPartyFrameContainer.alpha == 0,
+        'Group membership and target must not reveal party frames')
+    assert(CompactRaidFrameContainer.alpha == 0.8 and PartyMemberFrame1.alpha == 0.7,
+        'Nested frames must inherit their parent fade without being faded twice')
+    assert(#catchers == 2 and catchers[1].parent == UIParent)
+    for _, box in ipairs(catchers) do
+        assert(box.motion and box.clicks == false, 'Hover catcher must not intercept clicks')
+    end
+    catchers[1].hot = true
+    ns.UpdateParty(0)
+    assert(PartyFrame.alpha == 1 and CompactPartyFrameContainer.alpha == 1,
+        'Hover over a hidden block must reveal all members immediately')
+    catchers[1].hot = false
+    for _, trigger in ipairs({ 'InCombat', 'InForcedInstance', 'Glancing', 'InEditMode' }) do
+        ns.UpdateParty(1)
+        assert(PartyFrame.alpha == 0)
+        ns[trigger] = function() return true end
+        ns.UpdateParty(0)
+        assert(PartyFrame.alpha == 1 and CompactPartyFrameContainer.alpha == 1, trigger .. ' must reveal immediately')
+        ns[trigger] = function() return false end
+    end
+    ns.UpdateParty(1)
+    PartyFrame:SetAlpha(1)
+    assert(PartyFrame.alpha == 0, 'Blizzard writes must not override autohide')
+    QuietUICharDB.autoHideParty = nil
+    ns.UpdateParty(0)
+    assert(PartyFrame.alpha == 0.6 and CompactPartyFrameContainer.alpha == 0.9,
+        'Always visible must restore original alpha')
+    for _, box in ipairs(catchers) do assert(not box.shown, 'Always visible must hide catchers') end
+    PartyFrame:SetAlpha(0.75)
+    assert(PartyFrame.alpha == 0.75, 'Always visible must release the alpha hook')
+    QuietUICharDB.autoHideParty = true
+    ns.UpdateParty(1)
+    ns.HideHoverCatchers()
+    QuietUIDB.enabled = false
+    ns.UpdateParty(0)
+    ns.RestoreAlpha()
+    assert(PartyFrame.alpha == 0.75 and CompactPartyFrameContainer.alpha == 0.9,
+        'Disable must restore alpha captured when autohide was re-enabled')
+    for _, box in ipairs(catchers) do assert(not box.shown, 'Disable must hide catchers') end
+    PartyFrame:SetAlpha(0.85)
+    QuietUIDB.enabled = true
+    ns.UpdateParty(1)
+    QuietUICharDB.autoHideParty = nil
+    ns.UpdateParty(0)
+    assert(PartyFrame.alpha == 0.85, 'Re-enabling must capture changes made while the addon was off')
+    PartyFrame, CompactRaidFrameContainer, CompactPartyFrameContainer, PartyMemberFrame1 = nil, nil, nil, nil
+end)
+
+test('Party frame discovery releases replaced roots and skips forbidden frames', function()
+    local ns = namespace()
+    loadAddon('Setup.lua', ns)
+    loadAddon('Faders.lua', ns)
+    QuietUICharDB.autoHideParty = true
+    CreateFrame = function() return frame(UIParent) end
+    ns.Hit = function() return false end
+    PartyFrame = frame(UIParent)
+    ns.FindFaders(false); ns.UpdateParty(1)
+    local old = PartyFrame
+    PartyFrame = frame(UIParent)
+    PartyFrame.alpha = 0.7
+    ns.FindFaders(false); ns.UpdateParty(1)
+    assert(old.alpha == 1 and old._quietAlpha == nil, 'Replacing a container must release the old root')
+    assert(PartyFrame.alpha == 0, 'Newly discovered frames must follow autohide')
+    local container = frame(UIParent)
+    PartyFrame.parent = container
+    CompactPartyFrameContainer = container
+    CompactRaidFrameContainer = frame(UIParent)
+    function CompactRaidFrameContainer:IsForbidden() return true end
+    function CompactRaidFrameContainer:IsShown() error('Forbidden frame accessed') end
+    ns.FindFaders(false); ns.UpdateParty(1)
+    assert(PartyFrame.alpha == 0.7 and PartyFrame._quietAlpha == nil, 'Newly nested frames must stop independent fading')
+    assert(container.alpha == 0, 'The outer container must own the fade')
+    local forbiddenReads = 0
+    function container:IsForbidden() return true end
+    function container:SetAlpha() forbiddenReads = forbiddenReads + 1; error('Forbidden alpha write') end
+    ns.FindFaders(false)
+    assert(forbiddenReads == 0, 'Formerly managed forbidden frames must be released without calling methods')
+    ns.RestoreAlpha()
+    assert(PartyFrame.alpha == 0.7, 'Disable must not overwrite a released child')
+    PartyFrame, CompactPartyFrameContainer, CompactRaidFrameContainer = nil, nil, nil
+end)
+
 os.exit(failures == 0 and 0 or 1)

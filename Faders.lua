@@ -23,6 +23,13 @@ local RESOURCE_NAMES = {
     "PersonalResourceDisplayFrame",
 }
 
+local PARTY_NAMES = {
+    "CompactPartyFrameContainer",
+    "CompactRaidFrameContainer",
+    "PartyFrame",
+    "PartyMemberFrame1", "PartyMemberFrame2", "PartyMemberFrame3", "PartyMemberFrame4",
+}
+
 local QUEST_NAMES = {
     "ObjectiveTrackerFrame",
     "QuestWatchFrame",
@@ -50,6 +57,9 @@ local RESTS_AT_MAX = { [0] = true, [2] = true, [3] = true }
 local statusFrames = {}
 local cooldownFrames = {}
 local resourceFrames = {}
+local partyFrames = {}
+local managedParty = {}
+local FindPartyFrames
 local questFrames = {}
 local auraFrames = {}
 local meterFrames = {}
@@ -108,6 +118,7 @@ function ns.FindFaders(deep)
         auraFrames[i]._quietKids = nil
     end
     FindMeters(deep)
+    FindPartyFrames()
 end
 
 function ns.MarkCombatEnd()
@@ -143,13 +154,14 @@ end
 
 -- Catch hover even when Blizzard's container is not mouse-enabled.
 local hoverCatchers = {}
-local function HoverFrames(name, frames)
+local function HoverFrames(name, frames, active)
     local catchers = hoverCatchers[name]
     if not catchers then catchers = {}; hoverCatchers[name] = catchers end
     local hovered = false
+    if active == nil then active = ns.OnlyOnHover(name) end
     for i, target in ipairs(frames) do
         local box = catchers[i]
-        if ns.OnlyOnHover(name) and ns.DB().enabled and not ns.InEditMode()
+        if active and ns.DB().enabled and not ns.InEditMode()
             and ns.Usable(target) and target:IsShown() then
             if not box then
                 local ok, created = pcall(CreateFrame, "Frame", nil, UIParent)
@@ -205,13 +217,15 @@ end
 
 -- A child already follows its parent alpha. Fading it again would compound.
 local function Under(frame, ancestor)
-    if not frame or not frame.GetParent or not ancestor then return false end
-    local parent = frame:GetParent()
+    if not ns.Usable(frame) or type(frame.GetParent) ~= "function" or not ancestor then return false end
+    local ok, parent = pcall(frame.GetParent, frame)
+    if not ok then return false end
     local depth = 0
     while parent and depth < 6 do
         if parent == ancestor then return true end
-        if not parent.GetParent then return false end
-        parent = parent:GetParent()
+        if not ns.Usable(parent) or type(parent.GetParent) ~= "function" then return false end
+        ok, parent = pcall(parent.GetParent, parent)
+        if not ok then return false end
         depth = depth + 1
     end
     return false
@@ -658,6 +672,51 @@ function ns.HideQuestCatcher()
     questCatcherTarget = nil
 end
 
+FindPartyFrames = function()
+    local candidates = {}
+    FindNamed(candidates, PARTY_NAMES)
+    local roots = {}
+    for _, frame in ipairs(candidates) do
+        local nested = false
+        for _, other in ipairs(candidates) do
+            if frame ~= other and Under(frame, other) then nested = true; break end
+        end
+        if not nested then roots[frame] = true end
+    end
+    for frame in pairs(managedParty) do
+        if not roots[frame] then
+            ns.ReleaseAlpha(frame, true)
+            managedParty[frame] = nil
+        end
+    end
+    for i = #partyFrames, 1, -1 do partyFrames[i] = nil end
+    for _, frame in ipairs(candidates) do
+        if roots[frame] then
+            partyFrames[#partyFrames + 1] = frame
+            roots[frame] = nil
+        end
+    end
+end
+
+function ns.UpdateParty(elapsed)
+    local active = ns.DB().enabled and ns.AutoHideParty and ns.AutoHideParty() or false
+    local hovered = HoverFrames("party", partyFrames, active)
+    if not active then
+        for frame in pairs(managedParty) do
+            ns.ReleaseAlpha(frame, true)
+            managedParty[frame] = nil
+        end
+        return
+    end
+    local show = ns.InCombat() or ns.InForcedInstance() or ns.InEditMode() or ns.Glancing() or hovered
+    for _, frame in ipairs(partyFrames) do
+        if IsFadeable(frame) and frame:IsShown() then
+            ns.EaseAlpha(frame, show, elapsed)
+            managedParty[frame] = true
+        end
+    end
+end
+
 function ns.UpdateSmooth(elapsed)
     samplingPower = false
     local ok, kind = pcall(ReadRestingPower)
@@ -668,6 +727,7 @@ function ns.UpdateSmooth(elapsed)
     samplingPower = true
     Run("resource bar", UpdateResource, elapsed)
     Run("player frame", UpdatePlayer, elapsed)
+    Run("party frames", ns.UpdateParty, elapsed)
     Run("buffs", UpdateAuras, elapsed)
     samplingPower = false
 end

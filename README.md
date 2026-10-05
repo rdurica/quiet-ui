@@ -80,6 +80,9 @@ open. **X** or **Escape** closes it without saving pending changes.
 - **Visible:** Choose **Always visible** or **Only on hover** for each HUD element.
   Both unchecked keeps its usual rules. The two choices are mutually exclusive.
   XP defaults to **Only on hover**; uncheck it to use the usual bar triggers.
+  Party and raid frames default to **Always visible**. Uncheck it to fade them
+  while exploring; combat, instances, hover, Glance and Edit Mode reveal them.
+  **Only on hover** is disabled for this row.
 - **Bars:** Assign action bars and the swing timer to groups. **Enemy** and
   **Friend** show an individual bar for the matching target when its group uses
   the usual rules.
@@ -113,8 +116,8 @@ a replacement in General and save to repair it. Layout changes wait until combat
 ends. Presets can also be managed while QuietUI is off.
 
 **Reset default** disconnects this character from its preset without changing the
-shared preset, then applies and saves the defaults immediately: Always visible off,
-Only on hover on for XP and off for other elements, default bar groups, player
+shared preset, then applies and saves the defaults immediately: Always visible off except for party/raid
+frames, Only on hover on for XP and off for other elements, default bar groups, player
 frame, grouped buffs, and Always show debuffs on,
 modern chat with a 10-second fade, and Force layout, living-target requirement, and
 In range off.
@@ -155,6 +158,9 @@ arranging it. Elements appear immediately and fade out over 0.3 seconds.
   low mana, focus, or energy. Having a pet out alone does not reveal them.
   **Require a living target** overrides these rules and Glance for a dead target,
   fading player, pet, and target frames; Edit Mode still reveals them.
+- **Party and raid:** Blizzard visibility by default. With **Always visible**
+  unchecked: combat, an instance, hover across the block, Glance, or Edit Mode.
+  Target selection and group membership alone do not reveal them.
 - **Buffs and debuffs:** Combat, an instance, a group, or hover. Grouping is on by
   default and also reveals them with the enabled player frame. **Always show debuffs**
   keeps debuffs visible by default; turn it off to apply these fade rules to them.
