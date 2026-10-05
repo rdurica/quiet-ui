@@ -800,4 +800,48 @@ test('Party frame discovery releases replaced roots and skips forbidden frames',
     PartyFrame, CompactPartyFrameContainer, CompactRaidFrameContainer = nil, nil, nil
 end)
 
+test('Party selection highlights and independent indicators fade with their block', function()
+    local ns = namespace()
+    loadAddon('Setup.lua', ns)
+    loadAddon('Faders.lua', ns)
+    QuietUICharDB.autoHideParty = true
+    CreateFrame = function() return frame(UIParent) end
+    ns.Hit = function() return false end
+    PartyFrame = frame(UIParent)
+    local unit = frame(PartyFrame)
+    local highlight = frame(unit)
+    highlight.alpha = 0.8
+    unit.selectionHighlight = highlight
+    unit.regions = { highlight }
+    local ready = frame(unit)
+    function ready:IsIgnoringParentAlpha() return true end
+    local icon = frame(ready)
+    function icon:IsIgnoringParentAlpha() return true end
+    ready.regions = { icon }
+    local health = frame(unit)
+    health.alpha = 0.5
+    unit.children = { ready, health }
+    PartyFrame.children = { unit }
+    ns.FindFaders(false)
+    ns.UpdateParty(1)
+    assert(PartyFrame.alpha == 0 and highlight.alpha == 0 and ready.alpha == 0 and icon.alpha == 0,
+        'Independent selection and ready-check indicators must disappear with the container')
+    assert(health.alpha == 0.5 and not health._quietAlphaHook, 'Ordinary children must inherit container alpha')
+    highlight:SetAlpha(1)
+    assert(highlight.alpha == 0, 'A Blizzard selection update must not reveal the hidden highlight')
+    ns.Glancing = function() return true end
+    ns.UpdateParty(0)
+    assert(highlight.alpha == 1 and ready.alpha == 1 and icon.alpha == 1, 'Glance must restore independent indicators')
+    ns.Glancing = function() return false end
+    ns.UpdateParty(1)
+    ns.InCombat = function() return true end
+    ns.UpdateParty(0)
+    assert(highlight.alpha == 1 and ready.alpha == 1, 'Combat must reveal independent indicators immediately')
+    QuietUICharDB.autoHideParty = nil
+    ns.UpdateParty(0)
+    assert(highlight.alpha == 0.8 and highlight._quietAlpha == nil and icon.alpha == 1,
+        'Always visible must restore the original indicator alpha')
+    PartyFrame = nil
+end)
+
 os.exit(failures == 0 and 0 or 1)

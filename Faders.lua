@@ -58,6 +58,7 @@ local statusFrames = {}
 local cooldownFrames = {}
 local resourceFrames = {}
 local partyFrames = {}
+local partyAlphaFrames = {}
 local managedParty = {}
 local FindPartyFrames
 local questFrames = {}
@@ -672,6 +673,32 @@ function ns.HideQuestCatcher()
     questCatcherTarget = nil
 end
 
+-- Selection highlights and ready-check indicators can ignore container alpha.
+local function CollectPartyAlpha(frame, root, found, depth)
+    if depth > 8 or not ns.Usable(frame) then return end
+    if type(frame.SetAlpha) == "function" then
+        local ignoring = false
+        if type(frame.IsIgnoringParentAlpha) == "function" then
+            local ok, value = pcall(frame.IsIgnoringParentAlpha, frame)
+            ignoring = ok and not ns.IsSecret(value) and value == true
+        end
+        if frame == root or ignoring then found[frame] = root end
+    end
+    local highlight = frame.selectionHighlight
+    if ns.Usable(highlight) and type(highlight.SetAlpha) == "function"
+        and type(highlight.IsIgnoringParentAlpha) ~= "function" then
+        found[highlight] = root
+    end
+    for _, method in ipairs({ "GetRegions", "GetChildren" }) do
+        if type(frame[method]) == "function" then
+            local ok, children = pcall(function() return { frame[method](frame) } end)
+            if ok then
+                for _, child in ipairs(children) do CollectPartyAlpha(child, root, found, depth + 1) end
+            end
+        end
+    end
+end
+
 FindPartyFrames = function()
     local candidates = {}
     FindNamed(candidates, PARTY_NAMES)
@@ -683,12 +710,15 @@ FindPartyFrames = function()
         end
         if not nested then roots[frame] = true end
     end
+    local alphaFrames = {}
+    for frame in pairs(roots) do CollectPartyAlpha(frame, frame, alphaFrames, 0) end
     for frame in pairs(managedParty) do
-        if not roots[frame] then
+        if not alphaFrames[frame] then
             ns.ReleaseAlpha(frame, true)
             managedParty[frame] = nil
         end
     end
+    partyAlphaFrames = alphaFrames
     for i = #partyFrames, 1, -1 do partyFrames[i] = nil end
     for _, frame in ipairs(candidates) do
         if roots[frame] then
@@ -709,8 +739,8 @@ function ns.UpdateParty(elapsed)
         return
     end
     local show = ns.InCombat() or ns.InForcedInstance() or ns.InEditMode() or ns.Glancing() or hovered
-    for _, frame in ipairs(partyFrames) do
-        if IsFadeable(frame) and frame:IsShown() then
+    for frame, root in pairs(partyAlphaFrames) do
+        if ns.Usable(root) and root:IsShown() and ns.Usable(frame) then
             ns.EaseAlpha(frame, show, elapsed)
             managedParty[frame] = true
         end
