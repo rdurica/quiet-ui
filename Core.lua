@@ -64,6 +64,8 @@ local focusFallback = false
 local focusReady = false
 local focusFresh = false
 local focusHit = {}
+local hoverFrames = setmetatable({}, { __mode = "k" })
+local nextHit = {}
 local focusChain = {}
 local focusCount = 0
 local nextChain = {}
@@ -144,7 +146,8 @@ local function SameChain(n)
     return true
 end
 
--- True when the hovered frames changed. Nil when this client has no focus API.
+-- True when a tracked hover changes. Other windows still refresh the focus chain.
+-- Nil when this client has no focus API.
 -- Zero is a real sample: nothing is under the cursor.
 function ns.FocusChanged()
     local n = SampleFocus()
@@ -153,8 +156,17 @@ function ns.FocusChanged()
         focusReady = true
         return false
     end
+    for key in pairs(nextHit) do nextHit[key] = nil end
+    for i = 1, n do nextHit[nextChain[i]] = true end
+    local changed = not focusReady
+    for frame in pairs(hoverFrames) do
+        if (focusHit[frame] or false) ~= (nextHit[frame] or false) then
+            changed = true
+            break
+        end
+    end
     CommitChain(n)
-    return true
+    return changed
 end
 
 function ns.RefreshMouse()
@@ -169,6 +181,7 @@ function ns.RefreshMouse()
 end
 
 function ns.Hit(frame)
+    if frame then hoverFrames[frame] = true end
     if not frame or not frame.IsShown or not frame:IsShown() then return false end
     if focusFallback or not focusReady then
         return frame.IsMouseOver and frame:IsMouseOver() and true or false

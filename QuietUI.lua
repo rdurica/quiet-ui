@@ -46,7 +46,7 @@ local function FinishCPUProfile()
 end
 
 local function Run(label, fn, ...)
-    local profile = cpuProfile
+    local profile = label and cpuProfile
     local started = profile and debugprofilestop()
     local ok, err = pcall(fn, ...)
     if profile then
@@ -55,7 +55,7 @@ local function Run(label, fn, ...)
         if not section then section = { ms = 0, calls = 0 }; profile.sections[label] = section end
         section.ms, section.calls = section.ms + ms, section.calls + 1
     end
-    if not ok then ns.Report(label, err) end
+    if not ok then ns.Report(label or "fades", err) end
 end
 
 local function UpdateFades(elapsed, rescan)
@@ -63,9 +63,9 @@ local function UpdateFades(elapsed, rescan)
     ns.NextFadeTick()
     ns.BeginTick(rescan)
     local showAll = ns.ShowAll()
-    ns.UpdateBars(showAll, elapsed, rescan)
-    ns.UpdateFaders(elapsed)
-    ns.UpdateMenuButton(elapsed)
+    Run("bar visibility", ns.UpdateBars, showAll, elapsed, rescan)
+    Run("faders", ns.UpdateFaders, elapsed)
+    Run("menu", ns.UpdateMenuButton, elapsed)
 end
 
 -- Select once per enable, restore on disable. Both wait out combat and login.
@@ -152,6 +152,7 @@ local function ApplyAll()
         RestoreAll()
         return
     end
+    if ns.ForgetBarButtons then ns.ForgetBarButtons() end
     ns.RefreshWorld()
     if ns.ForceQuietLayout() then
         if not layoutChosen then
@@ -295,6 +296,7 @@ function handlers.QUEST_TURNED_IN(_, xp)
 end
 
 function handlers.EDIT_MODE_LAYOUTS_UPDATED()
+    if ns.ForgetBarButtons then ns.ForgetBarButtons() end
     ns.EnsureLayout()
     if not ns.DB().enabled or not ns.ForceQuietLayout() then return end
     if type(GetTime) == "function" and GetTime() > settleUntil then return end
@@ -418,7 +420,7 @@ events:SetScript("OnUpdate", function(_, elapsed)
     lastGlance = glance
     lastShowAll = showAll
     if rescan or wasHot then
-        Run("bars", UpdateFades, elapsed, rescan)
+        Run(nil, UpdateFades, elapsed, rescan)
         wasHot = ns.FrameHot()
     end
     if slow then

@@ -310,18 +310,36 @@ local function Parent(frame)
     if ok then return parent end
 end
 
+local ancestorCache = {}
+local structureDirty = true
+local parentHooked = setmetatable({}, { __mode = "k" })
+
+local function WatchParent(frame)
+    if not ns.Usable(frame) or parentHooked[frame] or type(frame.SetParent) ~= "function" then return end
+    local ok = pcall(hooksecurefunc, frame, "SetParent", function()
+        ns.ForgetBarButtons()
+    end)
+    if ok then parentHooked[frame] = true end
+end
+
 local function IsAncestor(frame, ancestor)
+    local chain = ancestorCache[frame]
+    if chain then return chain[ancestor] or false end
+    chain = {}
+    ancestorCache[frame] = chain
+    WatchParent(frame)
     local current = Parent(frame)
     local depth = 0
     while current and depth < 8 do
-        if current == ancestor then return true end
+        chain[current] = true
+        WatchParent(current)
         current = Parent(current)
         depth = depth + 1
     end
-    return false
+    return chain[ancestor] or false
 end
 
--- frame -> bar id, rebuilt each tick. A bar that parents another stays at
+-- Frame ownership changes when the UI structure changes. A bar that parents another stays at
 -- alpha 1 or the child would fade with it.
 local owner = {}
 local resolved = {}
@@ -444,6 +462,9 @@ local function RegionsFor(bar)
 end
 
 function ns.ForgetBarButtons()
+    structureDirty = true
+    ancestorCache = {}
+    ns.TouchHud()
     for bar in pairs(buttonCache) do
         buttonCache[bar] = nil
     end
@@ -676,6 +697,8 @@ function ns.ScanSwing()
 end
 
 local function Collect()
+    if not structureDirty then return end
+    structureDirty = false
     Clear(owner)
     for index, row in ipairs(ns.BAR_ROWS) do
         local entry = resolved[index]
@@ -689,7 +712,8 @@ local function Collect()
         local seen = {}
         for _, name in ipairs(row.names) do
             local bar = _G[name]
-            if bar and not seen[bar] then
+            if ns.Usable(bar) and not seen[bar] then
+                WatchParent(bar)
                 seen[bar] = true
                 count = count + 1
                 frames[count] = bar

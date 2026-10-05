@@ -844,4 +844,75 @@ test('Party selection highlights and independent indicators fade with their bloc
     PartyFrame = nil
 end)
 
+
+test('Focus ignores unrelated windows but preserves tracked hover and fallback', function()
+    local ns = namespace()
+    local bar, window = frame(UIParent), frame(UIParent)
+    local slot = frame(bar)
+    local itemA, itemB = frame(window), frame(window)
+    local focus = { itemA }
+    GetMouseFoci = function() return focus end
+    ns.Hit(bar)
+    ns.FocusChanged()
+    local scans = 0
+    for i = 1, 600 do
+        focus = { i % 2 == 0 and itemA or itemB }
+        if ns.FocusChanged() then scans = scans + 1 end
+    end
+    assert(scans == 0, 'Unrelated hover triggered HUD rescans')
+    focus = { slot }; assert(ns.FocusChanged() and ns.Hit(bar), 'Button did not reveal its bar')
+    focus = { bar }; assert(not ns.FocusChanged(), 'Same bar hover caused another rescan')
+    focus = { itemA }; assert(ns.FocusChanged() and not ns.Hit(bar), 'Leaving bar did not rescan')
+    focus = { slot, itemA }; assert(ns.FocusChanged() and ns.Hit(bar), 'Multiple foci lost tracked hover')
+    focus = {}; assert(ns.FocusChanged() and not ns.Hit(bar), 'Empty focus retained hover')
+    GetMouseFoci = function() error('Unavailable') end
+    function bar:IsMouseOver() return true end
+    assert(ns.FocusChanged() == nil and ns.Hit(bar), 'Failed focus API lost fallback hover')
+    GetMouseFoci, GetMouseFocus = nil, nil
+    local fallback = namespace()
+    assert(fallback.FocusChanged() == nil and fallback.Hit(bar), 'Missing focus API lost fallback')
+    print('Unrelated hover, 600 focus changes: HUD rescans=' .. scans)
+end)
+
+test('Bar ancestry cache preserves nesting, reparenting, replacement and disable', function()
+    local ns = namespace()
+    loadAddon('Frames.lua', ns)
+    loadAddon('Bars.lua', ns)
+    MainActionBar, MultiBarBottomLeft = frame(UIParent), frame(UIParent)
+    MainActionBar.name, MultiBarBottomLeft.name = 'MainActionBar', 'MultiBarBottomLeft'
+    CreateFrame = function() return frame(UIParent) end
+    ns.BagsShouldShow = function() return false end
+    ns.InEditMode = function() return false end
+    ns.Hit = function() return false end
+    local parentReads = 0
+    for _, obj in ipairs({ MainActionBar, MultiBarBottomLeft, UIParent }) do
+        function obj:GetParent() parentReads = parentReads + 1; return self.parent end
+    end
+    local function tick()
+        ns.NextFadeTick()
+        ns.UpdateBars(false, 1, true)
+    end
+    tick()
+    parentReads = 0
+    for _ = 1, 100 do tick() end
+    assert(parentReads == 0, 'Stable bars repeated ancestor walks: ' .. parentReads)
+    print('Stable bars, 100 rescans: parent reads=' .. parentReads)
+    MultiBarBottomLeft:SetParent(MainActionBar)
+    assert(ns.ConsumeHud(), 'Reparenting did not invalidate hover visibility')
+    tick()
+    assert(MainActionBar.alpha == 1 and MultiBarBottomLeft.alpha == 0,
+        'Hosting bar must stay opaque so the child fades independently')
+    MultiBarBottomLeft:SetParent(UIParent)
+    tick()
+    assert(MainActionBar.alpha == 0, 'Unnested bar retained cached hosting status')
+    local old = MultiBarBottomLeft
+    MultiBarBottomLeft = frame(UIParent); MultiBarBottomLeft.name = 'MultiBarBottomLeft'
+    ns.ForgetBarButtons(); tick()
+    assert(MultiBarBottomLeft.alpha == 0, 'Replacement bar was not discovered')
+    ns.RestoreAlpha()
+    assert(MainActionBar.alpha == 1 and MultiBarBottomLeft.alpha == 1 and old.alpha == 1,
+        'Disable did not restore original alphas')
+    MainActionBar, MultiBarBottomLeft = nil, nil
+end)
+
 os.exit(failures == 0 and 0 or 1)
