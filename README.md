@@ -169,6 +169,6 @@ arranging it. Elements appear immediately and fade out over 0.3 seconds.
 
 In range needs a visible target nameplate and a living target. It stays off during
 combat, in vehicles and instances, in Edit Mode, with a spell flyout or item on the
-cursor, during Glance, and while an action bar group uses Always visible.
+cursor, and during Glance. Always visible action bar groups do not block it.
 
 </details>

@@ -363,13 +363,15 @@ test('Damage meter follows combat, instance, group, edit mode and grace only', f
     DamageMeter = nil
 end)
 
-test('Range mark detaches after fading and stops nameplate lookups', function()
+test('Range ignores always-visible groups, keeps forced suppression and detaches', function()
     local ns = namespace()
     loadAddon('Faders.lua', ns)
     ns.Range = function() return 'spell', 'hostile', 'Test' end
     UnitExists = function() return true end
     UnitIsDeadOrGhost = function() return false end
-    C_Spell = { IsSpellInRange = function() return true end }
+    local distanceReads = 0
+    C_Spell = { IsSpellInRange = function() distanceReads = distanceReads + 1; return true end }
+    ns.AnyBarsAlwaysVisible = function() return true end
     local plate, health = frame(UIParent), frame()
     plate.UnitFrame = { healthBar = health, IsShown = function() return true end }
     local lookups = 0
@@ -377,7 +379,22 @@ test('Range mark detaches after fading and stops nameplate lookups', function()
     local mark
     CreateFrame = function() mark = frame(UIParent); return mark end
     ns.UpdateRange(0.1)
-    assert(mark.shown and mark.parent == health and mark.alpha == 1)
+    assert(mark and mark.shown and mark.parent == health and mark.alpha == 1,
+        'Always-visible bars must not block the range indicator')
+    local reads = distanceReads
+    ns.ShowAll = function() return true end
+    ns.UpdateRange(0.3)
+    assert(not mark.shown and distanceReads == reads, 'Forced visibility must hide range without reading distance')
+    ns.ShowAll = function() return false end
+    ns.UpdateRange(0.1)
+    assert(mark.shown, 'Range did not return after forced visibility ended')
+    ns.Glancing = function() return true end
+    reads = distanceReads
+    ns.UpdateRange(0.3)
+    assert(not mark.shown and distanceReads == reads, 'Glance must hide range without reading distance')
+    ns.Glancing = function() return false end
+    ns.UpdateRange(0.1)
+    assert(mark.shown, 'Range did not return after Glance ended')
     ns.Range = function() end
     ns.UpdateRange(0.3)
     assert(not mark.shown and mark.parent == UIParent, 'Invisible gradient stayed on nameplate')

@@ -998,12 +998,12 @@ local function FriendlyReaction()
     return "ok"
 end
 
--- "show", "hide", or "hold". Bars that are already up draw their own range, so this stays quiet.
+-- "show", "hide", or "hold". Automatic bar triggers and Glance suppress the indicator.
 local function RangeDecision()
     if type(ns.Range) ~= "function" then return "hide" end
     local yards, kind, spellName = ns.Range()
     if not yards then return "hide" end
-    if ns.ShowAll() or ns.Glancing() or (ns.AnyBarsAlwaysVisible and ns.AnyBarsAlwaysVisible()) then return "hide" end
+    if ns.ShowAll() or ns.Glancing() then return "hide" end
     local life = TargetLife()
     if life ~= "alive" then return life end
     if kind == "friendly" then

@@ -1403,7 +1403,7 @@ local function CreateSetup()
     end)
     widget.alwaysShowDebuffs:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -140)
     widget.rangeHeader = Section(player, "Range",
-        "Adds a green indicator to the current target's nameplate health bar while in range and the action bars are down. Choose 10 yards, 28 yards or Spell. An empty spell field uses the longest matching spell on Bar 1.")
+        "Adds a green indicator to the current target's nameplate health bar while in range. Always visible bar groups do not block it. Choose 10 yards, 28 yards or Spell. An empty spell field uses the longest matching spell on Bar 1.")
     widget.rangeHeader:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -178)
     widget.range = Choice(player, "In range", function()
         draft.range = not draft.range
