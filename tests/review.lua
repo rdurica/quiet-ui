@@ -324,7 +324,7 @@ test('Always visible debuffs override the shared power alpha curve', function()
     for i = 1, 100 do
         local name = debug.getupvalue(update, i)
         if name == 'RestingPower' then debug.setupvalue(update, i, function() return 0 end) end
-        if name == 'EvalPower' then debug.setupvalue(update, i, function() return 0.25 end) end
+        if name == 'EvalPlayerThresholds' then debug.setupvalue(update, i, function() return 0.25 end) end
         if not name then break end
     end
     BuffFrame, DebuffFrame = frame(UIParent), frame(UIParent)

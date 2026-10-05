@@ -22,10 +22,11 @@ local token, kind = 'MANA', 0
 issecretvalue = function(value) return type(value) == 'table' and value.secret == true end
 UnitPowerType = function() typeCalls = typeCalls + 1; return kind, token end
 UnitPowerPercent = function() powerCalls = powerCalls + 1; return power end
-UnitHealthPercent = function() healthCalls = healthCalls + 1; return power end
+UnitHealthPercent = function() healthCalls = healthCalls + 1; return 0 end
+Enum = { LuaCurveType = { Step = 1 } }
 C_CurveUtil = { CreateCurve = function()
     curves = curves + 1
-    return { AddPoint = function() end }
+    return { AddPoint = function() end, ClearPoints = function() end, SetType = function() end }
 end }
 hooksecurefunc = function() end
 local ns = {}
@@ -37,6 +38,7 @@ for _, key in ipairs({ 'InEditMode', 'InForcedInstance', 'InGroup', 'InVehicle',
 end
 ns.InCombat = function() return combat end
 ns.PlayerStyle = function() return 'classic' end
+ns.PlayerThreshold = function() return 'resource', 70 end
 ns.GroupAuras = function() return true end
 ns.AlwaysShowDebuffs = function() return true end
 loadAddon('Faders.lua', ns)
@@ -53,7 +55,8 @@ reset()
 for _ = 1, 60 do tick() end
 print(('Idle 60 frames: power=%d health=%d powerType=%d curves=%d playerWrites=%d')
     :format(powerCalls, healthCalls, typeCalls, curves, PlayerFrame.writes))
-check(powerCalls == 60, 'Equal power curves should be evaluated once per frame')
+check(powerCalls == 120 and healthCalls == 60, 'Player and auras must share the selected threshold sample')
+check(curves == 0, 'Stable thresholds must reuse curve objects')
 check(typeCalls == 60, 'Power type should be sampled once per frame')
 check(PlayerFrame.alpha == power and BuffFrame.alpha == power, 'Secret alpha must reach widgets unchanged')
 power = { secret = true }

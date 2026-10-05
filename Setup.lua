@@ -81,6 +81,16 @@ function ns.PlayerStyle()
     return "classic"
 end
 
+function ns.PlayerThreshold()
+    local settings = ns.Settings and ns.Settings() or ns.CharDB()
+    local kind = settings.playerThresholdKind == "resource" and "resource" or "health"
+    local value = settings.playerThresholdPercent
+    if value == false then return kind, nil end
+    if type(value) == "number" and not ns.IsSecret(value)
+        and value >= 1 and value <= 100 and value == math.floor(value) then return kind, value end
+    return kind, 70
+end
+
 function ns.RequireLivingTarget()
     return (ns.Settings and ns.Settings() or ns.CharDB()).requireLivingTarget == true
 end
@@ -238,6 +248,15 @@ local function Paint()
     if frame.playerRow then
         PaintBox(frame.playerRow.box, draft.player)
     end
+    if frame.playerThresholdKind then
+        frame.playerThresholdKind.value:SetText(draft.playerThresholdKind == "resource" and "Resource" or "Health")
+        if draft.player then frame.playerThresholdKind:Show() else frame.playerThresholdKind:Hide() end
+    end
+    if frame.playerThresholdPercent then
+        local row = frame.playerThresholdPercent
+        if row.edit:GetText() ~= draft.playerThresholdPercent then row.edit:SetText(draft.playerThresholdPercent) end
+        if draft.player then row:Show() else row.edit:ClearFocus(); row:Hide() end
+    end
     if frame.requireLivingTarget then
         PaintBox(frame.requireLivingTarget.box, draft.requireLivingTarget)
     end
@@ -360,6 +379,13 @@ local function ReadDraft(source)
     end
     draft.forceLayout = source.forceLayout == true
     draft.player = source.player ~= "resource"
+    draft.playerThresholdKind = source.playerThresholdKind == "resource" and "resource" or "health"
+    local value = source.playerThresholdPercent
+    if value == false then draft.playerThresholdPercent = ""
+    elseif type(value) == "number" and not ns.IsSecret(value)
+        and value >= 1 and value <= 100 and value == math.floor(value) then draft.playerThresholdPercent = tostring(value)
+    else draft.playerThresholdPercent = "70" end
+    if frame and frame.playerThresholdPercent then frame.playerThresholdPercent.edit:ClearFocus() end
     draft.requireLivingTarget = source.requireLivingTarget == true
     draft.groupAuras = source.groupAuras ~= false
     draft.alwaysShowDebuffs = source.alwaysShowDebuffs ~= false
@@ -439,6 +465,16 @@ local function DraftSettings()
     else
         db.player = "resource"
     end
+    if draft.playerThresholdKind == "resource" then db.playerThresholdKind = "resource" end
+    local text = draft.playerThresholdPercent:match("^%s*(.-)%s*$")
+    if text == "" then db.playerThresholdPercent = false
+    else
+        local n = tonumber(text)
+        if not text:match("^%d+$") or not n or n < 1 or n > 100 then
+            return nil, "Enter a whole percentage from 1 to 100, or leave the field empty."
+        end
+        if n ~= 70 then db.playerThresholdPercent = n end
+    end
     db.requireLivingTarget = draft.requireLivingTarget and true or nil
     if draft.groupAuras then
         db.groupAuras = nil
@@ -482,7 +518,8 @@ local function DraftSettings()
 end
 
 local function Write()
-    local settings = DraftSettings()
+    local settings, err = DraftSettings()
+    if not settings then ns.Print(err); return end
     if presetName then
         if not presetLayout then ns.Print("Choose an Edit Mode layout before saving."); return end
         local id, err = ns.SavePreset(selectedPresetId, presetName, presetLayout, settings)
@@ -702,6 +739,28 @@ local function SpellField(parent)
     return row
 end
 
+local function PercentField(parent, label, key)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetSize(CONTENT_W, 22)
+    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.label:SetPoint("LEFT", 2, 0)
+    row.label:SetText(label)
+    local box = Backdropped("EditBox", nil, row)
+    box:SetSize(72, 22)
+    box:SetPoint("RIGHT", 0, 0)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(16)
+    box:SetTextInsets(6, 6, 0, 0)
+    box:SetJustifyH("LEFT")
+    if not GoldEdge(box) then Flat(box, 0.9) end
+    box:SetScript("OnTextChanged", function(self) draft[key] = self:GetText() or "" end)
+    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    row.edit = box
+    return row
+end
+
 local function Help(parent, label, title, text)
     local button = CreateFrame("Button", nil, parent)
     button:SetSize(18, 18)
@@ -753,7 +812,7 @@ local TABS = {
     { id = "visible", label = "Visible", height = 262 },
     { id = "bars", label = "Bars", height = 308 },
     { id = "groups", label = "Groups", height = 320 },
-    { id = "player", label = "Player", height = 244 },
+    { id = "player", label = "Player", height = 306 },
     { id = "chat", label = "Chat", height = 72 },
     { id = "info", label = "Info", height = 148 },
 }
@@ -1306,48 +1365,63 @@ local function CreateSetup()
 
     local player = widget.pages[5]
     widget.player = Section(player, "Player frame",
-        "Control the player portrait and pet, and whether buffs follow their visibility. Always show debuffs keeps debuffs visible independently. Require a living target fades the player, pet and target frames for a dead target, except in Edit Mode.")
+        "Control the player portrait and pet, and whether buffs follow their visibility. Choose Health or Resource and a whole percentage from 1 to 100 to show them below that threshold; empty ignores it. The default is Health below 70%. Resource means mana, focus or energy. Combat and instances still show them regardless of these fields. Always show debuffs keeps debuffs visible independently. Require a living target fades the player, pet and target frames for a dead target, except in Edit Mode. The selected percentage threshold still shows the player and pet, but not the dead target.")
     widget.player:SetPoint("TOPLEFT", player, "TOPLEFT", 0, 0)
     widget.playerRow = Choice(player, "Player frame", function()
         draft.player = not draft.player
         Paint()
     end)
     widget.playerRow:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -20)
+    widget.playerThresholdKind = Stepper(player, "Show below", function()
+        draft.playerThresholdKind = draft.playerThresholdKind == "health" and "resource" or "health"
+        Paint()
+    end)
+    widget.playerThresholdKind:SetSize(240, 22)
+    widget.playerThresholdKind:SetPoint("TOPLEFT", player, "TOPLEFT", 24, -50)
+    widget.playerThresholdKind.value:SetWidth(92)
+    widget.playerThresholdPercent = PercentField(player, "%", "playerThresholdPercent")
+    widget.playerThresholdPercent:SetSize(72, 22)
+    widget.playerThresholdPercent:SetPoint("TOPLEFT", widget.playerThresholdKind, "TOPRIGHT", 12, 0)
+    widget.playerThresholdPercent.edit:SetSize(52, 22)
+    widget.playerThresholdPercent.edit:ClearAllPoints()
+    widget.playerThresholdPercent.edit:SetPoint("LEFT", 0, 0)
+    widget.playerThresholdPercent.label:ClearAllPoints()
+    widget.playerThresholdPercent.label:SetPoint("LEFT", widget.playerThresholdPercent.edit, "RIGHT", 4, 0)
     widget.groupAuras = Choice(player, "Group buffs and debuffs with player frame", function()
         draft.groupAuras = not draft.groupAuras
         Paint()
     end)
-    widget.groupAuras:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -44)
+    widget.groupAuras:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -84)
     widget.requireLivingTarget = Choice(player, "Require a living target for player and target frames", function()
         draft.requireLivingTarget = not draft.requireLivingTarget
         Paint()
     end)
-    widget.requireLivingTarget:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -68)
+    widget.requireLivingTarget:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -112)
     widget.alwaysShowDebuffs = Choice(player, "Always show debuffs", function()
         draft.alwaysShowDebuffs = not draft.alwaysShowDebuffs
         Paint()
     end)
-    widget.alwaysShowDebuffs:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -92)
+    widget.alwaysShowDebuffs:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -140)
     widget.rangeHeader = Section(player, "Range",
         "Adds a green indicator to the current target's nameplate health bar while in range and the action bars are down. Choose 10 yards, 28 yards or Spell. An empty spell field uses the longest matching spell on Bar 1.")
-    widget.rangeHeader:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -118)
+    widget.rangeHeader:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -178)
     widget.range = Choice(player, "In range", function()
         draft.range = not draft.range
         Paint()
     end)
-    widget.range:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -138)
+    widget.range:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -200)
     widget.rangeYards = Stepper(player, "Within", function(sign)
         NudgeRangeYards(sign)
     end)
-    widget.rangeYards:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -162)
+    widget.rangeYards:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -224)
     widget.rangeYards.value:SetWidth(92)
     widget.rangeKind = Stepper(player, "Who", function()
         NudgeRangeKind()
     end)
-    widget.rangeKind:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -186)
+    widget.rangeKind:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -248)
     widget.rangeKind.value:SetWidth(92)
     widget.rangeSpell = SpellField(player)
-    widget.rangeSpell:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -210)
+    widget.rangeSpell:SetPoint("TOPLEFT", player, "TOPLEFT", 0, -272)
 
     local chat = widget.pages[6]
     widget.chatHeader = Section(chat, "Chat",

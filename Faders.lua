@@ -285,7 +285,7 @@ local function DeadTargetBlocked()
     return dead and true or false
 end
 
--- Boolean show for the portrait. Low power stays on the curve below.
+-- Boolean show for the portrait. Health and power stay on the curves below.
 -- Edit mode shows it even when the player frame is off.
 local function PlayerShouldShow()
     if ns.InEditMode() then return true end
@@ -433,6 +433,71 @@ local function EvalHealth(weight)
     return 0
 end
 
+local thresholdCurves = {}
+local thresholdWeights, thresholdAlphas = {}, {}
+local thresholdSampleCount = 0
+
+local function ThresholdCurve(name, percent, above)
+    local ok, curve = pcall(function()
+        local c = thresholdCurves[name]
+        if not c then
+            c = C_CurveUtil.CreateCurve()
+            c:SetType(Enum.LuaCurveType.Step)
+            thresholdCurves[name] = c
+        end
+        c:ClearPoints()
+        c:AddPoint(0, 1)
+        c:AddPoint(percent / 100, above)
+        return c
+    end)
+    if ok then return curve end
+    thresholdCurves[name] = nil
+    ns.Report("player threshold curve", curve)
+end
+
+local function ReadThreshold()
+    if ns.PlayerThreshold then return ns.PlayerThreshold() end
+    return "health", 70
+end
+
+local function EvalPlayerThresholds(weight)
+    if weight >= 1 then return 1 end
+    if samplingPower then
+        for i = 1, thresholdSampleCount do
+            if thresholdWeights[i] == weight then return thresholdAlphas[i] end
+        end
+    end
+    local kind, percent = ReadThreshold()
+    local alpha = weight
+    if percent then
+        -- Curve points are plain numbers; only the evaluated alpha may be secret.
+        local curve = ThresholdCurve(kind, percent, weight)
+        if curve then
+            local fn
+            if kind == "health" then fn = UnitHealthPercent else fn = UnitPowerPercent end
+            if type(fn) == "function" then
+                local ok, result
+                if kind == "health" then ok, result = pcall(fn, "player", false, curve)
+                else ok, result = pcall(fn, "player", RestingPower(), false, curve) end
+                if ok and result ~= nil then alpha = result
+                elseif not ok then ns.Report("player " .. kind, result) end
+            else ns.Report("player " .. kind, "Percentage API missing") end
+        end
+    end
+    if samplingPower then
+        thresholdSampleCount = thresholdSampleCount + 1
+        thresholdWeights[thresholdSampleCount] = weight
+        thresholdAlphas[thresholdSampleCount] = alpha
+    end
+    return alpha
+end
+
+local function PlayerUsesThresholds()
+    if ns.PlayerStyle() ~= "classic" then return false end
+    local kind, percent = ReadThreshold()
+    return percent ~= nil and (kind == "health" or RestingPower() ~= nil)
+end
+
 local function PaintNumeric(frame, show, elapsed)
     if not (IsFadeable(frame) and frame:IsShown()) then return end
     ns.EaseAlpha(frame, show, elapsed)
@@ -535,9 +600,9 @@ end
 local function UpdatePlayer(elapsed)
     local show = PlayerShouldShow() and true or false
     local blocked = DeadTargetBlocked()
-    local useCurve = not blocked and ns.PlayerStyle() == "classic" and RestingPower() ~= nil
+    local useCurve = PlayerUsesThresholds()
     playerCurved, playerWeight = TakeWeight(playerCurved, playerWeight, show, elapsed, useCurve)
-    local alpha = useCurve and EvalPower(playerWeight) or nil
+    local alpha = useCurve and EvalPlayerThresholds(playerWeight) or nil
     local player = PlayerFrame
     local pet = PetFrame
     local target = TargetFrame
@@ -598,9 +663,9 @@ end
 
 local function UpdateAuras(elapsed)
     local show = AurasShouldShow() and true or false
-    local useCurve = not ns.OnlyOnHover("auras") and ns.GroupAuras() and ns.PlayerStyle() == "classic" and RestingPower() ~= nil
+    local useCurve = not ns.OnlyOnHover("auras") and ns.GroupAuras() and PlayerUsesThresholds()
     aurasCurved, auraWeight = TakeWeight(aurasCurved, auraWeight, show, elapsed, useCurve)
-    local alpha = useCurve and EvalPower(auraWeight) or nil
+    local alpha = useCurve and EvalPlayerThresholds(auraWeight) or nil
     local keepDebuffs = not ns.OnlyOnHover("auras") and ns.AlwaysShowDebuffs()
     for _, frame in ipairs(auraFrames) do
         if keepDebuffs and frame == _G.DebuffFrame then
@@ -754,6 +819,8 @@ function ns.UpdateSmooth(elapsed)
     if not ok then ns.Report("player power", kind) end
     for i = 1, powerSampleCount do powerAlphas[i] = nil end
     powerSampleCount = 0
+    for i = 1, thresholdSampleCount do thresholdAlphas[i] = nil end
+    thresholdSampleCount = 0
     samplingPower = true
     Run("resource bar", UpdateResource, elapsed)
     Run("player frame", UpdatePlayer, elapsed)
