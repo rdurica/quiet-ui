@@ -73,3 +73,12 @@ Opinionated UI for WoW Forever. Modern and quiet: few frames, few buttons, text 
   - `QuietUI.lua`: `ApplyAll`, `RestoreAll`, events, `OnUpdate`, `/quiet`.
 - Call other files through `ns` at run time, not through locals captured at load, so load order only matters for `QuietUI.lua` being last.
 - Comments in English, short, only where the reason is not visible from the code.
+
+## Agent skills
+
+Issue tracker: local markdown. See `docs/agents/config/issue-tracker.md`.
+Domain docs: `docs/adr/`. See `docs/agents/config/domain.md`.
+Workflow defaults: `docs/agents/config/workflow.md` (branch-owner, push, language, work types).
+Pipeline: `/align` → `/analyze` → `/implement` → `/verify` (functional → code review → finalize).
+`/implement` orchestrates fresh test subagents → parent test commit → fresh implementation subagents → automatic `/verify`; see the skill for detailed rules.
+Skills: the shared pack installed in the runner; `/setup` updates project configuration, not the global pack. Repo-specific additions belong in `docs/agents/config/`.
