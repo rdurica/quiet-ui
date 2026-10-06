@@ -110,7 +110,7 @@ ns.InEditMode = function() return true end
 tick(); assert(unwrap(PlayerFrame.alpha) == 1)
 ns.InEditMode = function() return false end
 QuietUICharDB.player, QuietUICharDB.requireLivingTarget = nil, true
-UnitIsDeadOrGhost = function() return true end
+UnitIsDeadOrGhost = function(unit) return unit == 'target' end
 TargetFrame = frame(UIParent)
 ns.InCombat = function() return true end
 for _, thresholdKind in ipairs({ 'health', 'resource' }) do
