@@ -175,15 +175,15 @@ test('Release to ghost keeps portrait hidden', function()
     s.life = 'ghost'; s.HasTarget = true; s.tick(); s.portrait(0)
 end)
 
--- Acceptance 4: native secret threshold values must transition to numeric fading.
+-- Acceptance 4: unreadable secret alpha clears immediately; numeric alpha keeps the 0.3s fade.
 for _, kind in ipairs({ 'health', 'resource' }) do
-    test(kind .. ' secret threshold fades on death and returns after revive', function()
+    test(kind .. ' secret threshold hides immediately on death and returns after revive', function()
         local _, s = environment()
         QuietUICharDB.playerThresholdKind = kind
         s.health, s.power = 0, 0.4
         s.tick(); s.portrait(1)
         assert(issecretvalue(PlayerFrame.alpha), 'Arrange a real secret alpha')
-        s.life = 'dead'; s.tick(0.15); s.portrait(0.5, 'Secret alpha must fade rather than vanish')
+        s.life = 'dead'; s.tick(0.15); s.portrait(0, 'An unreadable secret alpha must clear immediately on death')
         s.tick(0.15); s.portrait(0)
         s.life = 'ghost'; s.tick(); s.portrait(0)
         s.life = 'alive'; s.tick(0); s.portrait(1)
@@ -294,6 +294,66 @@ for _, inherited in ipairs({ false, true }) do
     end)
 end
 
+
+-- Acceptance 9: unsupported alpha isolation must preserve the existing player/pet rule.
+for _, mode in ipairs({ 'missing getter', 'missing setter', 'getter error', 'getter secret', 'setter error' }) do
+    test('Inherited pet isolation ' .. mode .. ' preserves portrait and pet visibility', function()
+        local _, s = environment(true)
+        QuietUICharDB.playerThresholdPercent = false
+        s.InCombat, s.allowReports = true, true
+        if mode == 'missing getter' then PetFrame.IsIgnoringParentAlpha = nil
+        elseif mode == 'missing setter' then PetFrame.SetIgnoreParentAlpha = nil
+        elseif mode == 'getter error' then
+            PetFrame.IsIgnoringParentAlpha = function() error('inheritance getter unavailable') end
+        elseif mode == 'getter secret' then
+            PetFrame.IsIgnoringParentAlpha = function() return secret(false) end
+        else PetFrame.SetIgnoreParentAlpha = function() error('inheritance setter unavailable') end end
+        s.tick(); s.portrait(1)
+        local originalPet = PetFrame:GetEffectiveAlpha()
+        for _, life in ipairs({ 'dead', 'ghost' }) do
+            s.life = life
+            for _ = 1, 3 do
+                s.tick(); s.portrait(1, 'Unsupported isolation must preserve the original portrait rule')
+                assert(PetFrame:GetEffectiveAlpha() == originalPet,
+                    'Unsupported isolation must preserve inherited pet visibility')
+            end
+        end
+        local expectedReports = mode == 'getter secret' and 0 or 1
+        assert(#s.reports == expectedReports, 'Missing/error isolation must report once; secret state is silent')
+    end)
+end
+
+test('Already independent inherited pet retains its original skipped alpha rules', function()
+    local _, s = environment(true)
+    QuietUICharDB.playerThresholdPercent = false
+    PetFrame.ignoring = true
+    s.InCombat = true; s.tick(); s.portrait(1)
+    assert(PetFrame.alpha == 0.6 and PetFrame:GetEffectiveAlpha() == 0.6)
+    for _, life in ipairs({ 'dead', 'ghost' }) do
+        s.life = life; s.tick(); s.portrait(0)
+        assert(PetFrame.alpha == 0.6 and PetFrame:GetEffectiveAlpha() == 0.6,
+            'An already independent child was skipped by the original player rule')
+    end
+    s.life, s.InCombat = 'alive', false; s.tick(); s.portrait(0)
+    assert(PetFrame.alpha == 0.6 and PetFrame:GetEffectiveAlpha() == 0.6)
+end)
+
+test('Inherited pet preserves initial numeric fade and subsequent normal hide fade', function()
+    local _, s = environment(true)
+    QuietUICharDB.playerThresholdPercent = false
+    s.tick(0.15); s.portrait(0.3)
+    assert(math.abs(PetFrame:GetEffectiveAlpha() - 0.18) < 0.000001,
+        'Initial effective pet alpha must follow the original 0.8 portrait baseline times 0.6 pet alpha')
+    s.tick(0.15); s.portrait(0)
+    assert(PetFrame:GetEffectiveAlpha() == 0)
+    s.InCombat = true; s.tick(0); s.portrait(1)
+    assert(PetFrame:GetEffectiveAlpha() == 0.6)
+    s.InCombat = false; s.tick(0.15); s.portrait(0.5)
+    assert(math.abs(PetFrame:GetEffectiveAlpha() - 0.3) < 0.000001,
+        'Normal hide fade must preserve the original rendered pet timing')
+    s.tick(0.15); s.portrait(0)
+    assert(PetFrame:GetEffectiveAlpha() == 0)
+end)
 
 test('Default debuffs stay visible even when death blocks only the portrait', function()
     local _, s = environment()
