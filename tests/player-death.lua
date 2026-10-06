@@ -191,6 +191,24 @@ for _, kind in ipairs({ 'health', 'resource' }) do
     end)
 end
 
+-- Acceptance 4: death cannot reveal a portrait whose threshold already kept it hidden.
+for _, kind in ipairs({ 'health', 'resource' }) do
+    for _, life in ipairs({ 'dead', 'ghost' }) do
+        test(kind .. ' threshold-hidden portrait stays hidden when ' .. life .. ' lowers percentages', function()
+            local _, s = environment()
+            QuietUICharDB.playerThresholdKind = kind
+            s.health, s.power = 1, 1
+            s.tick(); s.portrait(0)
+            assert(issecretvalue(PlayerFrame.alpha), 'Arrange an already-hidden secret alpha')
+            s.life, s.health, s.power = life, 0, 0
+            s.tick(0.15); s.portrait(0, 'Death must not reveal the previously hidden portrait')
+            s.tick(0.15); s.portrait(0)
+            assert(unwrap(PetFrame.alpha) == 1 and unwrap(BuffFrame.alpha) == 1,
+                'The unchanged threshold must still reveal pet and grouped buffs')
+        end)
+    end
+end
+
 -- Acceptance 5, 6, 7.
 for _, life in ipairs({ 'dead', 'ghost' }) do
     test(life .. ' Glance immediately reveals and then fades the portrait', function()
