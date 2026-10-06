@@ -263,6 +263,7 @@ local HEALTH_FORCED = {
 local curveCache = {}
 local playerWeight = 0
 local playerCurved = false
+local inheritedPets = {}
 local auraWeight = 0
 local aurasCurved = false
 local resourceWeight = 0
@@ -281,6 +282,15 @@ local function DeadTargetBlocked()
         ns.Report("target life", dead)
         return false
     end
+    if ns.IsSecret(dead) then return false end
+    return dead and true or false
+end
+
+local function PlayerDeathBlocked()
+    if ns.InEditMode() or ns.Glancing() then return false end
+    if type(UnitIsDeadOrGhost) ~= "function" then return false end
+    local ok, dead = pcall(UnitIsDeadOrGhost, "player")
+    if not ok then ns.Report("player life", dead); return false end
     if ns.IsSecret(dead) then return false end
     return dead and true or false
 end
@@ -437,7 +447,7 @@ local thresholdCurves = {}
 local thresholdWeights, thresholdAlphas = {}, {}
 local thresholdSampleCount = 0
 
-local function ThresholdCurve(name, percent, above)
+local function ThresholdCurve(name, percent, above, below)
     local ok, curve = pcall(function()
         local c = thresholdCurves[name]
         if not c then
@@ -446,7 +456,7 @@ local function ThresholdCurve(name, percent, above)
             thresholdCurves[name] = c
         end
         c:ClearPoints()
-        c:AddPoint(0, 1)
+        c:AddPoint(0, below or 1)
         c:AddPoint(percent / 100, above)
         return c
     end)
@@ -460,18 +470,19 @@ local function ReadThreshold()
     return "health", 70
 end
 
-local function EvalPlayerThresholds(weight)
-    if weight >= 1 then return 1 end
-    if samplingPower then
+local function EvalPlayerThresholds(weight, scale, name)
+    scale = scale or 1
+    if weight >= 1 then return scale end
+    if samplingPower and not name then
         for i = 1, thresholdSampleCount do
             if thresholdWeights[i] == weight then return thresholdAlphas[i] end
         end
     end
     local kind, percent = ReadThreshold()
-    local alpha = weight
+    local alpha = weight * scale
     if percent then
         -- Curve points are plain numbers; only the evaluated alpha may be secret.
-        local curve = ThresholdCurve(kind, percent, weight)
+        local curve = ThresholdCurve(name or kind, percent, weight * scale, scale)
         if curve then
             local fn
             if kind == "health" then fn = UnitHealthPercent else fn = UnitPowerPercent end
@@ -484,7 +495,7 @@ local function EvalPlayerThresholds(weight)
             else ns.Report("player " .. kind, "Percentage API missing") end
         end
     end
-    if samplingPower then
+    if samplingPower and not name then
         thresholdSampleCount = thresholdSampleCount + 1
         thresholdWeights[thresholdSampleCount] = weight
         thresholdAlphas[thresholdSampleCount] = alpha
@@ -597,14 +608,63 @@ local function UpdateResource(elapsed)
     end
 end
 
+local function IsolatePet(pet, player, show)
+    if not Under(pet, player) then return nil, true end
+    if inheritedPets[pet] then return inheritedPets[pet], true end
+    if type(pet.IsIgnoringParentAlpha) ~= "function" then
+        ns.Report("pet alpha inheritance", "Inheritance getter missing")
+        return nil, false
+    end
+    local ok, ignoring = pcall(pet.IsIgnoringParentAlpha, pet)
+    if not ok then ns.Report("pet alpha inheritance", ignoring); return nil, false end
+    if ns.IsSecret(ignoring) then return nil, false end
+    if ignoring then return nil, true end
+    if type(pet.SetIgnoreParentAlpha) ~= "function" or type(pet.GetAlpha) ~= "function" then
+        ns.Report("pet alpha inheritance", "Inheritance setter or alpha getter missing")
+        return nil, false
+    end
+    local read, alpha = pcall(pet.GetAlpha, pet)
+    if not read then ns.Report("pet alpha inheritance", alpha); return nil, false end
+    if ns.IsSecret(alpha) then return nil, false end
+    if type(alpha) ~= "number" then
+        ns.Report("pet alpha inheritance", "Pet alpha unavailable")
+        return nil, false
+    end
+    local weight = player._quietAlpha
+    if type(weight) ~= "number" and type(player.GetAlpha) == "function" then
+        local readPlayer, value = pcall(player.GetAlpha, player)
+        if not readPlayer then ns.Report("player alpha", value)
+        elseif not ns.IsSecret(value) then weight = value end
+    end
+    if ns.IsSecret(weight) or type(weight) ~= "number" then weight = show and 1 or 0 end
+    local changed, err = pcall(pet.SetIgnoreParentAlpha, pet, true)
+    if not changed then ns.Report("pet alpha inheritance", err); return nil, false end
+    local saved = { ignoring = ignoring, alpha = alpha, weight = weight }
+    inheritedPets[pet] = saved
+    return saved, true
+end
+
+function ns.RestorePlayerFader()
+    for pet, saved in pairs(inheritedPets) do
+        if ns.Usable(pet) and type(pet.SetIgnoreParentAlpha) == "function" then
+            local ok, err = pcall(pet.SetIgnoreParentAlpha, pet, saved.ignoring)
+            if not ok then ns.Report("restore pet inheritance", err) end
+        end
+        inheritedPets[pet] = nil
+    end
+    playerWeight, playerCurved = 0, false
+end
+
 local function UpdatePlayer(elapsed)
     local show = PlayerShouldShow() and true or false
     local blocked = DeadTargetBlocked()
+    local deathBlocked = PlayerDeathBlocked()
     local useCurve = PlayerUsesThresholds()
     playerCurved, playerWeight = TakeWeight(playerCurved, playerWeight, show, elapsed, useCurve)
     local alpha = useCurve and EvalPlayerThresholds(playerWeight) or nil
     local player = PlayerFrame
     local pet = PetFrame
+    local inherited, canHidePortrait = IsolatePet(pet, player, show)
     local target = TargetFrame
     if IsFadeable(target) then
         if blocked then
@@ -613,12 +673,22 @@ local function UpdatePlayer(elapsed)
             ns.ReleaseAlpha(target)
         end
     end
-    if alpha ~= nil then
+    if inherited then
+        inherited.weight = NextWeight(inherited.weight, show, elapsed)
+        local petAlpha = useCurve and EvalPlayerThresholds(playerWeight, inherited.alpha, "pet")
+            or inherited.weight * inherited.alpha
+        PaintSecret(pet, petAlpha)
+    elseif not Under(pet, player) then
+        if alpha ~= nil then PaintSecret(pet, alpha)
+        else PaintNumeric(pet, show, elapsed) end
+    end
+    if deathBlocked and canHidePortrait then
+        -- An unreadable alpha must clear directly; resampling health could reveal it.
+        PaintNumeric(player, false, elapsed)
+    elseif alpha ~= nil then
         PaintSecret(player, alpha)
-        if not Under(pet, player) then PaintSecret(pet, alpha) end
     else
         PaintNumeric(player, show, elapsed)
-        if not Under(pet, player) then PaintNumeric(pet, show, elapsed) end
     end
 end
 

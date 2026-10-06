@@ -135,6 +135,7 @@ local function RestoreAll()
     ns.ResetMenu()
     ns.RestoreChat()
     ns.RestoreAlpha()
+    if ns.RestorePlayerFader then ns.RestorePlayerFader() end
     settleToken = settleToken + 1
     settleUntil = 0
     layoutChosen = false

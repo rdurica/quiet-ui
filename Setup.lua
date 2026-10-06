@@ -1365,7 +1365,7 @@ local function CreateSetup()
 
     local player = widget.pages[5]
     widget.player = Section(player, "Player frame",
-        "Control the player portrait and pet, and whether buffs follow their visibility. Choose Health or Resource and a whole percentage from 1 to 100 to show them below that threshold; empty ignores it. The default is Health below 70%. Resource means mana, focus or energy. Combat and instances still show them regardless of these fields. Always show debuffs keeps debuffs visible independently. Require a living target fades the player, pet and target frames for a dead target, except in Edit Mode. The selected percentage threshold still shows the player and pet, but not the dead target.")
+        "Control the player portrait and pet, and whether buffs follow their visibility. Choose Health or Resource and a whole percentage from 1 to 100 to show them below that threshold; empty ignores it. The default is Health below 70%. Resource means mana, focus or energy. Combat and instances still show them regardless of these fields. Death or ghost form hides only the player portrait, except during Glance or Edit Mode; the pet and buffs keep their usual rules. Always show debuffs keeps debuffs visible independently. Require a living target fades the player, pet and target frames for a dead target, except in Edit Mode. The selected percentage threshold still shows the player and pet, but not the dead target.")
     widget.player:SetPoint("TOPLEFT", player, "TOPLEFT", 0, 0)
     widget.playerRow = Choice(player, "Player frame", function()
         draft.player = not draft.player
