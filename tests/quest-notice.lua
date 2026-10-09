@@ -184,6 +184,18 @@ test('missing required classic title reader reports exactly once',function()
     s.event('QUEST_LOG_UPDATE'); s.pump(12); s.silent()
     assert(#s.reports==1,'Missing required title reader must report once; got '..#s.reports)
 end)
+test('transient empty objectives preserve already complete quest baseline',function()
+    local s=environment()
+    s.log[1].complete=true; s.event('QUEST_LOG_UPDATE'); s.has('Complete'); s.pump(6); s.silent()
+    local previous=s.log[1].objectives
+    s.log[1].objectives={}; s.event('QUEST_LOG_UPDATE'); s.silent()
+    s.log[1].objectives=previous; s.event('QUEST_LOG_UPDATE'); s.silent()
+end)
+test('completion transition is announced even when objectives are temporarily empty',function()
+    local s=environment()
+    s.log[1].complete=true; s.log[1].objectives={}; s.event('QUEST_LOG_UPDATE')
+    s.has('Quest 1'); s.has('Complete')
+end)
 test('temporary incomplete objectives preserve previous snapshot',function()
     local s=environment(); local old=s.log[1].objectives; s.log[1].objectives=nil
     s.event('QUEST_LOG_UPDATE'); s.silent(); s.log[1].objectives=old
