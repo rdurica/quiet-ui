@@ -476,6 +476,58 @@ function ns.ForgetBarButtons()
     end
 end
 
+-- GetNumChildren is enough to notice a new button. The full rebuild waits for that.
+local childCounts = {}
+local childPrimed = false
+local childFallback = 0
+local childArmed = false
+
+local function ChildCount(bar)
+    if type(bar.GetNumChildren) ~= "function" then return nil end
+    local ok, count = pcall(bar.GetNumChildren, bar)
+    if not ok or type(count) ~= "number" or ns.IsSecret(count) then return nil end
+    return count
+end
+
+function ns.BarChildrenChanged()
+    local missing = false
+    local changed = false
+    local seen = {}
+    for _, row in ipairs(ns.BAR_ROWS) do
+        for _, name in ipairs(row.names) do
+            local bar = _G[name]
+            if ns.Usable(bar) then
+                seen[bar] = true
+                local count = ChildCount(bar)
+                if count == nil then
+                    missing = true
+                elseif childCounts[bar] ~= count then
+                    if childPrimed then changed = true end
+                    childCounts[bar] = count
+                end
+            end
+        end
+    end
+    for bar in pairs(childCounts) do
+        if not seen[bar] then
+            childCounts[bar] = nil
+            if childPrimed then changed = true end
+        end
+    end
+    childPrimed = true
+    if changed then return true end
+    if not missing then return false end
+    local now = type(GetTime) == "function" and GetTime() or 0
+    if not childArmed then
+        childArmed = true
+        childFallback = now + 5
+        return false
+    end
+    if now < childFallback then return false end
+    childFallback = now + 5
+    return true
+end
+
 local function ListHovered(list)
     for i = 1, #list do
         if ns.Hit(list[i]) then return true end
@@ -653,19 +705,20 @@ local function FollowArt(alpha)
 end
 
 local swingFound = {}
-local swingScan = 0
+local swingFullAt = 0
 
+-- Named frames match on that name. GetDebugName is only for frames without one.
 local function LooksLikeSwing(frame)
     if not ns.Usable(frame) or not frame.SetAlpha then return false end
     local name = ns.FrameName(frame)
-    if name and name:find("Swing") then return true end
+    if name then return name:find("Swing") ~= nil end
     if type(frame.GetDebugName) ~= "function" then return false end
     local ok, debugName = pcall(frame.GetDebugName, frame)
     return ok and type(debugName) == "string" and debugName:find("Swing") ~= nil
 end
 
 -- The swing timer is not one fixed global. Main hand and off hand are separate
--- frames, and only the debug name is stable.
+-- frames. Named ones match on the name; anonymous ones use the debug name.
 local function WalkSwing(root, depth)
     if depth > 1 or not ns.Usable(root) or type(root.GetChildren) ~= "function" then return end
     local ok, children = pcall(function()
@@ -684,10 +737,20 @@ local function WalkSwing(root, depth)
     end
 end
 
+local function SwingReady()
+    local any = false
+    for frame in pairs(swingFound) do
+        any = true
+        if not ns.Usable(frame) then return false end
+    end
+    return any
+end
+
+-- A full UIParent walk waits until a found timer disappears or 10s pass.
 function ns.ScanSwing()
     local now = type(GetTime) == "function" and GetTime() or 0
-    if now < swingScan then return end
-    swingScan = now + 1
+    if SwingReady() and now < swingFullAt then return end
+    swingFullAt = now + 10
     for frame in pairs(swingFound) do
         swingFound[frame] = nil
     end

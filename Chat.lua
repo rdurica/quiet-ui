@@ -1375,15 +1375,26 @@ local function PlaceCatcher(frame)
 end
 
 -- The block, a bubble, or the copy icon. The copy box alone does not count.
+-- A still pointer does not need another pass over every bubble.
 local function FrameHot(frame)
     local box = frame._quietCatcher
     if box and box:IsShown() and ns.Hit(box) then return true end
     local byMsg = frame._quietByMsg
     if not byMsg then return false end
-    for _, bubble in pairs(byMsg) do
-        if bubble._quietHot or (bubble:IsShown() and ns.MouseOver(bubble)) then
-            return true
+    local moved = not ns.PointerMoved or ns.PointerMoved()
+    if not moved then
+        local anyHot = false
+        for _, bubble in pairs(byMsg) do
+            if bubble._quietHot then
+                anyHot = true
+                break
+            end
         end
+        if not anyHot then return false end
+    end
+    for _, bubble in pairs(byMsg) do
+        local over = bubble:IsShown() and ns.MouseOver(bubble)
+        if bubble._quietHot or over then return true end
     end
     return false
 end

@@ -208,6 +208,10 @@ local function SelectReference(ref)
     return after and after.activeLayout == absolute or false
 end
 
+function ns.LayoutPreviewActive()
+    return previewOriginal ~= nil or previewPending ~= nil
+end
+
 -- A draft owns the layout until Save or cancel, including login-settle retries.
 function ns.UpdateLayoutPreview()
     if previewApplying then return true end

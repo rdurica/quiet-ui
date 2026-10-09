@@ -354,6 +354,7 @@ local ALWAYS = {
 
 local events = CreateFrame("Frame")
 local lastPointerX, lastPointerY
+local pointerMoved = false
 local lastFlyout = false
 local lastGlance = false
 local wasHot = false
@@ -364,11 +365,22 @@ local fallbackAcc = 0
 local FALLBACK_RESCAN = 0.05
 
 local function PointerMoved()
-    if type(GetCursorPosition) ~= "function" then return true end
+    if type(GetCursorPosition) ~= "function" then
+        pointerMoved = true
+        return true
+    end
     local x, y = GetCursorPosition()
-    if x == lastPointerX and y == lastPointerY then return false end
+    if x == lastPointerX and y == lastPointerY then
+        pointerMoved = false
+        return false
+    end
     lastPointerX, lastPointerY = x, y
+    pointerMoved = true
     return true
+end
+
+function ns.PointerMoved()
+    return pointerMoved
 end
 
 local function FlyoutShown()
@@ -406,7 +418,9 @@ events:SetScript("OnUpdate", function(_, elapsed)
     slowAcc = slowAcc + elapsed
     local slow = slowAcc >= 0.1
     if slow then
-        if layoutPending or ns.UpdateLayoutPreview then Run("layout", FinishLayout) end
+        if layoutPending or (ns.LayoutPreviewActive and ns.LayoutPreviewActive()) then
+            Run("layout", FinishLayout)
+        end
         slowAcc = 0
         ns.ForgetCursor()
     end
@@ -460,7 +474,9 @@ events:SetScript("OnUpdate", function(_, elapsed)
     chromeAcc = 0
     Run("frame scan", ns.FindFaders, false)
     Run("swing", ns.ScanSwing)
-    Run("bar buttons", ns.ForgetBarButtons)
+    if ns.BarChildrenChanged and ns.BarChildrenChanged() then
+        Run("bar buttons", ns.ForgetBarButtons)
+    end
     Run("world", ns.RefreshWorld)
     Run("menu", ns.RefreshChrome)
     if ns.ModernChat() then

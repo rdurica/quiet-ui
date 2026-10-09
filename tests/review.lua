@@ -729,6 +729,7 @@ test('Party autohide keeps combat, instance and explicit reveal priorities', fun
         'Default settings must leave Blizzard alpha untouched')
     assert(#catchers == 0, 'Always visible needs no hover catcher')
     QuietUICharDB.autoHideParty = true
+    ns.FindFaders(false)
     ns.InGroup = function() return true end
     ns.HasTarget = function() return true end
     ns.UpdateParty(0.1)
