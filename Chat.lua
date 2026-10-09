@@ -1427,6 +1427,8 @@ local function ReleaseBubble(frame, bubble)
     bubble._quietPA = nil
     bubble._quietLevel = nil
     bubble._quietFontStamp = nil
+    bubble._quietTargetY = nil
+    bubble._quietPendingAlpha, bubble._quietPendingGoal, bubble._quietPendingHeld = nil, nil, nil
     frame._quietPool[#frame._quietPool + 1] = bubble
 end
 
@@ -1506,6 +1508,12 @@ local function AcquireBubble(frame)
 end
 
 local function HideActive(frame)
+    frame._quietDirty = true
+    frame._quietNext, frame._quietFadeAt, frame._quietLayoutPending = 0, nil, nil
+    local animations = frame._quietAnimations
+    if animations then
+        for i = #animations, 1, -1 do animations[i] = nil end
+    end
     local byMsg = frame._quietByMsg
     if not byMsg then return end
     for msg, bubble in pairs(byMsg) do
@@ -1521,6 +1529,80 @@ local function FontStamp(frame)
         if ok then font, size, flags = f, s, fl end
     end
     return tostring(font) .. "\0" .. tostring(size) .. "\0" .. tostring(flags)
+end
+
+local function BubbleAlpha(known, msg, fading, reveal, life, now, elapsed)
+    local held = known and BubbleHeld(known)
+    local natural = fading and not held and LineAlpha(msg, life, now) or 1
+    local goal = (reveal or held) and 1 or natural
+    local current = known and known._quietPA
+    if type(current) ~= "number" or goal >= current then
+        current = goal
+    elseif current > goal + 0.02 then
+        current = Approach(current, goal, elapsed, FADE_UI)
+    else
+        current = goal
+    end
+    return current, goal, held
+end
+
+local function PaintBubble(frame, bubble, x, y, alpha)
+    if bubble._quietPX ~= x or bubble._quietPY ~= y then
+        bubble:ClearAllPoints()
+        bubble:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
+        bubble._quietPX, bubble._quietPY = x, y
+    end
+    if bubble._quietPA ~= alpha then
+        bubble:SetAlpha(alpha)
+        bubble._quietPA = alpha
+    end
+    if not bubble:IsShown() then bubble:Show() end
+end
+
+local function BubbleSchedule(bubble, goal, held, fading, reveal, life, now)
+    local msg = bubble.msg
+    local animated = (msg.slide and now - msg.slide < SLIDE_TIME)
+        or math.abs(bubble._quietPA - goal) > 0.01 or bubble._y ~= bubble._quietTargetY
+    local fadeAt
+    if not reveal and fading and life > 0 and msg.born and not held then
+        local at = msg.born + life - FADE_OUT
+        if now < at - 0.02 then fadeAt = at
+        else animated = true end
+    end
+    return animated, fadeAt
+end
+
+local function AnimateFrame(frame, elapsed, now)
+    local animations = frame._quietAnimations
+    if not animations or #animations == 0 then return false end
+    local fading = frame._quietOffset == 0
+    local reveal = fading and frame._quietHover
+    local life = frame._quietLife
+    local count = #animations
+    -- A disappearing row changes the stack. Decide before moving any other row.
+    for i = 1, count do
+        local bubble = animations[i]
+        local msg = bubble.msg
+        local current, goal, held = BubbleAlpha(bubble, msg, fading, reveal, life, now, elapsed)
+        local sliding = msg.slide and now - msg.slide < SLIDE_TIME
+        if current <= 0.01 and goal <= 0 and not sliding then return false end
+        bubble._quietPendingAlpha, bubble._quietPendingGoal, bubble._quietPendingHeld = current, goal, held
+    end
+    local n, fadeAt = 0, frame._quietFadeAt
+    for i = 1, count do
+        local bubble = animations[i]
+        local current, goal, held = bubble._quietPendingAlpha, bubble._quietPendingGoal, bubble._quietPendingHeld
+        bubble._quietPendingAlpha, bubble._quietPendingGoal, bubble._quietPendingHeld = nil, nil, nil
+        bubble._y = Ease(bubble._y, bubble._quietTargetY, elapsed)
+        PaintBubble(frame, bubble, 4 + SlideX(bubble.msg, now), bubble._y, current)
+        local animated, wake = BubbleSchedule(bubble, goal, held, fading, reveal, life, now)
+        if animated then n = n + 1; animations[n] = bubble end
+        if wake and (not fadeAt or wake < fadeAt) then fadeAt = wake end
+    end
+    for i = n + 1, count do animations[i] = nil end
+    frame._quietFadeAt = fadeAt
+    frame._quietNext = n > 0 and 0 or fadeAt
+    return true
 end
 
 local function LayoutFrame(frame, elapsed)
@@ -1551,6 +1633,8 @@ local function LayoutFrame(frame, elapsed)
         or frame._quietOffset ~= offset or frame._quietLife ~= life
     local due = frame._quietNext == 0 or (type(frame._quietNext) == "number" and frame._quietNext > 0 and now >= frame._quietNext)
     if not restack and not due then return end
+    if not restack and not frame._quietLayoutPending and (not frame._quietFadeAt or now < frame._quietFadeAt)
+        and AnimateFrame(frame, elapsed, now) then return end
     frame._quietDirty = nil
     frame._quietW, frame._quietH = width, height
     frame._quietOffset = offset
@@ -1582,38 +1666,21 @@ local function LayoutFrame(frame, elapsed)
         fontStamp = FontStamp(frame)
         frame._quietFont = fontStamp
     end
-    local nextAt = nil
-    local function sooner(when)
-        if nextAt == 0 then return end
-        if when == 0 or not nextAt or when < nextAt then nextAt = when end
-    end
+    local animations = frame._quietAnimations
+    if not animations then animations = {}; frame._quietAnimations = animations end
+    local animatedN, fadeAt, measure, dropped = 0, nil, false, false
     local guard = 0
     while index >= 1 and guard < 40 do
         guard = guard + 1
         local msg = lines[index]
         local known = byMsg[msg]
-        local held = known and BubbleHeld(known)
-        local natural = 1
-        if fading and not held then
-            natural = LineAlpha(msg, life, now)
-        end
-        local goal = (reveal or held) and 1 or natural
-        local current = nil
-        if known and type(known._quietPA) == "number" then
-            current = known._quietPA
-        end
-        if current == nil or goal >= current then
-            current = goal
-        elseif current > goal + 0.02 then
-            current = Approach(current, goal, elapsed, FADE_UI)
-        else
-            current = goal
-        end
+        local current, goal, held = BubbleAlpha(known, msg, fading, reveal, life, now, elapsed)
         local place = true
         local sliding = msg.slide and now - msg.slide < SLIDE_TIME
         if current <= 0.01 and goal <= 0 and not sliding then
             place = false
             if not known then break end
+            dropped = true
         end
         if place then
             local bubble = known or AcquireBubble(frame)
@@ -1637,6 +1704,7 @@ local function LayoutFrame(frame, elapsed)
             stackN = stackN + 1
             stack[stackN] = bubble
             local target = y
+            bubble._quietTargetY = target
             if bubble.msg ~= msg or bubble._y == nil then
                 bubble._y = target
             else
@@ -1644,29 +1712,12 @@ local function LayoutFrame(frame, elapsed)
             end
             bubble.msg = msg
             bubble.chat = frame
-            local x = 4 + SlideX(msg, now)
-            if bubble._quietPX ~= x or bubble._quietPY ~= bubble._y then
-                bubble:ClearAllPoints()
-                bubble:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, bubble._y)
-                bubble._quietPX, bubble._quietPY = x, bubble._y
-            end
-            if bubble._quietPA ~= current then
-                bubble:SetAlpha(current)
-                bubble._quietPA = current
-            end
-            if not bubble:IsShown() then bubble:Show() end
+            PaintBubble(frame, bubble, 4 + SlideX(msg, now), bubble._y, current)
             -- Wrapped text needs a shown frame before its height can be trusted.
-            if not bubble._quietSizeKey then sooner(0) end
-            if sliding or math.abs(current - goal) > 0.01 then sooner(0) end
-            if bubble._y ~= target then sooner(0) end
-            if not reveal and fading and life > 0 and msg.born and not BubbleHeld(bubble) then
-                local fadeAt = msg.born + life - FADE_OUT
-                if now < fadeAt - 0.02 then
-                    sooner(fadeAt)
-                else
-                    sooner(0)
-                end
-            end
+            if not bubble._quietSizeKey then measure = true end
+            local animated, wake = BubbleSchedule(bubble, goal, held, fading, reveal, life, now)
+            if animated then animatedN = animatedN + 1; animations[animatedN] = bubble end
+            if wake and (not fadeAt or wake < fadeAt) then fadeAt = wake end
             y = y + h + GAP
         end
         index = index - 1
@@ -1683,7 +1734,11 @@ local function LayoutFrame(frame, elapsed)
             pcall(bubble.SetFrameLevel, bubble, level)
         end
     end
-    frame._quietNext = nextAt
+    for i = animatedN + 1, #animations do animations[i] = nil end
+    -- Revisit a released history gap before continuing the remaining animations.
+    frame._quietLayoutPending = measure or (dropped and animatedN > 0)
+    frame._quietFadeAt = fadeAt
+    frame._quietNext = (frame._quietLayoutPending or animatedN > 0) and 0 or fadeAt
     for msg, bubble in pairs(byMsg) do
         if not seen[msg] then
             byMsg[msg] = nil
