@@ -196,6 +196,16 @@ test('completion transition is announced even when objectives are temporarily em
     s.log[1].complete=true; s.log[1].objectives={}; s.event('QUEST_LOG_UPDATE')
     s.has('Quest 1'); s.has('Complete')
 end)
+test('throwing quest API reports once across retries and repeated events',function()
+    local s=environment()
+    C_QuestLog.GetNumQuestLogEntries=function()
+        s.reads=s.reads+1
+        error('Quest reader failed')
+    end
+    s.event('QUEST_LOG_UPDATE'); s.pump(12); s.silent()
+    s.event('QUEST_LOG_UPDATE'); s.pump(12); s.silent()
+    assert(#s.reports==1,'Throwing quest API must report once; got '..#s.reports)
+end)
 test('temporary incomplete objectives preserve previous snapshot',function()
     local s=environment(); local old=s.log[1].objectives; s.log[1].objectives=nil
     s.event('QUEST_LOG_UPDATE'); s.silent(); s.log[1].objectives=old
