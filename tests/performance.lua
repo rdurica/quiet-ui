@@ -17,6 +17,8 @@ UIParent = frame()
 PlayerFrame, PetFrame = frame(UIParent), frame(UIParent)
 BuffFrame, PersonalResourceDisplayFrame = frame(UIParent), frame(UIParent)
 local powerCalls, healthCalls, typeCalls, curves = 0, 0, 0, 0
+local curveEdits = 0
+local failCurveClear = false
 local power = { secret = true }
 local token, kind = 'MANA', 0
 issecretvalue = function(value) return type(value) == 'table' and value.secret == true end
@@ -26,7 +28,11 @@ UnitHealthPercent = function() healthCalls = healthCalls + 1; return 0 end
 Enum = { LuaCurveType = { Step = 1 } }
 C_CurveUtil = { CreateCurve = function()
     curves = curves + 1
-    return { AddPoint = function() end, ClearPoints = function() end, SetType = function() end }
+    return { AddPoint = function() curveEdits = curveEdits + 1 end,
+        ClearPoints = function(self)
+            if failCurveClear and not self.step then error('Curve editing unavailable') end
+            curveEdits = curveEdits + 1
+        end, SetType = function(self) self.step = true end }
 end }
 hooksecurefunc = function() end
 local ns = {}
@@ -45,6 +51,7 @@ loadAddon('Faders.lua', ns)
 ns.FindFaders(false)
 local function reset()
     powerCalls, healthCalls, typeCalls, curves = 0, 0, 0, 0
+    curveEdits = 0
     for _, obj in ipairs({ PlayerFrame, PetFrame, BuffFrame, PersonalResourceDisplayFrame }) do
         obj.writes = 0
     end
@@ -57,6 +64,8 @@ print(('Idle 60 frames: power=%d health=%d powerType=%d curves=%d playerWrites=%
     :format(powerCalls, healthCalls, typeCalls, curves, PlayerFrame.writes))
 check(powerCalls == 120 and healthCalls == 60, 'Player and auras must share the selected threshold sample')
 check(curves == 0, 'Stable thresholds must reuse curve objects')
+print(('Idle 60 frames: curve edits=%d'):format(curveEdits))
+check(curveEdits == 0, 'Stable thresholds must not rebuild unchanged curve points')
 check(typeCalls == 60, 'Power type should be sampled once per frame')
 check(PlayerFrame.alpha == power and BuffFrame.alpha == power, 'Secret alpha must reach widgets unchanged')
 power = { secret = true }
@@ -72,11 +81,33 @@ check(powerCalls == 0 and healthCalls == 0, 'Fully visible frames need no health
 check(PlayerFrame.writes == 0 and BuffFrame.writes == 0, 'Stable forced visibility should not write alpha again')
 check(PlayerFrame.alpha == 1 and PersonalResourceDisplayFrame.alpha == 1)
 combat = false
+reset()
+for _ = 1, 20 do tick() end
+print(('First fade, 20 frames: curves=%d'):format(curves))
+check(curves <= 2, 'A resource fade must reuse its health and power curve objects')
+combat = true
+tick()
+combat = false
+reset()
+for _ = 1, 20 do tick() end
+print(('Repeated fade, 20 frames: curves=%d'):format(curves))
+check(curves == 0, 'Repeated fades must not allocate new curve objects')
+combat = true
+tick()
+combat, failCurveClear = false, true
+tick()
+check(PersonalResourceDisplayFrame.alpha == power, 'Failed curve editing must fall back to fresh curves')
+failCurveClear = false
+combat = false
 ns.HasTarget = function() return true end
+local hoverReads = 0
+ns.Hit = function() hoverReads = hoverReads + 1; return false end
 reset()
 tick()
 check(PlayerFrame.alpha == 1 and BuffFrame.alpha == 1, 'Target must keep player and grouped auras visible')
 check(PersonalResourceDisplayFrame.alpha == power, 'Resource bar must keep its independent power rule')
+print(('Target visible: hover reads=%d'):format(hoverReads))
+check(hoverReads == 0, 'Forced player and grouped aura visibility must skip hover traversal')
 ns.HasTarget = function() return false end
 for _ = 1, 20 do tick() end
 check(PlayerFrame.alpha == power, 'Fading must return to the secret power rule')

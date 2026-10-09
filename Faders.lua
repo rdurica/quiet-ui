@@ -341,13 +341,13 @@ local function PlayerShouldShow()
     if DeadTargetBlocked() then return false end
     if ns.PlayerStyle() ~= "classic" then return false end
     return ns.Glancing()
-        or ns.Hit(PlayerFrame)
-        or ns.Hit(PetFrame)
         or ns.InCombat()
         or ns.InForcedInstance()
         or ns.InGroup()
         or ns.InVehicle()
         or ns.HasTarget()
+        or ns.Hit(PlayerFrame)
+        or ns.Hit(PetFrame)
 end
 
 local function ResourceForced()
@@ -427,7 +427,24 @@ local function BlendedCurve(rest, forced, t, name)
     elseif t >= 1 then
         curve = CurveFor(forced, name .. ":1")
     else
-        curve = MakeCurve(BlendPoints(rest, forced, t))
+        local key = name .. ":blend"
+        curve = CurveFor(rest, key)
+        if not curve then return nil end
+        if type(curve.ClearPoints) ~= "function" then
+            return MakeCurve(BlendPoints(rest, forced, t))
+        end
+        local ok, err = pcall(function()
+            curve:ClearPoints()
+            for i = 1, #rest do
+                local y0, y1 = rest[i][2], forced[i][2]
+                curve:AddPoint(rest[i][1], y0 + (y1 - y0) * t)
+            end
+        end)
+        if not ok then
+            curveCache[key] = nil
+            ns.Report("resource bar", err)
+            return MakeCurve(BlendPoints(rest, forced, t))
+        end
     end
     return curve
 end
@@ -487,19 +504,27 @@ local thresholdWeights, thresholdAlphas = {}, {}
 local thresholdSampleCount = 0
 
 local function ThresholdCurve(name, percent, above, below)
+    local cached = thresholdCurves[name]
+    if cached and cached.percent == percent and cached.above == above and cached.below == below then
+        return cached.curve
+    end
     local ok, curve = pcall(function()
-        local c = thresholdCurves[name]
+        local c = cached and cached.curve
         if not c then
             c = C_CurveUtil.CreateCurve()
             c:SetType(Enum.LuaCurveType.Step)
-            thresholdCurves[name] = c
         end
         c:ClearPoints()
         c:AddPoint(0, below or 1)
         c:AddPoint(percent / 100, above)
         return c
     end)
-    if ok then return curve end
+    if ok then
+        cached = cached or {}
+        cached.curve, cached.percent, cached.above, cached.below = curve, percent, above, below
+        thresholdCurves[name] = cached
+        return curve
+    end
     thresholdCurves[name] = nil
     ns.Report("player threshold curve", curve)
 end
@@ -783,6 +808,9 @@ local function AurasShouldShow()
     end
     local show = ns.InCombat() or ns.InForcedInstance() or ns.InGroup() or ns.InEditMode()
         or ns.Pinned("auras") or ns.Glancing()
+    if not show and ns.GroupAuras() and PlayerShouldShow() then
+        show = true
+    end
     if not show then
         for _, frame in ipairs(auraFrames) do
             if MouseOverAny(frame) then
@@ -790,9 +818,6 @@ local function AurasShouldShow()
                 break
             end
         end
-    end
-    if not show and ns.GroupAuras() and PlayerShouldShow() then
-        show = true
     end
     return show
 end

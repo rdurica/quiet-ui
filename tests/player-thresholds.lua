@@ -161,4 +161,29 @@ UnitPowerPercent = savedPower
 UnitHealthPercent = savedHealth
 ns.RestoreAlpha()
 assert(PlayerFrame.alpha == 1 and PetFrame.alpha == 1 and BuffFrame.alpha == 1)
+PersonalResourceDisplayFrame = frame(UIParent)
+local resourceHealth, resourcePower = frame(PersonalResourceDisplayFrame), frame(PersonalResourceDisplayFrame)
+PersonalResourceDisplayFrame.HealthBarsContainer = resourceHealth
+function PersonalResourceDisplayFrame:GetChildren() return resourceHealth, resourcePower end
+ns.FindFaders(false)
+for cycle = 1, 2 do
+    health, power = 1, 1
+    ns.InCombat = function() return true end
+    tick()
+    ns.InCombat = function() return false end
+    local total = 0
+    for _, elapsed in ipairs({ 0.017, 0.083, 0.071, 0.129 }) do
+        total = total + elapsed
+        ns.UpdateSmooth(elapsed)
+        local expected = math.max(0, 1 - total / 0.3)
+        assert(math.abs(unwrap(resourceHealth.alpha) - expected) < 1e-9, 'Health fade must retain exact weights')
+        assert(math.abs(unwrap(resourcePower.alpha) - expected) < 1e-9, 'Power fade must retain exact weights')
+    end
+    health, power = 0.2, 0.2
+    ns.UpdateSmooth(0.017)
+    assert(unwrap(resourceHealth.alpha) == 1 and unwrap(resourcePower.alpha) == 1,
+        'Reused curves must still reveal fresh low health and power immediately')
+end
+ns.RestoreAlpha()
+assert(resourceHealth.alpha == 1 and resourcePower.alpha == 1, 'Resource alpha must restore after reused curves')
 print('PASS single health/resource threshold with native secret-point restrictions, boundaries, empty, forced visibility and restore')

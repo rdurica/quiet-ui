@@ -1123,10 +1123,11 @@ local function ApplyFont(bubble, chat)
 end
 
 local function SizeBubble(bubble, msg, maxW)
-    local font, size = bubble.text:GetFont()
+    local font, size, flags = bubble.text:GetFont()
     -- A secret string cannot be concatenated into the cache key.
     local tail = msg.secret and tostring(msg) or (msg.text or "")
-    local key = tostring(font) .. ":" .. tostring(size) .. ":" .. math.floor(maxW) .. ":" .. tail
+    local fontKey = tostring(font) .. ":" .. tostring(size) .. ":" .. tostring(flags)
+    local key = fontKey .. ":" .. math.floor(maxW) .. ":" .. tail
     if bubble._quietSizeKey == key and bubble.h then
         return bubble.h
     end
@@ -1161,11 +1162,15 @@ local function SizeBubble(bubble, msg, maxW)
         return bubble.h
     end
     local text = msg.text or ""
-    local wide = UnboundedWidth(bubble.text, text)
-    if wide > 0 then
-        msg.wide = wide
-    elseif type(msg.wide) == "number" then
-        wide = msg.wide
+    local wide = msg.wide
+    if msg._quietWidthFont ~= fontKey or msg._quietWidthText ~= text or not wide or wide <= 0 then
+        wide = UnboundedWidth(bubble.text, text)
+        if wide > 0 then
+            msg.wide = wide
+            msg._quietWidthFont, msg._quietWidthText = fontKey, text
+        elseif msg._quietWidthFont == fontKey and msg._quietWidthText == text then
+            wide = msg.wide or 0
+        end
     end
     -- A width that matches the text exactly still wraps the last word.
     local SLACK = 8
@@ -1284,9 +1289,9 @@ local function SettleHot(bubble)
     end
 end
 
-local function SlideX(msg)
+local function SlideX(msg, now)
     if not msg.slide then return 0 end
-    local age = GetTime() - msg.slide
+    local age = now - msg.slide
     if age < 0 or age >= SLIDE_TIME then return 0 end
     local t = age / SLIDE_TIME
     local k = 1 - (1 - t) * (1 - t)
@@ -1301,10 +1306,9 @@ local function ChatLife()
 end
 
 -- 0 hides the line. The last half second fades it. A missing interval stays at 10.
-local function LineAlpha(msg)
-    local life = ChatLife()
+local function LineAlpha(msg, life, now)
     if life <= 0 or not msg.born then return 1 end
-    local left = life - (GetTime() - msg.born)
+    local left = life - (now - msg.born)
     if left <= 0 then return 0 end
     if left >= FADE_OUT then return 1 end
     return left / FADE_OUT
@@ -1591,7 +1595,7 @@ local function LayoutFrame(frame, elapsed)
         local held = known and BubbleHeld(known)
         local natural = 1
         if fading and not held then
-            natural = LineAlpha(msg)
+            natural = LineAlpha(msg, life, now)
         end
         local goal = (reveal or held) and 1 or natural
         local current = nil
@@ -1640,7 +1644,7 @@ local function LayoutFrame(frame, elapsed)
             end
             bubble.msg = msg
             bubble.chat = frame
-            local x = 4 + SlideX(msg)
+            local x = 4 + SlideX(msg, now)
             if bubble._quietPX ~= x or bubble._quietPY ~= bubble._y then
                 bubble:ClearAllPoints()
                 bubble:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, bubble._y)
@@ -1792,15 +1796,29 @@ function ns.UpdateChat(elapsed)
         EaseEdit(_G["ChatFrame" .. i .. "EditBox"], elapsed)
         local frame = _G["ChatFrame" .. i]
         if frame and frame._quietBubbles then
-            PlaceCatcher(frame)
-            local hot = FrameHot(frame)
-            if hot ~= frame._quietHover then
-                frame._quietHover = hot
-                frame._quietDirty = true
-            end
-            local wake = frame._quietNext
-            if frame._quietDirty or wake == 0 or (type(wake) == "number" and wake > 0 and now >= wake) then
-                LayoutFrame(frame, elapsed)
+            if not ns.Usable(frame) or not frame.IsShown or not frame:IsShown() then
+                if frame._quietShown ~= false then
+                    HideActive(frame)
+                    if frame._quietCatcher then frame._quietCatcher:Hide() end
+                    frame._quietShown, frame._quietHover = false, false
+                    frame._quietCatcherAt = nil
+                end
+            else
+                if frame._quietShown == false then frame._quietDirty = true end
+                -- Anchors follow the chat automatically; only stacking needs a periodic refresh.
+                if frame._quietDirty or not frame._quietCatcherAt or now >= frame._quietCatcherAt then
+                    PlaceCatcher(frame)
+                    frame._quietCatcherAt = now + 0.1
+                end
+                local hot = FrameHot(frame)
+                if hot ~= frame._quietHover then
+                    frame._quietHover = hot
+                    frame._quietDirty = true
+                end
+                local wake = frame._quietNext
+                if frame._quietDirty or wake == 0 or (type(wake) == "number" and wake > 0 and now >= wake) then
+                    LayoutFrame(frame, elapsed)
+                end
             end
         end
     end
@@ -1816,6 +1834,7 @@ function ns.RestoreChat()
         if frame and frame._quietBubbles then
             frame._quietStripped = nil
             frame._quietHover = false
+            frame._quietCatcherAt = nil
             if frame._quietCatcher then frame._quietCatcher:Hide() end
             HideActive(frame)
             RestoreFonts(frame)
