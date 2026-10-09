@@ -180,7 +180,7 @@ local function Backdropped(kind, name, parent, template)
     return CreateFrame(kind, name, parent)
 end
 
--- Thin gold edge for the short tabs and steppers. The panel-button template is too tall for them.
+-- Gold edge for input fields, short tabs and steppers.
 local function GoldEdge(widget)
     if not widget.SetBackdrop then return false end
     local ok = pcall(function()
@@ -206,18 +206,56 @@ function ns.DialogBackground(widget)
     return fill
 end
 
+-- Read foreign frames only; their scroll children can out-level the root dialog.
+local function DialogRead(widget, method)
+    local ok, value = pcall(function()
+        if not ns.Usable(widget) or type(widget[method]) ~= "function" then return end
+        return widget[method](widget)
+    end)
+    if ok then return value end
+end
+
 function ns.RaiseDialog(widget)
     widget:SetFrameStrata("DIALOG")
     if type(widget.Raise) == "function" then pcall(widget.Raise, widget) end
+    local highest = 0
+    local visited = {}
+    local function Scan(parent)
+        if parent == widget or visited[parent] then return end
+        visited[parent] = true
+        local ok, children = pcall(function()
+            if not ns.Usable(parent) or type(parent.GetChildren) ~= "function" then return end
+            return { parent:GetChildren() }
+        end)
+        if not ok or not children then return end
+        for _, child in ipairs(children) do
+            local shown = child ~= widget and DialogRead(child, "IsShown")
+            if type(shown) == "boolean" and not ns.IsSecret(shown) and shown then
+                local strata = DialogRead(child, "GetFrameStrata")
+                if not ns.IsSecret(strata) and strata == "DIALOG" then
+                    local level = DialogRead(child, "GetFrameLevel")
+                    if type(level) == "number" and not ns.IsSecret(level)
+                        and level == level and level < math.huge then
+                        highest = math.max(highest, level)
+                    end
+                end
+                Scan(child)
+            end
+        end
+    end
+    Scan(UIParent)
+    if widget:GetFrameLevel() <= highest then widget:SetFrameLevel(highest + 1) end
 end
 
-local function SkinSmall(button)
-    Flat(button, 1)
+local function SkinSmall(button, gold)
+    if gold == nil then gold = true end
+    if not gold or not GoldEdge(button) then Flat(button, 1) end
     ns.DialogBackground(button)
     -- Texture edges also work when SetBackdrop is unavailable.
     for _, edge in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
         local line = button:CreateTexture(nil, "BORDER")
-        line:SetColorTexture(0.85, 0.85, 0.85, 0.35)
+        if gold then line:SetColorTexture(0.75, 0.6, 0.28, 0.95)
+        else line:SetColorTexture(0.85, 0.85, 0.85, 0.35) end
         if edge == "TOP" or edge == "BOTTOM" then
             line:SetHeight(1)
             line:SetPoint(edge .. "LEFT", 0, 0)
@@ -229,7 +267,8 @@ local function SkinSmall(button)
         end
     end
     if button.label and button.label.SetTextColor then
-        button.label:SetTextColor(0.9, 0.9, 0.9)
+        if gold then button.label:SetTextColor(0.95, 0.75, 0.25)
+        else button.label:SetTextColor(0.9, 0.9, 0.9) end
     end
     if type(button.HookScript) == "function" then
         button:HookScript("OnEnable", function(self) self:SetAlpha(1) end)
@@ -373,7 +412,7 @@ local function Paint()
             local on = tab.id == frame.page
             if tab.SetBackdropBorderColor then
                 if on then tab:SetBackdropBorderColor(0.95, 0.75, 0.25, 1)
-                else tab:SetBackdropBorderColor(0.85, 0.85, 0.85, 0.35) end
+                else tab:SetBackdropBorderColor(0.75, 0.6, 0.28, 0.95) end
             end
             if tab.label and tab.label.SetTextColor then
                 if on then tab.label:SetTextColor(0.95, 0.75, 0.25)
@@ -557,16 +596,21 @@ local function Write()
 end
 
 local function ActionButton(parent, text, onClick)
-    local button = Backdropped("Button", nil, parent)
+    local ok, button = pcall(CreateFrame, "Button", nil, parent, "UIPanelButtonTemplate")
+    if not ok or not button then
+        button = Backdropped("Button", nil, parent)
+        button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        button.label:SetPoint("CENTER")
+        if type(button.SetFontString) == "function" then button:SetFontString(button.label) end
+        SkinSmall(button, false)
+        local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints()
+        highlight:SetColorTexture(0.95, 0.75, 0.25, 0.2)
+    elseif type(button.GetFontString) == "function" then
+        button.label = button:GetFontString()
+    end
     button:SetSize(112, 22)
-    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    button.label:SetPoint("CENTER")
-    if type(button.SetFontString) == "function" then button:SetFontString(button.label) end
     ButtonText(button, text)
-    SkinSmall(button)
-    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(0.95, 0.75, 0.25, 0.2)
     button:SetScript("OnClick", onClick)
     return button
 end
