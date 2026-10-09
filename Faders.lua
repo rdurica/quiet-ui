@@ -802,6 +802,10 @@ local function PlaceQuestCatcher()
     if not box:IsShown() then box:Show() end
 end
 
+function ns.QuestTrackerHovered()
+    return questCatcher and ns.Hit(questCatcher) or false
+end
+
 function ns.HideQuestCatcher()
     if not questCatcher then return end
     questCatcher:Hide()

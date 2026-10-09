@@ -129,6 +129,7 @@ local function RestoreAll()
     if ns.UpdateParty then ns.UpdateParty(0) end
     if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
     glancing = false
+    if type(ns.RestoreQuestNotice) == "function" then ns.RestoreQuestNotice() end
     ns.HideQuestCatcher()
     ns.HideRangeMark()
     ns.HideBarCatchers()
@@ -155,6 +156,7 @@ local function ApplyAll()
     end
     if ns.ForgetBarButtons then ns.ForgetBarButtons() end
     ns.RefreshWorld()
+    if type(ns.ApplyQuestNotice) == "function" then ns.ApplyQuestNotice() end
     if ns.ForceQuietLayout() then
         if not layoutChosen then
             layoutPending = "select"
@@ -273,6 +275,9 @@ end
 function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloading)
     ns.DB()
     Boot()
+    if ns.DB().enabled and type(ns.QuestNoticeEvent) == "function" then
+        ns.QuestNoticeEvent("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
+    end
     if ns.DB().enabled and (isInitialLogin or isReloading) then
         ArmLayoutSettle()
     end
@@ -290,6 +295,13 @@ function handlers.PLAYER_REGEN_ENABLED()
     UpdateFades(0)
     ns.RefreshChrome()
     ns.EnsureLayout()
+end
+
+for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE" }) do
+    local name = event
+    handlers[name] = function(...)
+        if type(ns.QuestNoticeEvent) == "function" then ns.QuestNoticeEvent(name, ...) end
+    end
 end
 
 function handlers.QUEST_TURNED_IN(_, xp)
@@ -439,6 +451,7 @@ events:SetScript("OnUpdate", function(_, elapsed)
     if ns.ModernChat() then
         Run("bubbles", ns.UpdateChat, elapsed)
     end
+    if type(ns.UpdateQuestNotice) == "function" then Run("quest notice", ns.UpdateQuestNotice, elapsed) end
     -- Range changes while you walk, with no focus or cursor change, so it cannot wait for a rescan.
     Run("range", ns.UpdateRange, elapsed)
     Run("smooth", ns.UpdateSmooth, elapsed)

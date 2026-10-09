@@ -165,6 +165,10 @@ arranging it. Elements appear immediately and fade out over 0.3 seconds.
   default and also reveals them with the enabled player frame. **Always show debuffs**
   keeps debuffs visible by default; turn it off to apply these fade rules to them.
 - **Quest tracker and micro menu:** Hover across their whole area, including gaps.
+  Accepting a quest, advancing an objective, or completing its goals briefly shows
+  only that quest at the tracker. Progress shows only the changed goals. Each notice
+  lasts five seconds, then fades; multiple quests appear in order. Hover, Glance,
+  Edit Mode, **Always visible**, and **Only on hover** suppress these notices.
 - **Bag button:** Hover, open bag slots, an item on the cursor, or dragging.
 
 In range needs a visible target nameplate and a living target. It stays off during

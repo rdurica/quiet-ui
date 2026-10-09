@@ -16,4 +16,5 @@ Chat.lua
 LayoutString.lua
 Layout.lua
 Setup.lua
+QuestNotice.lua
 QuietUI.lua
