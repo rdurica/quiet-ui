@@ -113,9 +113,9 @@ local function ReadLog()
                 end
                 local old = snapshots[id]
                 -- A briefly empty objective response must not erase known progress.
-                if objectives and #objectives == 0 and old and #old.objectives > 0
-                    and not old.complete and ready == false then
-                    objectives = nil
+                if objectives and #objectives == 0 and old and #old.objectives > 0 then
+                    objectives = old.objectives
+                    complete = false
                 end
                 if objectives and ready ~= nil then
                     result[id] = { id = id, title = title, objectives = objectives, complete = ready }
