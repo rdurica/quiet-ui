@@ -1,9 +1,12 @@
 -- Run from the addon directory: lua tests/party-performance.lua
 local ns, grouped, editing, glance, combat, instance = {}, false, false, false, false, false
-local reads, writes, catchers = 0, 0, 0
+local reads, writes, catchers, indicatorChecks = 0, 0, 0, 0
 local function frame(parent)
     local f = { parent = parent, alpha = 1, shown = true, children = {} }
-    function f:IsForbidden() return false end
+    function f:IsForbidden()
+        if self.independent then indicatorChecks = indicatorChecks + 1 end
+        return false
+    end
     function f:GetParent() return self.parent end
     function f:IsShown() reads = reads + 1; return self.shown end
     function f:GetAlpha() return self.alpha end
@@ -54,6 +57,12 @@ ns.UpdateParty(0.1)
 assert(PartyFrame.alpha > 0 and PartyFrame.alpha < 1, 'Joining must immediately start the normal fade')
 ns.UpdateParty(0.3)
 assert(PartyFrame.alpha == 0 and PartyFrame.children[100].alpha == 0, 'Independent indicators must fade with the group')
+reads, writes, indicatorChecks = 0, 0, 0
+for _ = 1, 60 do ns.UpdateParty(1 / 60) end
+print(('Settled group, 60 frames: frame reads=%d indicator checks=%d alpha writes=%d')
+    :format(reads, indicatorChecks, writes))
+assert(reads <= 300, 'A settled block must check its root once rather than once per indicator')
+assert(indicatorChecks == 0 and writes == 0, 'Settled indicators must not repeat frame checks or alpha writes')
 grouped = false
 reads, writes = 0, 0
 ns.UpdateParty(1 / 60)

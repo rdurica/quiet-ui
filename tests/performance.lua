@@ -16,9 +16,13 @@ QuietUIDB = { enabled = true }
 UIParent = frame()
 PlayerFrame, PetFrame = frame(UIParent), frame(UIParent)
 BuffFrame, PersonalResourceDisplayFrame = frame(UIParent), frame(UIParent)
+DebuffFrame = frame(UIParent)
+local debuffChecks = 0
+function DebuffFrame:IsForbidden() debuffChecks = debuffChecks + 1; return false end
 local powerCalls, healthCalls, typeCalls, curves = 0, 0, 0, 0
 local curveEdits = 0
 local failCurveClear = false
+local thresholdReads, styleReads, auraHoverReads, groupingReads = 0, 0, 0, 0
 local power = { secret = true }
 local token, kind = 'MANA', 0
 issecretvalue = function(value) return type(value) == 'table' and value.secret == true end
@@ -43,15 +47,21 @@ for _, key in ipairs({ 'InEditMode', 'InForcedInstance', 'InGroup', 'InVehicle',
     ns[key] = function() return false end
 end
 ns.InCombat = function() return combat end
-ns.PlayerStyle = function() return 'classic' end
-ns.PlayerThreshold = function() return 'resource', 70 end
-ns.GroupAuras = function() return true end
+ns.PlayerStyle = function() styleReads = styleReads + 1; return 'classic' end
+ns.PlayerThreshold = function() thresholdReads = thresholdReads + 1; return 'resource', 70 end
+ns.GroupAuras = function() groupingReads = groupingReads + 1; return true end
+ns.OnlyOnHover = function(name)
+    if name == 'auras' then auraHoverReads = auraHoverReads + 1 end
+    return false
+end
 ns.AlwaysShowDebuffs = function() return true end
 loadAddon('Faders.lua', ns)
 ns.FindFaders(false)
 local function reset()
     powerCalls, healthCalls, typeCalls, curves = 0, 0, 0, 0
     curveEdits = 0
+    thresholdReads, styleReads, auraHoverReads, groupingReads = 0, 0, 0, 0
+    debuffChecks = 0
     for _, obj in ipairs({ PlayerFrame, PetFrame, BuffFrame, PersonalResourceDisplayFrame }) do
         obj.writes = 0
     end
@@ -68,6 +78,14 @@ print(('Idle 60 frames: curve edits=%d'):format(curveEdits))
 check(curveEdits == 0, 'Stable thresholds must not rebuild unchanged curve points')
 check(typeCalls == 60, 'Power type should be sampled once per frame')
 check(PlayerFrame.alpha == power and BuffFrame.alpha == power, 'Secret alpha must reach widgets unchanged')
+print(('Idle 60 frames: threshold settings=%d player style=%d aura hover settings=%d grouping settings=%d')
+    :format(thresholdReads, styleReads, auraHoverReads, groupingReads))
+check(thresholdReads == 60, 'Player and auras must read one threshold setting per frame')
+check(styleReads <= 120, 'Auras must reuse the player visibility and threshold decisions')
+check(auraHoverReads == 60 and groupingReads == 60, 'Aura modes must be read once per frame')
+print(('Idle 60 frames: settled debuff checks=%d'):format(debuffChecks))
+check(debuffChecks == 0, 'Already visible debuffs must skip repeated frame checks')
+check(DebuffFrame.alpha == 1, 'Always-visible debuffs must stay visible independently of buffs')
 power = { secret = true }
 tick()
 check(PlayerFrame.alpha == power, 'A new frame must read a fresh secret power value')

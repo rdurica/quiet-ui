@@ -58,7 +58,7 @@ local statusFrames = {}
 local cooldownFrames = {}
 local resourceFrames = {}
 local partyFrames = {}
-local partyAlphaFrames = {}
+local partyAlphaBlocks = {}
 local managedParty = {}
 local FindPartyFrames
 local questFrames = {}
@@ -308,6 +308,9 @@ local aurasCurved = false
 local resourceWeight = 0
 local samplingPower = false
 local sampledKind
+local sampledPlayerShow, sampledPlayerThresholds
+local thresholdRead = false
+local sampledThresholdKind, sampledThresholdPercent
 local powerWeights, powerAlphas = {}, {}
 local powerSampleCount = 0
 
@@ -337,6 +340,7 @@ end
 -- Boolean show for the portrait. Health and power stay on the curves below.
 -- Edit mode shows it even when the player frame is off.
 local function PlayerShouldShow()
+    if samplingPower and sampledPlayerShow ~= nil then return sampledPlayerShow end
     if ns.InEditMode() then return true end
     if DeadTargetBlocked() then return false end
     if ns.PlayerStyle() ~= "classic" then return false end
@@ -530,8 +534,14 @@ local function ThresholdCurve(name, percent, above, below)
 end
 
 local function ReadThreshold()
-    if ns.PlayerThreshold then return ns.PlayerThreshold() end
-    return "health", 70
+    if samplingPower and thresholdRead then return sampledThresholdKind, sampledThresholdPercent end
+    local kind, percent = "health", 70
+    if ns.PlayerThreshold then kind, percent = ns.PlayerThreshold() end
+    if samplingPower then
+        sampledThresholdKind, sampledThresholdPercent = kind, percent
+        thresholdRead = true
+    end
+    return kind, percent
 end
 
 local function EvalPlayerThresholds(weight, scale, name)
@@ -568,6 +578,7 @@ local function EvalPlayerThresholds(weight, scale, name)
 end
 
 local function PlayerUsesThresholds()
+    if samplingPower and sampledPlayerThresholds ~= nil then return sampledPlayerThresholds end
     if ns.PlayerStyle() ~= "classic" then return false end
     local kind, percent = ReadThreshold()
     return percent ~= nil and (kind == "health" or RestingPower() ~= nil)
@@ -751,6 +762,7 @@ local function UpdatePlayer(elapsed)
     local blocked = DeadTargetBlocked()
     local deathBlocked = PlayerDeathBlocked()
     local useCurve = PlayerUsesThresholds()
+    if samplingPower then sampledPlayerShow, sampledPlayerThresholds = show, useCurve end
     playerCurved, playerWeight = TakeWeight(playerCurved, playerWeight, show, elapsed, useCurve)
     local alpha = useCurve and EvalPlayerThresholds(playerWeight) or nil
     local player = PlayerFrame
@@ -798,8 +810,8 @@ local function MouseOverAny(frame)
     return false
 end
 
-local function AurasShouldShow()
-    if ns.OnlyOnHover("auras") then
+local function AurasShouldShow(hoverOnly, grouped)
+    if hoverOnly then
         local hovered = false
         for _, frame in ipairs(auraFrames) do
             if MouseOverAny(frame) then hovered = true; break end
@@ -808,7 +820,7 @@ local function AurasShouldShow()
     end
     local show = ns.InCombat() or ns.InForcedInstance() or ns.InGroup() or ns.InEditMode()
         or ns.Pinned("auras") or ns.Glancing()
-    if not show and ns.GroupAuras() and PlayerShouldShow() then
+    if not show and grouped and PlayerShouldShow() then
         show = true
     end
     if not show then
@@ -823,14 +835,18 @@ local function AurasShouldShow()
 end
 
 local function UpdateAuras(elapsed)
-    local show = AurasShouldShow() and true or false
-    local useCurve = not ns.OnlyOnHover("auras") and ns.GroupAuras() and PlayerUsesThresholds()
+    local hoverOnly = ns.OnlyOnHover("auras")
+    local grouped = not hoverOnly and ns.GroupAuras()
+    local show = AurasShouldShow(hoverOnly, grouped) and true or false
+    local useCurve = grouped and PlayerUsesThresholds()
     aurasCurved, auraWeight = TakeWeight(aurasCurved, auraWeight, show, elapsed, useCurve)
     local alpha = useCurve and EvalPlayerThresholds(auraWeight) or nil
-    local keepDebuffs = not ns.OnlyOnHover("auras") and ns.AlwaysShowDebuffs()
+    local keepDebuffs = not hoverOnly and ns.AlwaysShowDebuffs()
     for _, frame in ipairs(auraFrames) do
         if keepDebuffs and frame == _G.DebuffFrame then
-            PaintNumeric(frame, true, elapsed)
+            if frame._quietSecret ~= nil or frame._quietAlpha ~= 1 then
+                PaintNumeric(frame, true, elapsed)
+            end
         elseif alpha ~= nil then
             PaintSecret(frame, alpha)
         else
@@ -948,7 +964,12 @@ FindPartyFrames = function()
             managedParty[frame] = nil
         end
     end
-    partyAlphaFrames = alphaFrames
+    partyAlphaBlocks = {}
+    for frame, root in pairs(alphaFrames) do
+        local block = partyAlphaBlocks[root]
+        if not block then block = {}; partyAlphaBlocks[root] = block end
+        block[#block + 1] = frame
+    end
     for i = #partyFrames, 1, -1 do partyFrames[i] = nil end
     for _, frame in ipairs(candidates) do
         if roots[frame] then
@@ -975,16 +996,24 @@ function ns.UpdateParty(elapsed)
     end
     local hovered = HoverFrames("party", partyFrames, true)
     local show = ns.InCombat() or ns.InForcedInstance() or ns.InEditMode() or ns.Glancing() or hovered
-    for frame, root in pairs(partyAlphaFrames) do
-        if ns.Usable(root) and root:IsShown() and ns.Usable(frame) then
-            ns.EaseAlpha(frame, show, elapsed)
-            managedParty[frame] = true
+    local target = show and 1 or 0
+    for root, block in pairs(partyAlphaBlocks) do
+        if ns.Usable(root) and root:IsShown() then
+            for _, frame in ipairs(block) do
+                local settled = managedParty[frame] and frame._quietSecret == nil and frame._quietAlpha == target
+                if not settled and (frame == root or ns.Usable(frame)) then
+                    ns.EaseAlpha(frame, show, elapsed)
+                    managedParty[frame] = true
+                end
+            end
         end
     end
 end
 
 function ns.UpdateSmooth(elapsed, profile)
     samplingPower = false
+    sampledPlayerShow, sampledPlayerThresholds = nil, nil
+    thresholdRead = false
     local ok, kind = pcall(ReadRestingPower)
     sampledKind = ok and kind or nil
     if not ok then ns.Report("player power", kind) end
