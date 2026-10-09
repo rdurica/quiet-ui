@@ -34,13 +34,31 @@ local function scenario(mode)
             if child.kind ~= 'Texture' and child.kind ~= 'FontString' then child:SetFrameLevel(child.level + delta) end
         end
     end
-    function methods:GetFrameLevel() return self.level end
+    function methods:IsForbidden() return self.forbidden == true end
+    function methods:GetChildren()
+        assert(not self.forbidden, 'forbidden GetChildren')
+        local children = {}
+        for _, child in ipairs(self.children) do
+            if child.kind ~= 'Texture' and child.kind ~= 'FontString' then children[#children + 1] = child end
+        end
+        return table.unpack(children)
+    end
+    function methods:GetFrameLevel()
+        assert(not self.forbidden, 'forbidden GetFrameLevel')
+        return self.level
+    end
     function methods:SetFrameStrata(strata) self.strata = strata end
-    function methods:GetFrameStrata() return self.strata or (self.parent and self.parent:GetFrameStrata()) end
+    function methods:GetFrameStrata()
+        assert(not self.forbidden, 'forbidden GetFrameStrata')
+        return self.strata or (self.parent and self.parent:GetFrameStrata())
+    end
+    -- Sibling-only Raise is deliberately insufficient for descendant content.
+    -- This is a structural regression model, not proof of the client's renderer.
     function methods:Raise()
+        if mode.raiseFails then error('Raise unavailable') end
         local maximum = self.level
         for _, object in ipairs(objects) do
-            if object.parent == self.parent and object:GetFrameStrata() == self:GetFrameStrata() then
+            if not object.forbidden and object.parent == self.parent and object:GetFrameStrata() == self:GetFrameStrata() then
                 maximum = math.max(maximum, object.level)
             end
         end
@@ -63,6 +81,11 @@ local function scenario(mode)
     function methods:GetName() return self.name end
     function methods:GetFontString() return self.font end
     function methods:SetTextColor(...) self.textColor = {...} end
+    function methods:SetFontString(font) self.font = font end
+    function methods:SetNormalFontObject(font) self.normalFont = font end
+    function methods:SetDisabledFontObject(font) self.disabledFont = font end
+    function methods:GetNormalFontObject() return self.normalFont end
+    function methods:GetDisabledFontObject() return self.disabledFont end
     function methods:SetColorTexture(...) self.color = {...} end
     function methods:SetVertexColor(...) self.vertexColor = {...} end
     function methods:SetAlpha(alpha) self.alpha = alpha end
@@ -119,8 +142,10 @@ local function scenario(mode)
     SetPortraitTexture = function(texture, unit) texture.texture = unit end
     CreateFrame = function(kind, name, parent, template)
         if template == 'PortraitFrameTemplate' and not mode.portrait then error('template unavailable') end
+        if template == 'UIPanelButtonTemplate' and mode.nativeButtons == false then error('template unavailable') end
         local object = make(kind, parent, name)
         object.template = template
+        if mode.noRaise then object.Raise = false end
         if name then _G[name] = object end
         if mode.backdrop and template ~= 'PortraitFrameTemplate' then
             object.SetBackdrop = function(self, value) self.backdrop = value end
@@ -138,6 +163,13 @@ local function scenario(mode)
                 object.SetBackdropBorderColor = function(self, ...) self.borderColor = {...} end
             end
         elseif kind == 'Button' or kind == 'CheckButton' then object.font = object:CreateFontString() end
+        if template == 'UIPanelButtonTemplate' then
+            object.nativeNormal = object:CreateTexture(nil, 'ARTWORK')
+            object.nativeNormal.texture = 'native-panel-normal'
+            object.normalTexture = object.nativeNormal
+            object.normalFont = 'GameFontNormal'
+            object.disabledFont = 'GameFontDisable'
+        end
         return object
     end
     local layouts = { activeLayout = 3, layouts = { { layoutName = 'Original', layoutType = 1 } } }
@@ -179,10 +211,25 @@ local function darkControl(button)
     end
     return false
 end
+local function nativeAction(button)
+    return button.template == 'UIPanelButtonTemplate' and button.normalTexture == button.nativeNormal
+        and button.nativeNormal and button.nativeNormal.shown
+end
+local function goldSmall(button)
+    if button.backdrop and button.backdrop.edgeFile and button.backdrop.edgeFile:find('Gold') then return true end
+    local color = button.borderColor
+    if color and color[1] > color[2] and color[2] > color[3] then return true end
+    for _, texture in ipairs(button.textures) do
+        local c = texture.color
+        if texture.shown and texture.layer == 'BORDER' and c and c[1] > c[2] and c[2] > c[3] then return true end
+    end
+    return false
+end
 local function tint(button)
     local label = button.label or button.font
     local color = label and label.textColor
-    return button.alpha, label and label.alpha, color and table.concat(color, ',')
+    local nativeFont = button.disabled and button:GetDisabledFontObject() or button:GetNormalFontObject()
+    return button.alpha, label and label.alpha, color and table.concat(color, ','), nativeFont
 end
 local function fillBounds(frame, fill)
     if not fill then return false end
@@ -205,19 +252,57 @@ local modes = {
     { name = 'portrait with backdrop', portrait = true, backdrop = true, portraitBackdrop = true },
     { name = 'gold fallback', backdrop = true },
     { name = 'flat without backdrop' },
+    { name = 'native buttons unavailable', portrait = true, backdrop = true, nativeButtons = false },
+    { name = 'Raise missing', portrait = true, backdrop = true, noRaise = true },
+    { name = 'Raise failing', portrait = true, backdrop = true, raiseFails = true },
 }
 for _, mode in ipairs(modes) do
     local ns, objects, layoutState = scenario(mode)
     local function expect(value, message) check(value, mode.name .. ': ' .. message) end
     local other = CreateFrame('Frame', nil, UIParent)
     other:SetFrameStrata('DIALOG'); other:SetFrameLevel(500)
+    -- Topology from ../ForeverDungeonJournal/ForeverDungeonJournal.lua:
+    -- DIALOG root -> homePanel -> homeScroll -> homeCardsContent -> card.
+    local home = CreateFrame('Frame', nil, other)
+    local scroll = CreateFrame('ScrollFrame', nil, home)
+    local content = CreateFrame('Frame', nil, scroll)
+    scroll:SetScrollChild(content)
+    local card = CreateFrame('Button', nil, content)
+    local cover = card:CreateTexture(nil, 'ARTWORK')
+    cover:SetColorTexture(1, 0, 0, 1)
+    -- A second ordinary DIALOG descendant can have an explicit higher level.
+    local raisedContent = CreateFrame('Frame', nil, other)
+    raisedContent:SetFrameLevel(other.level + 80)
+    local forbidden = CreateFrame('Frame', nil, other)
+    forbidden.forbidden = true
+    local tooltip = CreateFrame('Frame', nil, UIParent)
+    tooltip:SetFrameStrata('TOOLTIP'); tooltip:SetFrameLevel(2000)
+    local fullscreen = CreateFrame('Frame', nil, UIParent)
+    fullscreen:SetFrameStrata('FULLSCREEN'); fullscreen:SetFrameLevel(3000)
     local otherLevel, otherAlpha = other.level, other.alpha
+    local cardLevel, descendantLevel = card.level, raisedContent.level
+    local function aboveForeign(window)
+        local fill = opaque(window)
+        return fill and fill.parent.level > card.level and fill.parent.level > raisedContent.level
+    end
+    local function preservedForeign()
+        return other.level == otherLevel and other.alpha == otherAlpha and other.shown
+            and card.level == cardLevel and raisedContent.level == descendantLevel
+            and tooltip.level == 2000 and tooltip.strata == 'TOOLTIP' and tooltip.alpha == 1 and tooltip.shown
+            and fullscreen.level == 3000 and fullscreen.strata == 'FULLSCREEN' and fullscreen.alpha == 1 and fullscreen.shown
+    end
+    local function actionStyle(button)
+        return mode.nativeButtons == false and darkControl(button) or nativeAction(button)
+    end
     ns.ShowSetup()
     local ui = QuietUISetup
     expect(opaque(ui), 'setup has its own opaque dark background independent of SetBackdrop')
     expect(fillBounds(ui, opaque(ui)), 'setup fill stays behind chrome and within window bounds')
     expect(ui:GetFrameStrata() == 'DIALOG' and ui.level > other.level, 'setup opening raises over sibling DIALOG')
-    expect(other.level == otherLevel and other.alpha == otherAlpha and other.shown, 'foreign dialog state is preserved')
+    expect(aboveForeign(ui), 'continuous setup fill is above foreign DIALOG descendants, including scroll content')
+    expect(ui.save.level > raisedContent.level, 'setup controls are above foreign DIALOG descendants')
+    expect(ui:GetFrameLevel() < tooltip.level, 'higher strata do not inflate DIALOG priority')
+    expect(preservedForeign(), 'foreign dialog descendants, tooltip and fullscreen state are preserved')
     expect(QuietUIDB.enabled == false, 'setup opening preserves disabled addon')
     if mode.portrait then
         expect(ui.portrait.texture == 'player' and ui.portrait.shown and ui.TitleText.text == 'QuietUI'
@@ -247,11 +332,17 @@ for _, mode in ipairs(modes) do
     expect(ui.presetSelector.width == ui.pages[1].width and ui.layoutSelector.width == ui.pages[1].width,
         'General selectors span content width')
     for _, button in ipairs({ ui.presetSelector, ui.layoutSelector, ui.newPreset, ui.renamePreset,
-        ui.deletePreset, ui.reset, ui.import, ui.save, ui.tabs[1], ui.groupRows[1].plus }) do
-        expect(darkControl(button), 'consistent dark control styling: ' .. (button.text ~= '' and button.text or button.label.text))
+        ui.deletePreset, ui.reset, ui.import, ui.save }) do
+        expect(actionStyle(button), 'native action appearance or dark missing-template fallback: ' .. (button.text ~= '' and button.text or button.label.text))
+    end
+    for _, button in ipairs(ui.tabs) do
+        expect(goldSmall(button), 'each small tab retains gold styling')
+    end
+    for _, button in ipairs({ ui.groupRows[1].minus, ui.groupRows[1].plus }) do
+        expect(goldSmall(button), 'small tabs and steppers retain gold styling')
     end
     expect(ui.renamePreset.disabled and ui.deletePreset.disabled, 'unavailable preset actions remain disabled')
-    local disabledAlpha, disabledLabelAlpha, disabledColor = tint(ui.renamePreset)
+    local disabledAlpha, disabledLabelAlpha, disabledColor, disabledFont = tint(ui.renamePreset)
     expect(ui.newPreset.width == ui.renamePreset.width and ui.renamePreset.width == ui.deletePreset.width,
         'preset actions have uniform width')
     expect(ui.newPreset.width >= #'New preset' * 6, 'preset action label fits')
@@ -274,11 +365,11 @@ for _, mode in ipairs(modes) do
         'modal controls and mouse blocker stay above main content')
     expect(dialog.blocker.mouse and dialog.blocker.allPoints == ui and dialog.blocker.shown,
         'modal blocker covers setup and intercepts mouse')
-    expect(darkControl(dialog.yes) and darkControl(dialog.no), 'modal buttons use shared dark styling')
+    expect(actionStyle(dialog.yes) and actionStyle(dialog.no), 'modal actions use native appearance or missing-template fallback')
     dialog.edit:SetText('Appearance'); click(dialog.yes); click(ui.save)
     expect(ui.shown and QuietUICharDB.presetId and QuietUIDB.enabled == false, 'Save commits preset and keeps disabled setup open')
-    local enabledAlpha, enabledLabelAlpha, enabledColor = tint(ui.renamePreset)
-    expect(disabledAlpha ~= enabledAlpha or disabledLabelAlpha ~= enabledLabelAlpha or disabledColor ~= enabledColor,
+    local enabledAlpha, enabledLabelAlpha, enabledColor, enabledFont = tint(ui.renamePreset)
+    expect(disabledAlpha ~= enabledAlpha or disabledLabelAlpha ~= enabledLabelAlpha or disabledColor ~= enabledColor or disabledFont ~= enabledFont,
         'disabled actions are visibly distinguished from enabled actions')
     click(ui.layoutSelector)
     expect(opaque(ui.layoutMenu), 'layout menu has independent opaque fill')
@@ -286,8 +377,13 @@ for _, mode in ipairs(modes) do
         'layout menu entries stay above owner')
     click(ui.layoutMenu.items[#ui.layoutMenu.items])
     expect(not ui.layoutMenu.shown, 'layout selection closes menu')
-    ui:Hide(); other:SetFrameLevel(ui.level + 200); ns.ShowSetup()
+    ui:Hide(); other:SetFrameLevel(ui.level + 200)
+    raisedContent:SetFrameLevel(other.level + 100)
+    otherLevel, cardLevel, descendantLevel = other.level, card.level, raisedContent.level
+    ns.ShowSetup()
     expect(ui.level > other.level, 'reopening raises over later sibling dialogs')
+    expect(aboveForeign(ui), 'reopening brings the whole setup fill above later foreign descendant escalation')
+    expect(preservedForeign(), 'reopening preserves foreign descendant state')
     click(ui.presetSelector)
     expect(ui.presetMenu.level > ui.save.level, 'reused preset menu stays above raised owner')
     click(ui.renamePreset)
@@ -320,7 +416,10 @@ for _, mode in ipairs(modes) do
     expect(fillBounds(prompt, opaque(prompt)), 'prompt fill stays behind gear/chrome and inside bounds')
     expect(prompt:GetFrameStrata() == 'DIALOG' and prompt.level > other.level, 'layout prompt raises above ordinary sibling dialog')
     expect(prompt.yes.level > prompt.level and prompt.no.level > prompt.level, 'prompt controls are above its fill')
-    expect(darkControl(prompt.yes) and darkControl(prompt.no), 'layout prompt buttons share dark styling')
+    expect(actionStyle(prompt.yes) and actionStyle(prompt.no), 'layout prompt actions use native appearance or missing-template fallback')
+    expect(aboveForeign(prompt), 'layout prompt fill is above foreign DIALOG descendants')
+    expect(prompt.yes.level > raisedContent.level, 'layout prompt controls are above foreign DIALOG descendants')
+    expect(preservedForeign(), 'layout prompt preserves foreign dialog and higher strata state')
     if mode.portrait then
         expect(prompt.portrait.shown and prompt.portrait.texture ~= nil and prompt.portrait.texture ~= 'player'
             and not prompt.CloseButton.shown, 'gear chrome preserved and unanswered close hidden')
