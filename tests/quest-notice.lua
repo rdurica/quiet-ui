@@ -159,6 +159,31 @@ test('modern stable objective text detects numeric progress and displays count',
     s.has('Quest 1'); s.has('Wolves slain'); s.has('3/8')
     assert(not s.text():find('Find the relic',1,true),'Unchanged objective must not appear')
 end)
+test('classic nil unfinished completion is valid without IsQuestComplete',function()
+    local s=environment(true)
+    -- Explicit nil is the classic unfinished marker, not missing quest data.
+    GetQuestLogTitle=function(index)
+        local q=s.log[index]
+        if q then return q.title,10,0,false,false,q.complete and 1 or nil,1,q.id end
+    end
+    IsQuestComplete=nil
+    s.ns.RestoreQuestNotice(); s.ns.ApplyQuestNotice(); s.pump(); s.silent()
+    s.change(3); s.has('Quest 1'); s.has('Wolves 3/8')
+end)
+test('transient empty modern objectives preserve nonempty unfinished baseline',function()
+    local s=environment(); local previous=s.log[1].objectives
+    s.log[1].objectives={}; s.event('QUEST_LOG_UPDATE'); s.silent()
+    s.log[1].objectives=previous; s.event('QUEST_LOG_UPDATE'); s.silent()
+    s.change(3); s.has('Quest 1'); s.has('Wolves 3/8')
+    assert(not s.text():find('Find the relic',1,true),'Unchanged objective must not appear after incomplete read')
+end)
+test('missing required classic title reader reports exactly once',function()
+    local s=environment(true); GetQuestLogTitle=nil
+    s.ns.RestoreQuestNotice(); s.ns.ApplyQuestNotice()
+    s.event('QUEST_LOG_UPDATE'); s.pump(12); s.silent()
+    s.event('QUEST_LOG_UPDATE'); s.pump(12); s.silent()
+    assert(#s.reports==1,'Missing required title reader must report once; got '..#s.reports)
+end)
 test('temporary incomplete objectives preserve previous snapshot',function()
     local s=environment(); local old=s.log[1].objectives; s.log[1].objectives=nil
     s.event('QUEST_LOG_UPDATE'); s.silent(); s.log[1].objectives=old
