@@ -968,6 +968,11 @@ function ns.UpdateParty(elapsed)
         end
         return
     end
+    if not ns.InGroup() and not ns.InCombat() and not ns.InForcedInstance()
+        and not ns.InEditMode() and not ns.Glancing() then
+        ParkHover("party")
+        return
+    end
     local hovered = HoverFrames("party", partyFrames, true)
     local show = ns.InCombat() or ns.InForcedInstance() or ns.InEditMode() or ns.Glancing() or hovered
     for frame, root in pairs(partyAlphaFrames) do
@@ -978,7 +983,7 @@ function ns.UpdateParty(elapsed)
     end
 end
 
-function ns.UpdateSmooth(elapsed)
+function ns.UpdateSmooth(elapsed, profile)
     samplingPower = false
     local ok, kind = pcall(ReadRestingPower)
     sampledKind = ok and kind or nil
@@ -988,10 +993,11 @@ function ns.UpdateSmooth(elapsed)
     for i = 1, thresholdSampleCount do thresholdAlphas[i] = nil end
     thresholdSampleCount = 0
     samplingPower = true
-    Run("resource bar", UpdateResource, elapsed)
-    Run("player frame", UpdatePlayer, elapsed)
-    Run("party frames", ns.UpdateParty, elapsed)
-    Run("buffs", UpdateAuras, elapsed)
+    local run = profile or Run
+    run("resource bar", UpdateResource, elapsed)
+    run("player frame", UpdatePlayer, elapsed)
+    run("party frames", ns.UpdateParty, elapsed)
+    run("buffs", UpdateAuras, elapsed)
     samplingPower = false
 end
 

@@ -19,8 +19,22 @@ local function StartCPUProfile()
         ns.Print("CPU timing is not available on this client.")
         return
     end
-    cpuProfile = { started = GetTime(), sections = {}, frames = 0 }
+    cpuProfile = { started = GetTime(), sections = {}, smooth = {}, frames = 0 }
     ns.Print("Measuring QuietUI for 10 seconds. Keep playing in the same situation.")
+end
+
+local function ProfileRows(sections)
+    local rows = {}
+    for name, section in pairs(sections) do
+        rows[#rows + 1] = { name = name, ms = section.ms, calls = section.calls }
+    end
+    table.sort(rows, function(a, b) return a.ms > b.ms end)
+    return rows
+end
+
+local function PrintProfileRow(row, duration, prefix)
+    ns.Print(string.format("%s%s: %.3f ms/s, %.3f ms/call (%d calls).",
+        prefix or "", row.name, row.ms / duration, row.ms / row.calls, row.calls))
 end
 
 local function FinishCPUProfile()
@@ -28,21 +42,26 @@ local function FinishCPUProfile()
     cpuProfile.frames = cpuProfile.frames + 1
     local duration = GetTime() - cpuProfile.started
     if duration < 10 then return end
-    local rows = {}
-    for name, section in pairs(cpuProfile.sections) do
-        rows[#rows + 1] = { name = name, ms = section.ms, calls = section.calls }
-    end
-    table.sort(rows, function(a, b) return a.ms > b.ms end)
+    local rows = ProfileRows(cpuProfile.sections)
     ns.Print(string.format("CPU timing: %.1f seconds, %d frames, preset %s; pending layout: %s.", duration,
         cpuProfile.frames, ns.ActivePreset and ns.ActivePreset() and ns.ActivePreset().name or "<no preset>",
         tostring(layoutPending or "none")))
     if ns.LayoutStatus then ns.Print(ns.LayoutStatus()) end
     for i = 1, math.min(8, #rows) do
-        local row = rows[i]
-        ns.Print(string.format("%s: %.3f ms/s, %.3f ms/call (%d calls).",
-            row.name, row.ms / duration, row.ms / row.calls, row.calls))
+        PrintProfileRow(rows[i], duration)
+    end
+    -- Details are included in the smooth total and do not consume the top-eight slots.
+    for _, row in ipairs(ProfileRows(cpuProfile.smooth)) do
+        PrintProfileRow(row, duration, "smooth / ")
     end
     cpuProfile = nil
+end
+
+local function RecordCPU(sections, label, started)
+    local ms = math.max(0, debugprofilestop() - started)
+    local section = sections[label]
+    if not section then section = { ms = 0, calls = 0 }; sections[label] = section end
+    section.ms, section.calls = section.ms + ms, section.calls + 1
 end
 
 local function Run(label, fn, ...)
@@ -50,12 +69,17 @@ local function Run(label, fn, ...)
     local started = profile and debugprofilestop()
     local ok, err = pcall(fn, ...)
     if profile then
-        local ms = math.max(0, debugprofilestop() - started)
-        local section = profile.sections[label]
-        if not section then section = { ms = 0, calls = 0 }; profile.sections[label] = section end
-        section.ms, section.calls = section.ms + ms, section.calls + 1
+        RecordCPU(profile.sections, label, started)
     end
     if not ok then ns.Report(label or "fades", err) end
+end
+
+local function ProfileSmooth(label, fn, ...)
+    local profile = cpuProfile
+    local started = debugprofilestop()
+    local ok, err = pcall(fn, ...)
+    RecordCPU(profile.smooth, label, started)
+    if not ok then ns.Report(label, err) end
 end
 
 local function UpdateFades(elapsed, rescan)
@@ -468,7 +492,7 @@ events:SetScript("OnUpdate", function(_, elapsed)
     if type(ns.UpdateQuestNotice) == "function" then Run("quest notice", ns.UpdateQuestNotice, elapsed) end
     -- Range changes while you walk, with no focus or cursor change, so it cannot wait for a rescan.
     Run("range", ns.UpdateRange, elapsed)
-    Run("smooth", ns.UpdateSmooth, elapsed)
+    Run("smooth", ns.UpdateSmooth, elapsed, cpuProfile and ProfileSmooth or nil)
     chromeAcc = chromeAcc + elapsed
     if chromeAcc < 1 then return end
     chromeAcc = 0

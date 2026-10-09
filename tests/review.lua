@@ -786,6 +786,7 @@ end)
 
 test('Party frame discovery releases replaced roots and skips forbidden frames', function()
     local ns = namespace()
+    ns.InGroup = function() return true end
     loadAddon('Setup.lua', ns)
     loadAddon('Faders.lua', ns)
     QuietUICharDB.autoHideParty = true
@@ -820,6 +821,7 @@ end)
 
 test('Party selection highlights and independent indicators fade with their block', function()
     local ns = namespace()
+    ns.InGroup = function() return true end
     loadAddon('Setup.lua', ns)
     loadAddon('Faders.lua', ns)
     QuietUICharDB.autoHideParty = true
