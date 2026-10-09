@@ -81,7 +81,7 @@ check(PlayerFrame.alpha == power and BuffFrame.alpha == power, 'Secret alpha mus
 print(('Idle 60 frames: threshold settings=%d player style=%d aura hover settings=%d grouping settings=%d')
     :format(thresholdReads, styleReads, auraHoverReads, groupingReads))
 check(thresholdReads == 60, 'Player and auras must read one threshold setting per frame')
-check(styleReads <= 120, 'Auras must reuse the player visibility and threshold decisions')
+check(styleReads == 60, 'Visibility and thresholds must share one player-style read per frame')
 check(auraHoverReads == 60 and groupingReads == 60, 'Aura modes must be read once per frame')
 print(('Idle 60 frames: settled debuff checks=%d'):format(debuffChecks))
 check(debuffChecks == 0, 'Already visible debuffs must skip repeated frame checks')

@@ -43,6 +43,7 @@ for _, key in ipairs({ 'ForgetCursor', 'UpdateFaders', 'UpdateMenuButton', 'Upda
     'UpdateRange', 'FindFaders', 'ScanSwing', 'RefreshWorld', 'RefreshChrome', 'NextFadeTick',
     'BeginTick', 'UpdateBars' }) do ns[key] = function() end end
 ns.Pinned = function(name) if name == 'resource' then clock = clock + 1 end; return false end
+-- Visibility and threshold decisions now share this two-millisecond lookup.
 ns.PlayerStyle = function() clock = clock + 2; return 'resource' end
 ns.AlwaysShowDebuffs = function() clock = clock + 4; return true end
 UnitPowerType = function() clock = clock + 0.5; return 0, 'MANA' end
@@ -62,14 +63,14 @@ events.scripts.OnUpdate(events, 0.1)
 local output = table.concat(messages, '\n')
 for label, expected in pairs({
     ['resource bar'] = '0.900 ms/s, 1.000 ms/call (9 calls).',
-    ['player frame'] = '3.600 ms/s, 4.000 ms/call (9 calls).',
+    ['player frame'] = '1.800 ms/s, 2.000 ms/call (9 calls).',
     ['party frames'] = '2.700 ms/s, 3.000 ms/call (9 calls).',
     ['buffs'] = '3.600 ms/s, 4.000 ms/call (9 calls).',
 }) do
     local row = 'smooth / ' .. label .. ': ' .. expected
     assert(output:find(row, 1, true), 'Missing or incorrect detailed timing: ' .. row)
 end
-assert(output:find('smooth: 11.250 ms/s, 12.500 ms/call (9 calls).', 1, true),
+assert(output:find('smooth: 9.450 ms/s, 10.500 ms/call (9 calls).', 1, true),
     'Smooth total must include shared sampling and retain its original meaning')
 local reads = timerReads
 now = 41

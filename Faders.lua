@@ -308,7 +308,7 @@ local aurasCurved = false
 local resourceWeight = 0
 local samplingPower = false
 local sampledKind
-local sampledPlayerShow, sampledPlayerThresholds
+local sampledPlayerShow, sampledPlayerThresholds, sampledPlayerStyle
 local thresholdRead = false
 local sampledThresholdKind, sampledThresholdPercent
 local powerWeights, powerAlphas = {}, {}
@@ -337,13 +337,21 @@ local function PlayerDeathBlocked()
     return dead and true or false
 end
 
+local function ReadPlayerStyle()
+    if samplingPower and sampledPlayerStyle ~= nil then return sampledPlayerStyle end
+    local style = ns.PlayerStyle()
+    if samplingPower then sampledPlayerStyle = style end
+    return style
+end
+
 -- Boolean show for the portrait. Health and power stay on the curves below.
 -- Edit mode shows it even when the player frame is off.
-local function PlayerShouldShow()
+local function PlayerShouldShow(blocked)
     if samplingPower and sampledPlayerShow ~= nil then return sampledPlayerShow end
     if ns.InEditMode() then return true end
-    if DeadTargetBlocked() then return false end
-    if ns.PlayerStyle() ~= "classic" then return false end
+    if blocked == nil then blocked = DeadTargetBlocked() end
+    if blocked then return false end
+    if ReadPlayerStyle() ~= "classic" then return false end
     return ns.Glancing()
         or ns.InCombat()
         or ns.InForcedInstance()
@@ -579,7 +587,7 @@ end
 
 local function PlayerUsesThresholds()
     if samplingPower and sampledPlayerThresholds ~= nil then return sampledPlayerThresholds end
-    if ns.PlayerStyle() ~= "classic" then return false end
+    if ReadPlayerStyle() ~= "classic" then return false end
     local kind, percent = ReadThreshold()
     return percent ~= nil and (kind == "health" or RestingPower() ~= nil)
 end
@@ -689,29 +697,29 @@ local function WatchPetParent(pet)
     if pet._quietParentHook or type(pet.SetParent) ~= "function" or type(hooksecurefunc) ~= "function" then
         return pet._quietParentHook and true or false
     end
-    local before = pet.SetParent
     local ok = pcall(hooksecurefunc, pet, "SetParent", function(self)
         petAnchor[self] = nil
     end)
-    if ok and pet.SetParent ~= before then
-        pet._quietParentHook = true
-    end
+    if ok then pet._quietParentHook = true end
     return pet._quietParentHook and true or false
 end
 
 local function PetUnderPlayer(pet, player)
-    if not ns.Usable(pet) or not player then return false end
+    if not ns.Usable(pet) or not player or type(pet.GetParent) ~= "function" then return false end
     local known = petAnchor[pet]
     if known and known.player == player then return known.under end
-    local under = Under(pet, player) and true or false
-    if WatchPetParent(pet) then
+    local ok, parent = pcall(pet.GetParent, pet)
+    if not ok then return false end
+    local direct = parent == player or parent == UIParent or parent == nil
+    local under = parent == player or (not direct and Under(pet, player)) or false
+    -- Intermediate ancestors can move without the pet's SetParent hook firing.
+    if direct and WatchPetParent(pet) then
         petAnchor[pet] = { player = player, under = under }
     end
     return under
 end
 
 local function IsolatePet(pet, player, show)
-    if not PetUnderPlayer(pet, player) then return nil, true end
     if inheritedPets[pet] then return inheritedPets[pet], true end
     if type(pet.IsIgnoringParentAlpha) ~= "function" then
         ns.Report("pet alpha inheritance", "Inheritance getter missing")
@@ -758,8 +766,8 @@ function ns.RestorePlayerFader()
 end
 
 local function UpdatePlayer(elapsed)
-    local show = PlayerShouldShow() and true or false
     local blocked = DeadTargetBlocked()
+    local show = PlayerShouldShow(blocked) and true or false
     local deathBlocked = PlayerDeathBlocked()
     local useCurve = PlayerUsesThresholds()
     if samplingPower then sampledPlayerShow, sampledPlayerThresholds = show, useCurve end
@@ -767,7 +775,9 @@ local function UpdatePlayer(elapsed)
     local alpha = useCurve and EvalPlayerThresholds(playerWeight) or nil
     local player = PlayerFrame
     local pet = PetFrame
-    local inherited, canHidePortrait = IsolatePet(pet, player, show)
+    local under = PetUnderPlayer(pet, player)
+    local inherited, canHidePortrait = nil, true
+    if under then inherited, canHidePortrait = IsolatePet(pet, player, show) end
     local target = TargetFrame
     if IsFadeable(target) then
         if blocked then
@@ -781,7 +791,7 @@ local function UpdatePlayer(elapsed)
         local petAlpha = useCurve and EvalPlayerThresholds(playerWeight, inherited.alpha, "pet")
             or inherited.weight * inherited.alpha
         PaintSecret(pet, petAlpha)
-    elseif not Under(pet, player) then
+    elseif not under then
         if alpha ~= nil then PaintSecret(pet, alpha)
         else PaintNumeric(pet, show, elapsed) end
     end
@@ -1012,7 +1022,7 @@ end
 
 function ns.UpdateSmooth(elapsed, profile)
     samplingPower = false
-    sampledPlayerShow, sampledPlayerThresholds = nil, nil
+    sampledPlayerShow, sampledPlayerThresholds, sampledPlayerStyle = nil, nil, nil
     thresholdRead = false
     local ok, kind = pcall(ReadRestingPower)
     sampledKind = ok and kind or nil
