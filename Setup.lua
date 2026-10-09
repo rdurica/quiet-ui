@@ -198,11 +198,42 @@ local function GoldEdge(widget)
     return ok
 end
 
+-- A separate texture keeps every dialog opaque even without BackdropTemplate.
+function ns.DialogBackground(widget)
+    local fill = widget:CreateTexture(nil, "BACKGROUND", nil, -8)
+    fill:SetAllPoints(widget)
+    fill:SetColorTexture(0.05, 0.05, 0.05, 1)
+    return fill
+end
+
+function ns.RaiseDialog(widget)
+    widget:SetFrameStrata("DIALOG")
+    if type(widget.Raise) == "function" then pcall(widget.Raise, widget) end
+end
+
 local function SkinSmall(button)
-    button._quietGold = GoldEdge(button) and true or false
-    if not button._quietGold then Flat(button, 0.9) end
-    if button._quietGold and button.label and button.label.SetTextColor then
-        button.label:SetTextColor(1, 0.82, 0.35)
+    Flat(button, 1)
+    ns.DialogBackground(button)
+    -- Texture edges also work when SetBackdrop is unavailable.
+    for _, edge in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+        local line = button:CreateTexture(nil, "BORDER")
+        line:SetColorTexture(0.85, 0.85, 0.85, 0.35)
+        if edge == "TOP" or edge == "BOTTOM" then
+            line:SetHeight(1)
+            line:SetPoint(edge .. "LEFT", 0, 0)
+            line:SetPoint(edge .. "RIGHT", 0, 0)
+        else
+            line:SetWidth(1)
+            line:SetPoint("TOP" .. edge, 0, 0)
+            line:SetPoint("BOTTOM" .. edge, 0, 0)
+        end
+    end
+    if button.label and button.label.SetTextColor then
+        button.label:SetTextColor(0.9, 0.9, 0.9)
+    end
+    if type(button.HookScript) == "function" then
+        button:HookScript("OnEnable", function(self) self:SetAlpha(1) end)
+        button:HookScript("OnDisable", function(self) self:SetAlpha(0.45) end)
     end
 end
 
@@ -217,7 +248,8 @@ local function PaintBox(box, on)
 end
 
 local function ButtonText(button, text)
-    if button.label then button.label:SetText(text) else button:SetText(text) end
+    if button.label then button.label:SetText(text) end
+    if button.SetText then button:SetText(text) end
 end
 
 local function Paint()
@@ -237,6 +269,8 @@ local function Paint()
             frame.renamePreset:Disable()
             frame.deletePreset:Disable()
         end
+        frame.renamePreset:SetAlpha(presetName and 1 or 0.45)
+        frame.deletePreset:SetAlpha(selectedPresetId and 1 or 0.45)
     end
     for _, row in ipairs(frame.rows) do
         PaintBox(row.always.box, draft[row.key])
@@ -337,27 +371,13 @@ local function Paint()
     if frame.tabs then
         for _, tab in ipairs(frame.tabs) do
             local on = tab.id == frame.page
-            if tab._quietGold and tab.SetBackdropBorderColor then
-                if on then
-                    tab:SetBackdropBorderColor(1, 0.86, 0.4, 1)
-                else
-                    tab:SetBackdropBorderColor(0.55, 0.45, 0.25, 0.85)
-                end
-            elseif tab.SetBackdropBorderColor then
-                if on then
-                    tab:SetBackdropBorderColor(0.95, 0.75, 0.25, 0.9)
-                else
-                    tab:SetBackdropBorderColor(0.85, 0.85, 0.85, 0.35)
-                end
+            if tab.SetBackdropBorderColor then
+                if on then tab:SetBackdropBorderColor(0.95, 0.75, 0.25, 1)
+                else tab:SetBackdropBorderColor(0.85, 0.85, 0.85, 0.35) end
             end
             if tab.label and tab.label.SetTextColor then
-                if on then
-                    tab.label:SetTextColor(1, 0.86, 0.35)
-                elseif tab._quietGold then
-                    tab.label:SetTextColor(0.85, 0.8, 0.65)
-                else
-                    tab.label:SetTextColor(0.85, 0.85, 0.85)
-                end
+                if on then tab.label:SetTextColor(0.95, 0.75, 0.25)
+                else tab.label:SetTextColor(0.85, 0.85, 0.85) end
             end
         end
     end
@@ -537,30 +557,22 @@ local function Write()
 end
 
 local function ActionButton(parent, text, onClick)
-    -- A plain Button also has SetText, so the template has to be the thing that succeeded.
-    local ok, button = pcall(CreateFrame, "Button", nil, parent, "UIPanelButtonTemplate")
-    if ok and button then
-        button:SetSize(112, 22)
-        button:SetText(text)
-        local label = button.GetFontString and button:GetFontString()
-        if label and label.SetFontObject then
-            pcall(label.SetFontObject, label, "GameFontNormalSmall")
-        end
-        button:SetScript("OnClick", onClick)
-        return button
-    end
-    button = Backdropped("Button", nil, parent)
+    local button = Backdropped("Button", nil, parent)
     button:SetSize(112, 22)
-    if not GoldEdge(button) then Flat(button, 0.9) end
     button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     button.label:SetPoint("CENTER")
-    button.label:SetText(text)
+    if type(button.SetFontString) == "function" then button:SetFontString(button.label) end
+    ButtonText(button, text)
+    SkinSmall(button)
     local highlight = button:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetAllPoints()
     highlight:SetColorTexture(0.95, 0.75, 0.25, 0.2)
     button:SetScript("OnClick", onClick)
     return button
 end
+
+-- Layout resolves this at run time, after Setup has loaded.
+ns.DialogButton = ActionButton
 
 local function CheckMark(parent)
     -- The loose checkbox textures draw only the tick on this client. The template keeps the box.
@@ -923,6 +935,8 @@ local function GoldWindow(widget)
     return ok
 end
 
+ns.DialogGoldWindow = GoldWindow
+
 local function CloseButton(parent, metrics)
     local button = Backdropped("Button", nil, parent)
     button:SetSize(22, 22)
@@ -954,6 +968,7 @@ local function SelectMenu(owner, key, anchor, entries)
         menu:SetFrameStrata("DIALOG")
         menu:SetFrameLevel(owner:GetFrameLevel() + 60)
         Flat(menu, 1)
+        ns.DialogBackground(menu)
         if menu.SetBackdropBorderColor then menu:SetBackdropBorderColor(0.95, 0.75, 0.25, 0.7) end
         menu:EnableMouse(true)
         menu.items = {}
@@ -1048,6 +1063,7 @@ local function PresetDialog(owner, title, text, accept)
             dialog.title:SetText("Shared preset")
             dialog.title:SetPoint("TOP", 0, -26)
         end
+        ns.DialogBackground(dialog)
         dialog.blocker = blocker
         dialog:SetScript("OnHide", function() blocker:Hide() end)
         dialog:SetPoint("CENTER")
@@ -1111,6 +1127,7 @@ local function CreateSetup()
     widget:SetSize(metrics.width, -metrics.pageY + MaxPage() + metrics.footer)
     widget:SetPoint("CENTER")
     widget:SetFrameStrata("DIALOG")
+    ns.DialogBackground(widget)
     widget:EnableMouse(true)
     widget:Hide()
     EnsureEscape(widget)
@@ -1496,6 +1513,7 @@ function ns.ShowSetup()
         ApplyPortrait(frame)
     end
     frame:Show()
+    ns.RaiseDialog(frame)
     ShowPage(frame, frame.page or "general")
 end
 

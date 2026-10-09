@@ -409,6 +409,7 @@ local prompt
 
 local CHROME = {
     portrait = { width = 400, side = 26, textY = -96, buttonY = 18, height = 188 },
+    gold = { width = 420, side = 28, titleY = -26, textY = -56, buttonY = 28, height = 166 },
     flat = { width = 380, side = 16, titleY = -14, textY = -40, buttonY = 16, height = 132 },
 }
 
@@ -498,32 +499,6 @@ local function SetButtonLabel(button, text)
     if button.SetText then button:SetText(text) end
 end
 
-local function PromptButton(parent, text, onClick)
-    -- A plain Button also has SetText, so the template has to be the thing that succeeded.
-    local ok, button = pcall(CreateFrame, "Button", nil, parent, "UIPanelButtonTemplate")
-    if ok and button then
-        button:SetSize(112, 22)
-        button:SetText(text)
-        local label = button.GetFontString and button:GetFontString()
-        if label and label.SetFontObject then
-            pcall(label.SetFontObject, label, "GameFontNormalSmall")
-        end
-        button:SetScript("OnClick", onClick)
-        return button
-    end
-    button = Backdropped("Button", nil, parent)
-    button:SetSize(112, 22)
-    Flat(button, 0.9)
-    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    button.label:SetPoint("CENTER")
-    button.label:SetText(text)
-    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(0.95, 0.75, 0.25, 0.2)
-    button:SetScript("OnClick", onClick)
-    return button
-end
-
 local function CreatePrompt()
     local ok, frame = pcall(CreateFrame, "Frame", nil, UIParent, "PortraitFrameTemplate")
     local kind = "flat"
@@ -537,8 +512,10 @@ local function CreatePrompt()
         if not (ok and frame) then
             frame = Backdropped("Frame", nil, UIParent)
         end
-        Flat(frame, 0.9)
+        if ns.DialogGoldWindow(frame) then kind = "gold"
+        else Flat(frame, 1) end
     end
+    ns.DialogBackground(frame)
     local metrics = CHROME[kind]
     frame:ClearAllPoints()
     frame:SetSize(metrics.width, metrics.height)
@@ -554,7 +531,7 @@ local function CreatePrompt()
     frame.text:SetPoint("TOP", 0, metrics.textY)
     frame.text:SetWidth(metrics.width - metrics.side * 2)
     frame.text:SetJustifyH("CENTER")
-    frame.yes = PromptButton(frame, "Add", function()
+    frame.yes = ns.DialogButton(frame, "Add", function()
         frame:Hide()
         if InCombatLockdown() then
             ns.Print("layout can not change in combat, /reload after combat to try again")
@@ -567,7 +544,7 @@ local function CreatePrompt()
             ns.Report("layout", err)
         end
     end)
-    frame.no = PromptButton(frame, "Not now", function()
+    frame.no = ns.DialogButton(frame, "Not now", function()
         frame:Hide()
         MarkAnswered()
     end)
@@ -586,6 +563,7 @@ local function Ask(text, yesLabel)
     prompt.text:SetText(text)
     SetButtonLabel(prompt.yes, yesLabel)
     prompt:Show()
+    ns.RaiseDialog(prompt)
 end
 
 -- Returns true once the check could run, so it is not repeated this session.
