@@ -1646,14 +1646,18 @@ local function CreateMinimap()
             return
         end
         if click == "LeftButton" then
-            ns.ShowSetup()
+            if frame and frame:IsShown() then
+                frame:Hide()
+            else
+                ns.ShowSetup()
+            end
         end
     end)
     button:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("QuietUI", 1, 1, 1)
-        GameTooltip:AddLine("Left click: open setup", 0.85, 0.85, 0.85)
+        GameTooltip:AddLine("Left click: toggle setup", 0.85, 0.85, 0.85)
         GameTooltip:AddLine("Drag: move", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
