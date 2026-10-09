@@ -1,11 +1,14 @@
 local _, ns = ...
 
 local active, baseline, dirty = false, false, false
+local noticesOn
 local snapshots, accepted, acceptedShown, queue = {}, {}, {}, {}
 local current, frame, titleText, bodyText
-local drawn, drawnWidth, anchoredTracker
+local drawn, drawnWidth
 local clock, retryUntil, retryAt = 0, 0, 0
 local reported = false
+-- Default matches the tracker. Smaller is only a little under it; larger is the roomier notice.
+local TEXT_SCALE = { smaller = 0.9, default = 1, larger = 1.2 }
 
 local function Secret(value)
     return ns.IsSecret and ns.IsSecret(value)
@@ -19,6 +22,13 @@ local function Call(fn, ...)
         reported = true
         ns.Report("quest notice", a)
     end
+end
+
+-- Placement probes are optional. A missing tracker piece falls back quietly.
+local function Try(fn, ...)
+    if type(fn) ~= "function" then return end
+    local ok, a, b, c, d = pcall(fn, ...)
+    if ok then return a, b, c, d end
 end
 
 local function Number(value)
@@ -203,28 +213,138 @@ local function Hide()
     if frame and frame:IsShown() then frame:Hide(); frame:SetAlpha(0) end
 end
 
-local function Reset()
+local hoverDismissed = false
+
+local function ClearNotice()
     snapshots, accepted, acceptedShown, queue = {}, {}, {}, {}
-    current, baseline = nil, false
-    dirty, retryUntil, retryAt = true, clock + 10, clock
+    current, baseline, dirty, hoverDismissed = nil, false, false, false
     Hide()
 end
 
+local function Reset()
+    ClearNotice()
+    dirty, retryUntil, retryAt = true, clock + 10, clock
+end
+
+-- Missing means on. Only an explicit false turns notices off.
+local function Enabled()
+    return type(ns.QuestNoticeEnabled) ~= "function" or ns.QuestNoticeEnabled() ~= false
+end
+
+-- Center-screen quest lines. Rewards and failures stay on the error frame.
+local CENTER_QUEST = {}
+local centerProxy, centerHandler, centerOwned
+
+local function CenterType(name, fallback)
+    local value = _G[name]
+    if type(value) == "number" then return value end
+    return fallback
+end
+
+for _, entry in ipairs({
+    { "LE_GAME_ERR_QUEST_ACCEPTED_S", 179 },
+    { "LE_GAME_ERR_QUEST_COMPLETE_S", 180 },
+    { "LE_GAME_ERR_QUEST_OBJECTIVE_COMPLETE_S", 303 },
+    { "LE_GAME_ERR_QUEST_UNKNOWN_COMPLETE", 304 },
+    { "LE_GAME_ERR_QUEST_ADD_KILL_SII", 305 },
+    { "LE_GAME_ERR_QUEST_ADD_FOUND_SII", 306 },
+    { "LE_GAME_ERR_QUEST_ADD_ITEM_SII", 307 },
+    { "LE_GAME_ERR_QUEST_ADD_PLAYER_KILL_SII", 308 },
+}) do
+    CENTER_QUEST[CenterType(entry[1], entry[2])] = true
+end
+
+local function ShowCenter(event, messageType, message)
+    if not UIErrorsFrame then return end
+    if type(centerHandler) == "function" then
+        centerHandler(UIErrorsFrame, event, messageType, message)
+        return
+    end
+    if type(UIErrorsFrame.AddMessage) ~= "function" then return end
+    if event == "UI_ERROR_MESSAGE" then
+        UIErrorsFrame:AddMessage(message, 1, 0.1, 0.1, 1)
+    else
+        UIErrorsFrame:AddMessage(message, 1, 1, 0, 1)
+    end
+end
+
+local function ReleaseCenterEvents()
+    if centerProxy then
+        if type(centerProxy.UnregisterAllEvents) == "function" then
+            pcall(centerProxy.UnregisterAllEvents, centerProxy)
+        else
+            pcall(centerProxy.UnregisterEvent, centerProxy, "UI_INFO_MESSAGE")
+            pcall(centerProxy.UnregisterEvent, centerProxy, "UI_ERROR_MESSAGE")
+        end
+        if type(centerProxy.SetScript) == "function" then centerProxy:SetScript("OnEvent", nil) end
+        centerProxy = nil
+    end
+    if centerOwned and UIErrorsFrame and type(UIErrorsFrame.RegisterEvent) == "function" then
+        pcall(UIErrorsFrame.RegisterEvent, UIErrorsFrame, "UI_INFO_MESSAGE")
+        pcall(UIErrorsFrame.RegisterEvent, UIErrorsFrame, "UI_ERROR_MESSAGE")
+    end
+    centerHandler, centerOwned = nil, false
+end
+
+local function InstallCenterFilter()
+    if centerOwned or not UIErrorsFrame or type(UIErrorsFrame.UnregisterEvent) ~= "function" then return end
+    if type(CreateFrame) ~= "function" then return end
+    local infoOk = pcall(UIErrorsFrame.UnregisterEvent, UIErrorsFrame, "UI_INFO_MESSAGE")
+    local errorOk = pcall(UIErrorsFrame.UnregisterEvent, UIErrorsFrame, "UI_ERROR_MESSAGE")
+    if not infoOk and not errorOk then return end
+    if type(UIErrorsFrame.GetScript) == "function" then
+        local ok, handler = pcall(UIErrorsFrame.GetScript, UIErrorsFrame, "OnEvent")
+        if ok and type(handler) == "function" then centerHandler = handler end
+    end
+    local createdOk, created = pcall(CreateFrame, "Frame")
+    if not createdOk or not created or type(created.RegisterEvent) ~= "function" or type(created.SetScript) ~= "function" then
+        if infoOk and type(UIErrorsFrame.RegisterEvent) == "function" then
+            pcall(UIErrorsFrame.RegisterEvent, UIErrorsFrame, "UI_INFO_MESSAGE")
+        end
+        if errorOk and type(UIErrorsFrame.RegisterEvent) == "function" then
+            pcall(UIErrorsFrame.RegisterEvent, UIErrorsFrame, "UI_ERROR_MESSAGE")
+        end
+        centerHandler = nil
+        return
+    end
+    centerProxy = created
+    centerProxy:SetScript("OnEvent", function(_, event, messageType, message)
+        if active and Enabled() and not Secret(messageType) and CENTER_QUEST[messageType] then return end
+        ShowCenter(event, messageType, message)
+    end)
+    local heardInfo = pcall(centerProxy.RegisterEvent, centerProxy, "UI_INFO_MESSAGE")
+    local heardError = pcall(centerProxy.RegisterEvent, centerProxy, "UI_ERROR_MESSAGE")
+    if not heardInfo and not heardError then
+        centerOwned = true
+        ReleaseCenterEvents()
+        return
+    end
+    centerOwned = true
+end
+
+local function Sync()
+    local on = Enabled()
+    if on == noticesOn then return on end
+    noticesOn = on
+    if on then Reset() else ClearNotice() end
+    return on
+end
+
 function ns.ApplyQuestNotice()
-    if active then return end
     active = true
-    Reset()
+    Sync()
+    InstallCenterFilter()
 end
 
 function ns.RestoreQuestNotice()
     active = false
-    snapshots, accepted, acceptedShown, queue = {}, {}, {}, {}
-    current, baseline, dirty = nil, false, false
-    Hide()
+    noticesOn = nil
+    ClearNotice()
+    ReleaseCenterEvents()
 end
 
 function ns.QuestNoticeEvent(event, first, second)
-    if not active then return end
+    if not active or not Sync() then return end
     if event == "PLAYER_ENTERING_WORLD" then Reset(); return end
     if event ~= "QUEST_ACCEPTED" and event ~= "QUEST_LOG_UPDATE" and event ~= "QUEST_WATCH_UPDATE" then return end
     if event == "QUEST_ACCEPTED" then
@@ -244,63 +364,100 @@ end
 
 local function EnsureFrame()
     if frame then return frame end
-    local ok, created = pcall(CreateFrame, "Frame", nil, UIParent, "BackdropTemplate")
-    if not ok then ok, created = pcall(CreateFrame, "Frame", nil, UIParent) end
+    local ok, created = pcall(CreateFrame, "Frame", nil, UIParent)
     if not ok or not created then return end
     frame = created
     Call(frame.EnableMouse, frame, false)
     Call(frame.SetMouseClickEnabled, frame, false)
     Call(frame.SetMouseMotionEnabled, frame, false)
     Call(frame.SetFrameStrata, frame, "MEDIUM")
-    if type(frame.SetBackdrop) == "function" then
-        frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        frame:SetBackdropColor(0.05, 0.05, 0.05, 0.75)
-        frame:SetBackdropBorderColor(0.85, 0.85, 0.85, 0.35)
-    else
-        local background = frame:CreateTexture(nil, "BACKGROUND")
-        background:SetAllPoints(frame)
-        background:SetColorTexture(0.05, 0.05, 0.05, 0.75)
-        for _, edge in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-            local border = frame:CreateTexture(nil, "BORDER")
-            border:SetColorTexture(0.85, 0.85, 0.85, 0.35)
-            if edge == "TOP" or edge == "BOTTOM" then
-                border:SetPoint(edge .. "LEFT", frame, edge .. "LEFT")
-                border:SetPoint(edge .. "RIGHT", frame, edge .. "RIGHT")
-                border:SetHeight(1)
-            else
-                border:SetPoint("TOP" .. edge, frame, "TOP" .. edge)
-                border:SetPoint("BOTTOM" .. edge, frame, "BOTTOM" .. edge)
-                border:SetWidth(1)
-            end
-        end
-    end
     titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    titleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -10)
+    titleText:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
     titleText:SetJustifyH("LEFT")
     titleText:SetWordWrap(true)
     bodyText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bodyText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, -6)
+    bodyText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, 0)
     bodyText:SetJustifyH("LEFT")
     bodyText:SetWordWrap(true)
     Hide()
     return frame
 end
 
+local function ScaleOf(region)
+    local scale = Try(region.GetEffectiveScale, region)
+    if Number(scale) and scale > 0 then return scale end
+    return 1
+end
+
+local function Offset(value)
+    if value == nil then return 0 end
+    if Number(value) then return value end
+end
+
+-- First slot under the quest header. Individual quest blocks are not consulted.
+local function FirstSlot(tracker)
+    local module = QuestObjectiveTracker
+    if not (module and ns.Usable(module)) then module = QUEST_TRACKER_MODULE end
+    if module and ns.Usable(module) then
+        local contents = module.ContentsFrame
+        local dx, dy = Offset(module.blockOffsetX), Offset(module.fromHeaderOffsetY)
+        if contents and ns.Usable(contents) and dx and dy
+            and Number(Try(contents.GetLeft, contents)) and Number(Try(contents.GetTop, contents)) then
+            return contents, "TOPLEFT", dx, dy
+        end
+    end
+    local header = tracker.Header
+    local text = type(header) == "table" and header.Text
+    if text and ns.Usable(text) and Number(Try(text.GetLeft, text)) and Number(Try(text.GetBottom, text)) then
+        return text, "BOTTOMLEFT", 0, 0
+    end
+    return tracker, "TOPLEFT", 0, 0
+end
+
+local function Style(region, object, anchorScale)
+    if type(object) ~= "table" or not ns.Usable(object) then return end
+    local path, size, flags = Try(object.GetFont, object)
+    local r, g, b, a = Try(object.GetTextColor, object)
+    local noticeScale = ScaleOf(region)
+    local chosen = type(ns.QuestNoticeSize) == "function" and ns.QuestNoticeSize() or "default"
+    local textScale = TEXT_SCALE[chosen] or TEXT_SCALE.default
+    if type(path) == "string" and Number(size) and size > 0 then
+        region:SetFont(path, size * textScale * anchorScale / noticeScale, type(flags) == "string" and flags or "")
+    end
+    if Number(r) and Number(g) and Number(b) then
+        region:SetTextColor(r, g, b, Number(a) and a or 1)
+    end
+end
+
+-- The rectangle, not the frame under the cursor. The notice sits in that area and must not keep itself up.
+local function MouseOver(region)
+    if not region or not ns.Usable(region) then return false end
+    return Try(region.IsMouseOver, region) == true
+end
+
+local function AreaHover()
+    local tracker = Tracker()
+    if not tracker then return false end
+    if ns.QuestTrackerHovered and ns.QuestTrackerHovered() then return true end
+    return ns.Hit(tracker) or MouseOver(tracker)
+end
+
 local function Draw(alpha)
     local tracker = Tracker()
-    if not tracker or ns.Glancing() or ns.InEditMode() or ns.Pinned("quests") or ns.OnlyOnHover("quests")
-        or (ns.QuestTrackerHovered and ns.QuestTrackerHovered()) or ns.Hit(tracker) then Hide(); return end
+    if not tracker or ns.Glancing() or ns.InEditMode() or ns.Pinned("quests") or ns.OnlyOnHover("quests") then Hide(); return end
     local width = Call(tracker.GetWidth, tracker)
     if not Number(width) or width <= 20 or not EnsureFrame() then Hide(); return end
-    if anchoredTracker ~= tracker then
-        frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", tracker, "TOPLEFT", 0, 0)
-        anchoredTracker = tracker
-    end
+    local anchor, point, dx, dy = FirstSlot(tracker)
+    local anchorScale = ScaleOf(anchor)
+    local frameScale = ScaleOf(frame)
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", anchor, point, dx * anchorScale / frameScale, dy * anchorScale / frameScale)
+    frame:SetWidth(width)
+    titleText:SetWidth(width)
+    bodyText:SetWidth(width)
+    Style(titleText, ObjectiveTrackerHeaderFont or GameFontNormal, anchorScale)
+    Style(bodyText, ObjectiveTrackerFont or GameFontHighlightSmall, anchorScale)
     if drawn ~= current or drawnWidth ~= width then
-        frame:SetWidth(width)
-        titleText:SetWidth(width - 20)
-        bodyText:SetWidth(width - 20)
         titleText:SetText(current.title)
         local lines = {}
         if current.status then lines[#lines + 1] = current.status end
@@ -313,7 +470,9 @@ local function Draw(alpha)
             lines[#lines + 1] = text
         end
         bodyText:SetText(table.concat(lines, "\n"))
-        frame:SetHeight(titleText:GetStringHeight() + bodyText:GetStringHeight() + 26)
+        local titleHeight = titleText:GetStringHeight()
+        local bodyHeight = bodyText:GetStringHeight()
+        frame:SetHeight((Number(titleHeight) and titleHeight or 0) + (Number(bodyHeight) and bodyHeight or 0))
         drawn, drawnWidth = current, width
     end
     frame:SetAlpha(alpha)
@@ -324,12 +483,23 @@ function ns.UpdateQuestNotice(elapsed)
     if not active then return end
     elapsed = elapsed or 0
     clock = clock + elapsed
+    if not Sync() then return end
     if dirty and clock >= retryAt then
         local settled = ReadChanges()
         dirty = not settled and clock < retryUntil
         retryAt = clock + 0.2
     end
     if not current then Hide(); return end
+    if AreaHover() then
+        if not hoverDismissed then
+            current = table.remove(queue, 1)
+            drawn, drawnWidth = nil, nil
+            hoverDismissed = true
+        end
+        Hide()
+        return
+    end
+    hoverDismissed = false
     current.age = current.age + elapsed
     if current.age >= 5.3 then
         current = table.remove(queue, 1)

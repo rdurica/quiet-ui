@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- One window: layout, HUD visibility, bars, group visibility, player, chat and Glance.
+-- One window: layout, HUD visibility, bars, group visibility, player, chat, quest updates and Glance.
 -- The frame is named so UISpecialFrames can close it on Escape.
 -- The window keeps the tallest page, so switching tabs does not resize it.
 
@@ -103,6 +103,18 @@ end
 -- Missing means on. Only an explicit false lets debuffs fade.
 function ns.AlwaysShowDebuffs()
     return (ns.Settings and ns.Settings() or ns.CharDB()).alwaysShowDebuffs ~= false
+end
+
+-- Missing means on. Only an explicit false turns quest update notices off.
+function ns.QuestNoticeEnabled()
+    return (ns.Settings and ns.Settings() or ns.CharDB()).questNotice ~= false
+end
+
+-- Missing means the tracker size. Only "smaller" and "larger" change it.
+function ns.QuestNoticeSize()
+    local size = (ns.Settings and ns.Settings() or ns.CharDB()).questNoticeSize
+    if size == "smaller" or size == "larger" then return size end
+    return "default"
 end
 
 -- Missing means on. Only an explicit false turns the modern chat off.
@@ -339,6 +351,13 @@ local function Paint()
     if frame.alwaysShowDebuffs then
         PaintBox(frame.alwaysShowDebuffs.box, draft.alwaysShowDebuffs)
     end
+    if frame.questNotice then
+        PaintBox(frame.questNotice.box, draft.questNotice)
+    end
+    if frame.questNoticeSize then
+        local size = draft.questNoticeSize
+        frame.questNoticeSize.value:SetText(size == "smaller" and "Smaller" or size == "larger" and "Larger" or "Default")
+    end
     if frame.chat then
         PaintBox(frame.chat.box, draft.chat)
     end
@@ -448,6 +467,9 @@ local function ReadDraft(source)
     draft.requireLivingTarget = source.requireLivingTarget == true
     draft.groupAuras = source.groupAuras ~= false
     draft.alwaysShowDebuffs = source.alwaysShowDebuffs ~= false
+    draft.questNotice = source.questNotice ~= false
+    local noticeSize = source.questNoticeSize
+    draft.questNoticeSize = (noticeSize == "smaller" or noticeSize == "larger") and noticeSize or "default"
     draft.chat = source.chat ~= false
     local fade = source.chatFade
     draft.chatFade = type(fade) == "number" and fade == fade and math.floor(math.max(0, math.min(60, fade)) / 5) * 5 or 10
@@ -541,6 +563,10 @@ local function DraftSettings()
         db.groupAuras = false
     end
     if not draft.alwaysShowDebuffs then db.alwaysShowDebuffs = false end
+    if not draft.questNotice then db.questNotice = false end
+    if draft.questNoticeSize == "smaller" or draft.questNoticeSize == "larger" then
+        db.questNoticeSize = draft.questNoticeSize
+    end
     if draft.chat then
         db.chat = nil
     else
@@ -652,6 +678,20 @@ local function Choice(parent, text, onClick)
     highlight:SetColorTexture(0.95, 0.75, 0.25, 0.12)
     button:SetScript("OnClick", onClick)
     return button
+end
+
+local NOTICE_SIZES = { "smaller", "default", "larger" }
+
+local function NudgeNoticeSize(sign)
+    local index = 2
+    for i, size in ipairs(NOTICE_SIZES) do
+        if size == draft.questNoticeSize then index = i break end
+    end
+    index = index + sign
+    if index < 1 then index = 1 end
+    if index > #NOTICE_SIZES then index = #NOTICE_SIZES end
+    draft.questNoticeSize = NOTICE_SIZES[index]
+    Paint()
 end
 
 local function NudgeFade(delta)
@@ -869,7 +909,7 @@ local TABS = {
     { id = "bars", label = "Bars", height = 308 },
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
-    { id = "chat", label = "Chat", height = 72 },
+    { id = "chat", label = "Misc.", height = 176 },
     { id = "info", label = "Info", height = 148 },
 }
 
@@ -1497,6 +1537,19 @@ local function CreateSetup()
         NudgeFade(sign * 5)
     end)
     widget.fade:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -44)
+    widget.questHeader = Section(chat, "Quests",
+        "Shows the quest you just accepted, changed, or completed at the top of the quest area for a few seconds. The rest of the tracker stays hidden, and WoW's center-screen quest text stays hidden while this is on.")
+    widget.questHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -98)
+    widget.questNotice = Choice(chat, "Quest updates", function()
+        draft.questNotice = not draft.questNotice
+        Paint()
+    end)
+    widget.questNotice:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -118)
+    widget.questNoticeSize = Stepper(chat, "Text size", function(sign)
+        NudgeNoticeSize(sign)
+    end)
+    widget.questNoticeSize:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -144)
+    widget.questNoticeSize.value:SetWidth(72)
 
     local info = widget.pages[7]
     widget.about = Section(info, "About")

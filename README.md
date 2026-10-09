@@ -96,8 +96,9 @@ open. **X** or **Escape** closes it without saving pending changes.
   target's nameplate while in range and the action bars are down. Choose 10 yards,
   28 yards, or Spell; leave the spell name empty to use the longest matching spell
   on bar 1. Choose Unfriendly or Friendly for the target type.
-- **Chat:** Toggle modern chat and choose the fade delay. **Stay** keeps messages
-  visible at the bottom.
+- **Misc.:** Toggle modern chat and choose the fade delay. **Stay** keeps messages
+  visible at the bottom. Below that, **Quest updates** briefly shows the quest you
+  just accepted, changed, or completed. **Text size** is Default, Smaller, or Larger.
 - **Info:** A short guide to QuietUI and Glance.
 
 With a preset selected, **Save** updates its settings for every character using
