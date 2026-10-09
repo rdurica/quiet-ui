@@ -15,6 +15,10 @@ local function Call(fn, ...)
     if type(fn) ~= "function" then return end
     local ok, a, b, c, d, e, f, g, h = pcall(fn, ...)
     if ok then return a, b, c, d, e, f, g, h end
+    if not reported then
+        reported = true
+        ns.Report("quest notice", a)
+    end
 end
 
 local function Number(value)
@@ -196,7 +200,7 @@ local function ReadChanges()
 end
 
 local function Hide()
-    if frame then frame:Hide(); frame:SetAlpha(0) end
+    if frame and frame:IsShown() then frame:Hide(); frame:SetAlpha(0) end
 end
 
 local function Reset()
