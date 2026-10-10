@@ -142,7 +142,7 @@ function ns.FindFaders(deep)
 end
 
 -- A roster change can swap members without changing the container counts.
-function ns.ForgetParty()
+function ns.ScanParty()
     if ns.AutoHideParty and ns.AutoHideParty() then
         FindPartyFrames()
         partyActive = true
@@ -1005,6 +1005,7 @@ PartyChanged = function()
 end
 
 FindPartyFrames = function()
+    -- Record the signature this scan saw, so the next tick compares against it.
     PartyChanged()
     local candidates = {}
     FindNamed(candidates, PARTY_NAMES)

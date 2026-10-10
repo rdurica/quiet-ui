@@ -385,7 +385,7 @@ handlers.UPDATE_FLOATING_CHAT_WINDOWS = handlers.UPDATE_CHAT_WINDOWS
 
 function handlers.GROUP_ROSTER_UPDATE()
     ns.RefreshWorld()
-    ns.ForgetParty()
+    ns.ScanParty()
     ns.UpdateParty(0)
 end
 
@@ -478,7 +478,7 @@ events:SetScript("OnUpdate", function(_, elapsed)
         return
     end
     elapsed = elapsed or 0
-    local flyout = ns.FlyoutOpen and ns.FlyoutOpen() and true or false
+    local flyout = ns.FlyoutOpen and ns.FlyoutOpen() or false
     local glance = ns.Glancing() and true or false
     local moved = PointerMoved()
     local hud = ns.ConsumeHud()

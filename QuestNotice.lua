@@ -462,11 +462,10 @@ local function Draw(alpha)
     local _, bodySize = Try(bodyFont and bodyFont.GetFont, bodyFont)
     if not Number(titleSize) then titleSize = nil end
     if not Number(bodySize) then bodySize = nil end
-    local key = placed
-    if key.anchor ~= anchor or key.point ~= point or key.dx ~= dx or key.dy ~= dy or key.width ~= width
-        or key.anchorScale ~= anchorScale or key.frameScale ~= frameScale or key.size ~= chosen
-        or key.titleFont ~= titleFont or key.bodyFont ~= bodyFont
-        or key.titleSize ~= titleSize or key.bodySize ~= bodySize then
+    if placed.anchor ~= anchor or placed.point ~= point or placed.dx ~= dx or placed.dy ~= dy or placed.width ~= width
+        or placed.anchorScale ~= anchorScale or placed.frameScale ~= frameScale or placed.size ~= chosen
+        or placed.titleFont ~= titleFont or placed.bodyFont ~= bodyFont
+        or placed.titleSize ~= titleSize or placed.bodySize ~= bodySize then
         frame:ClearAllPoints()
         frame:SetPoint("TOPLEFT", anchor, point, dx * anchorScale / frameScale, dy * anchorScale / frameScale)
         frame:SetWidth(width)
@@ -474,10 +473,10 @@ local function Draw(alpha)
         bodyText:SetWidth(width)
         Style(titleText, titleFont, anchorScale, chosen)
         Style(bodyText, bodyFont, anchorScale, chosen)
-        key.anchor, key.point, key.dx, key.dy, key.width = anchor, point, dx, dy, width
-        key.anchorScale, key.frameScale, key.size = anchorScale, frameScale, chosen
-        key.titleFont, key.bodyFont = titleFont, bodyFont
-        key.titleSize, key.bodySize = titleSize, bodySize
+        placed.anchor, placed.point, placed.dx, placed.dy, placed.width = anchor, point, dx, dy, width
+        placed.anchorScale, placed.frameScale, placed.size = anchorScale, frameScale, chosen
+        placed.titleFont, placed.bodyFont = titleFont, bodyFont
+        placed.titleSize, placed.bodySize = titleSize, bodySize
         -- A new font size changes the measured height.
         drawn = nil
     end
