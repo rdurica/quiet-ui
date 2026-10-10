@@ -98,7 +98,11 @@ local function newFrame(parent, opts)
     if not W.noAnimations then
         function f:CreateAnimationGroup() return newGroup(self) end
     end
-    setmetatable(f, { __index = function() return noop end })
+    -- Fields a frame may lack must read as nil, not as the catch-all method.
+    setmetatable(f, { __index = function(_, k)
+        if k == 'plate' or k == 'parent' or k == 'name' then return nil end
+        return noop
+    end })
     return f
 end
 
@@ -362,10 +366,12 @@ local function test(name, fn)
 end
 
 -- A standard "ore on, mine target shown" setup.
-local function OreShown(texture)
+local function OreShown(...)
+    -- An explicit nil means a missing texture; no argument means the mine texture.
+    local texture = select('#', ...) == 0 and MINE or ...
     Boot({ flags = { ore = true } })
     W.ns.ApplyHighlights()
-    local plate = AddPlate('nameplate1', 'GameObject-0-1-2-3-1731-0001', texture or MINE)
+    local plate = AddPlate('nameplate1', 'GameObject-0-1-2-3-1731-0001', texture)
     Target('GameObject-0-1-2-3-1731-0001', nil, 'GameObject-0-1-2-3-1731-0001')
     return plate
 end
