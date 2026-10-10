@@ -1,4 +1,4 @@
--- Parchment windows settings contracts (Misc. tab, draft, Save, Reset, presets).
+-- Parchment windows settings contracts (Misc. tab, draft, Save, Reset, presets). Off by default.
 local methods = {}
 local make
 function methods:SetScript(event, fn) self.scripts[event] = fn end
@@ -183,39 +183,39 @@ local function texts(object, out)
     return out
 end
 
-case('Clean profile reads on and only explicit false turns it off', function(ns)
-    assert(enabled(ns) == true, 'Missing parchment must default on')
-    for _, value in ipairs({ true, 0, 'off' }) do
+case('Clean profile reads off and only explicit true turns it on', function(ns)
+    assert(enabled(ns) == false, 'Missing parchment must default off')
+    for _, value in ipairs({ false, 0, 1, 'on' }) do
         QuietUICharDB.parchment = value
-        assert(enabled(ns) == true, 'Only false may disable parchment windows')
+        assert(enabled(ns) == false, 'Only true may enable parchment windows, got on for ' .. tostring(value))
     end
-    QuietUICharDB.parchment = false
-    assert(enabled(ns) == false, 'Personal false must disable parchment windows')
+    QuietUICharDB.parchment = true
+    assert(enabled(ns) == true, 'Personal true must enable parchment windows')
 end)
 
 case('parchment is a shared preset key', function(ns)
-    local copy = ns.CopySettings({ parchment = false, unrelated = 'ignore' })
-    assert(copy.parchment == false, 'CopySettings must keep parchment = false (add it to Presets.lua KEYS)')
-    local target = { parchment = false }
+    local copy = ns.CopySettings({ parchment = true, unrelated = 'ignore' })
+    assert(copy.parchment == true, 'CopySettings must keep parchment = true (add it to Presets.lua KEYS)')
+    local target = { parchment = true }
     ns.CopySettings({}, target)
-    assert(target.parchment == nil, 'Omitted parchment must clear a stale false')
-    local id = ns.SavePreset(nil, 'Off', ns.CurrentLayoutRef(), { parchment = false })
-    assert(ns.Presets()[id].settings.parchment == false, 'Preset creation must preserve parchment = false')
+    assert(target.parchment == nil, 'Omitted parchment must clear a stale true')
+    local id = ns.SavePreset(nil, 'On', ns.CurrentLayoutRef(), { parchment = true })
+    assert(ns.Presets()[id].settings.parchment == true, 'Preset creation must preserve parchment = true')
     ns.ActivatePreset(id)
-    assert(QuietUICharDB.parchment == false and enabled(ns) == false, 'Activating an off preset must turn parchment off')
+    assert(QuietUICharDB.parchment == true and enabled(ns) == true, 'Activating an on preset must turn parchment on')
     ns.Presets()[id].settings.parchment = nil
-    QuietUICharDB.parchment = false
-    assert(enabled(ns) == true, 'Accessor must read the active preset, not the personal snapshot')
+    QuietUICharDB.parchment = true
+    assert(enabled(ns) == false, 'Accessor must read the active preset (missing = off), not the personal snapshot')
 end)
 
-case('Misc. shows Parchment windows checked under Quest mobs with an English info text', function(ns)
+case('Misc. shows Parchment windows unchecked under Quest mobs with an English info text', function(ns)
     ns.ShowSetup()
     local ui = QuietUISetup
     local page = ui.pages[6]
     assert(ui.tabs[6].label.text == 'Misc.' and #ui.tabs == 7, 'Misc. stays the sixth of seven tabs')
     local box = choice(ui)
     assert(box.parent == page, 'Parchment windows belongs on Misc.')
-    assert(checked(ui), 'Clean profile must paint Parchment windows checked')
+    assert(not checked(ui), 'Clean profile must paint Parchment windows unchecked')
     local section = header(ui)
     local _, sectionY = offset(section, page)
     local _, boxY = offset(box, page)
@@ -256,87 +256,91 @@ case('Setup keeps one height on every tab and Misc. fits inside the window', fun
     assert(-pageTop - boxY + box.height <= height, 'Parchment windows checkbox must fit inside the window')
 end)
 
-case('Unchecking is a draft; X and Escape discard it', function(ns, applied)
+case('Checking is a draft; X and Escape discard it; an old saved false reads off', function(ns, applied)
     ns.ShowSetup()
     local ui = QuietUISetup
     click(choice(ui))
-    assert(not checked(ui), 'Click must paint an off draft')
-    assert(QuietUICharDB.parchment == nil and enabled(ns) == true, 'Unsaved draft must not change the setting')
+    assert(checked(ui), 'Click must paint an on draft')
+    assert(QuietUICharDB.parchment == nil and enabled(ns) == false, 'Unsaved draft must not change the setting')
     assert(#applied == 0, 'Draft must not apply live changes')
     ui:Hide(); ns.ShowSetup()
-    assert(checked(ui) and QuietUICharDB.parchment == nil, 'Closing must discard the off draft')
-    QuietUICharDB.parchment = false
+    assert(not checked(ui) and QuietUICharDB.parchment == nil, 'Closing must discard the on draft')
+    QuietUICharDB.parchment = true
     ui:Hide(); ns.ShowSetup()
-    assert(not checked(ui), 'Setup paints stored off')
+    assert(checked(ui), 'Setup paints stored on')
     click(choice(ui))
     ui:Hide(); ns.ShowSetup()
-    assert(QuietUICharDB.parchment == false and not checked(ui), 'Closing must keep the stored off value')
+    assert(QuietUICharDB.parchment == true and checked(ui), 'Closing must keep the stored on value')
+    QuietUICharDB.parchment = false
+    ui:Hide(); ns.ShowSetup()
+    assert(not checked(ui) and enabled(ns) == false, 'An old saved false reads and paints off')
     assert(#applied == 0, 'Closing must not apply')
     local escapeRegistered = false
     for _, name in ipairs(UISpecialFrames) do if name == 'QuietUISetup' then escapeRegistered = true end end
     assert(escapeRegistered, 'Escape must close the same setup frame and discard drafts')
 end)
 
-case('Save stores false only when off, nothing when on, and applies', function(ns, applied)
+case('Save stores true only when on, nothing when off, and applies', function(ns, applied)
     ns.ShowSetup()
     local ui = QuietUISetup
     click(ui.save)
-    assert(QuietUICharDB.parchment == nil, 'Save while on must not store parchment')
-    assert(#applied == 1 and applied[1].enabled == true, 'Save applies the on state')
+    assert(QuietUICharDB.parchment == nil, 'Save while off must not store parchment')
+    assert(#applied == 1 and applied[1].enabled == false, 'Save applies the off state')
     click(choice(ui)); click(ui.save)
-    assert(QuietUICharDB.parchment == false and enabled(ns) == false, 'Save off must persist explicit false')
-    assert(#applied == 2 and applied[2].enabled == false and applied[2].saved == false,
-        'Save off must call ApplyAll after committing the setting')
-    assert(ui.shown and not checked(ui), 'Save keeps setup open and paints saved off')
+    assert(QuietUICharDB.parchment == true and enabled(ns) == true, 'Save on must persist explicit true')
+    assert(#applied == 2 and applied[2].enabled == true and applied[2].saved == true,
+        'Save on must call ApplyAll after committing the setting')
+    assert(ui.shown and checked(ui), 'Save keeps setup open and paints saved on')
     click(choice(ui)); click(ui.save)
-    assert(QuietUICharDB.parchment == nil and enabled(ns) == true, 'Save on must omit the default')
-    assert(#applied == 3 and applied[3].enabled == true and applied[3].saved == nil, 'Save on applies')
+    assert(QuietUICharDB.parchment == nil and enabled(ns) == false, 'Save off must omit the default')
+    assert(#applied == 3 and applied[3].enabled == false and applied[3].saved == nil, 'Save off applies')
 end)
 
 case('Save with an active preset writes into the preset; switching picks up its value', function(ns)
-    local off = ns.SavePreset(nil, 'Off', ns.CurrentLayoutRef(), { parchment = false })
-    local on = ns.SavePreset(nil, 'On', ns.CurrentLayoutRef(), {})
-    ns.ActivatePreset(off); ns.ShowSetup()
-    local ui = QuietUISetup
-    assert(not checked(ui), 'Selecting an off preset must paint unchecked')
-    click(choice(ui)); click(ui.save)
-    assert(ns.Presets()[off].settings.parchment == nil and enabled(ns) == true, 'Save on must clear preset false')
-    click(choice(ui)); click(ui.save)
-    assert(ns.Presets()[off].settings.parchment == false and enabled(ns) == false, 'Save off must update the preset')
+    local on = ns.SavePreset(nil, 'On', ns.CurrentLayoutRef(), { parchment = true })
+    local off = ns.SavePreset(nil, 'Off', ns.CurrentLayoutRef(), {})
     ns.ActivatePreset(on); ns.ShowSetup()
-    assert(checked(ui) and enabled(ns) == true and QuietUICharDB.parchment == nil, 'Switching to on preset reads on')
+    local ui = QuietUISetup
+    assert(checked(ui), 'Selecting an on preset must paint checked')
+    click(choice(ui)); click(ui.save)
+    assert(ns.Presets()[on].settings.parchment == nil and enabled(ns) == false, 'Save off must clear preset true')
+    click(choice(ui)); click(ui.save)
+    assert(ns.Presets()[on].settings.parchment == true and enabled(ns) == true, 'Save on must update the preset')
     ns.ActivatePreset(off); ns.ShowSetup()
-    assert(not checked(ui) and enabled(ns) == false, 'Switching back reads the preset off value')
+    assert(not checked(ui) and enabled(ns) == false and QuietUICharDB.parchment == nil,
+        'Switching to an off preset reads off')
+    ns.ActivatePreset(on); ns.ShowSetup()
+    assert(checked(ui) and enabled(ns) == true, 'Switching back reads the preset on value')
     ns.ActivatePreset(nil)
-    assert(QuietUICharDB.parchment == false and enabled(ns) == false, 'Detach keeps the last snapshot')
+    assert(QuietUICharDB.parchment == true and enabled(ns) == true, 'Detach keeps the last snapshot')
 end)
 
 case('Preset selector is a draft; saving the selection applies its parchment', function(ns, applied)
-    local off = ns.SavePreset(nil, 'Off', ns.CurrentLayoutRef(), { parchment = false })
+    local on = ns.SavePreset(nil, 'On', ns.CurrentLayoutRef(), { parchment = true })
     ns.ShowSetup()
     local ui = QuietUISetup
     choice(ui)
     click(ui.presetSelector); click(ui.presetMenu.items[2])
-    assert(not checked(ui) and enabled(ns) == true, 'Preset draft must paint off without applying it')
+    assert(checked(ui) and enabled(ns) == false, 'Preset draft must paint on without applying it')
     assert(QuietUICharDB.presetId == nil and #applied == 0, 'Preset choice must stay unsaved')
     ui:Hide(); ns.ShowSetup()
-    assert(checked(ui), 'Closing discards the preset draft')
+    assert(not checked(ui), 'Closing discards the preset draft')
     click(ui.presetSelector); click(ui.presetMenu.items[2]); click(ui.save)
-    assert(QuietUICharDB.presetId == off and enabled(ns) == false, 'Saving the preset selection applies off')
-    assert(#applied == 1 and applied[1].enabled == false, 'Preset Save applies the committed state')
+    assert(QuietUICharDB.presetId == on and enabled(ns) == true, 'Saving the preset selection applies on')
+    assert(#applied == 1 and applied[1].enabled == true, 'Preset Save applies the committed state')
 end)
 
-case('Reset turns Parchment windows on, saves, and leaves the shared preset unchanged', function(ns, applied)
-    local off = ns.SavePreset(nil, 'Off', ns.CurrentLayoutRef(), { parchment = false })
-    ns.ActivatePreset(off); ns.ShowSetup()
+case('Reset turns Parchment windows off, saves, and leaves the shared preset unchanged', function(ns, applied)
+    local on = ns.SavePreset(nil, 'On', ns.CurrentLayoutRef(), { parchment = true })
+    ns.ActivatePreset(on); ns.ShowSetup()
     local ui = QuietUISetup
-    assert(not checked(ui), 'Preset off must paint')
+    assert(checked(ui), 'Preset on must paint')
     click(ui.reset)
-    assert(QuietUICharDB.presetId == nil and QuietUICharDB.parchment == nil and enabled(ns) == true,
-        'Reset must detach and save default on')
-    assert(checked(ui) and ui.shown, 'Reset paints on and leaves setup open')
-    assert(ns.Presets()[off].settings.parchment == false, 'Reset must not mutate the shared preset')
-    assert(#applied == 1 and applied[1].enabled == true, 'Reset applies immediately')
+    assert(QuietUICharDB.presetId == nil and QuietUICharDB.parchment == nil and enabled(ns) == false,
+        'Reset must detach and save default off')
+    assert(not checked(ui) and ui.shown, 'Reset paints off and leaves setup open')
+    assert(ns.Presets()[on].settings.parchment == true, 'Reset must not mutate the shared preset')
+    assert(#applied == 1 and applied[1].enabled == false, 'Reset applies immediately')
 end)
 
 for _, failure in ipairs(failures) do print('FAIL ' .. failure) end

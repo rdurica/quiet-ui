@@ -1158,6 +1158,22 @@ test('Parchment off: Apply and events do nothing', function()
     assertOriginal('Parchment off')
 end)
 
+-- Off by default: only an explicit true from the accessor turns the reskin on.
+test('Missing accessor or a nil setting means off: Apply and events do nothing', function()
+    Boot()
+    W.ns.Parchment = nil
+    W.ns.ApplyParchment()
+    event('QUEST_DETAIL')
+    Blizzard(function() QuestFrame:Hide(); QuestFrame:Show() end)
+    assertOriginal('Missing ns.Parchment accessor')
+    Boot()
+    W.parchment = nil
+    W.ns.ApplyParchment()
+    event('GOSSIP_SHOW')
+    Blizzard(function() QuestFrame:Hide(); QuestFrame:Show() end)
+    assertOriginal('ns.Parchment() returning nil')
+end)
+
 test('Parchment switched off then Apply (Save) restores the original look', function()
     Ready()
     W.parchment = false
