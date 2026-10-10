@@ -189,6 +189,16 @@ test('FCF_SetWindowColor restrips only the passed chat frame', function()
     assert(h.chrome == 0, 'CHAT_CHROME was muted again')
 end)
 
+test('FCF_SetWindowColor ignores windows outside ChatCount', function()
+    local h = chatHarness()
+    local whisper = frame('ChatFrame11')
+    ChatFrame11 = whisper
+    h.stripped = {}
+    h.hooks.FCF_SetWindowColor(whisper, 0, 0, 0)
+    ChatFrame11 = nil
+    assert(h.stripped.ChatFrame11 == nil, 'A window RestoreChat cannot reach was stripped')
+end)
+
 test('FCF_DockUpdate strips only windows not yet stripped', function()
     local h = chatHarness()
     ChatFrame2._quietStripped = nil
