@@ -161,6 +161,30 @@ test('RequestRescan does nothing while QuietUI is disabled', function()
     assert(h.rescans == 0, 'Disabled RequestRescan rescanned')
 end)
 
+test('Enabling after a rescan skipped while disabled rescans once', function()
+    local h = harness()
+    h.fire('PLAYER_LOGIN')
+    h.nextFrame()
+    local function slash(msg)
+        local saved = print
+        print = function() end
+        SlashCmdList.QUIETUI(msg)
+        print = saved
+    end
+    slash('off')
+    h.fire('PLAYER_ENTERING_WORLD', false, false)
+    h.nextFrame()
+    h.rescans = 0
+    slash('on')
+    h.nextFrame()
+    assert(h.rescans == 1, 'Missed zoning rescan ran ' .. h.rescans .. ' times after enable')
+    h.rescans = 0
+    slash('off')
+    slash('on')
+    h.nextFrame()
+    assert(h.rescans == 0, 'Enable without a missed rescan rescanned')
+end)
+
 -- Chat windows without AddMessage skip bubbles; HideTextures marks a stripped window.
 local function chatHarness()
     local h = harness({ chat = true })
