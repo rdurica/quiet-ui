@@ -22,9 +22,9 @@ local W
 local function noop() end
 
 local function newGroup(owner)
-    local g = { owner = owner, playing = false, scripts = {}, anims = {} }
+    local g = { owner = owner, playing = false, plays = 0, scripts = {}, anims = {} }
     W.groups[#W.groups + 1] = g
-    function g:Play() self.playing = true end
+    function g:Play() self.playing = true; self.plays = self.plays + 1 end
     function g:Stop() self.playing = false end
     function g:Restart() self.playing = true end
     function g:IsPlaying() return self.playing end
@@ -525,6 +525,29 @@ test('Mixed-case mine texture is recognized', function()
     assert(ShownOn(plate), 'Upper-case mine texture was not recognized')
     plate = OreShown('cursor crosshair_mine_64')
     assert(ShownOn(plate), 'Lower-case mine texture was not recognized')
+end)
+
+test('Out-of-reach mine texture is recognized', function()
+    local plate = OreShown('Cursor Crosshair_UnableMine_64')
+    assert(ShownOn(plate), 'The out-of-reach mine texture was not recognized')
+end)
+
+test('A non-crosshair texture containing mine shows nothing', function()
+    local plate = OreShown('Interface/Icons/INV_Misc_Determine_01')
+    assert(not ShownOn(plate), 'A texture that only contains mine was treated as ore')
+end)
+
+test('Re-evaluating a shown glow does not restart its animations', function()
+    OreShown()
+    local root = Glow()
+    local before = {}
+    for i, g in ipairs(W.groups) do before[i] = g.plays end
+    Target('GameObject-0-1-2-3-1731-0001', nil, 'GameObject-0-1-2-3-1731-0001')
+    event('PLAYER_REGEN_ENABLED')
+    for i, g in ipairs(W.groups) do
+        assert(g.plays == before[i], 'An animation was played again on a glow that was already shown')
+    end
+    assert(LoopsPlaying(root), 'The glow stopped playing')
 end)
 
 test('GetAtlas is the fallback when GetTexture is empty', function()
