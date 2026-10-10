@@ -5,13 +5,13 @@ local GLINT = "Interface\\AddOns\\QuietUI\\Media\\glint.tga"
 local SPARK = "Interface\\AddOns\\QuietUI\\Media\\spark.tga"
 -- The soft-target icon floats above the object; the plate gives no world position,
 -- so the glow drops by a fixed offset measured in game.
-local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = -90 }
+local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = -115 }
 local CVARS = { "SoftTargetInteract", "SoftTargetInteractRange", "SoftTargetNameplateInteract",
     "SoftTargetIconGameObject", "SoftTargetInteractArc", "SoftTargetIconInteract" }
 local WANT = { SoftTargetInteract = "3", SoftTargetInteractRange = "15", SoftTargetNameplateInteract = "1",
     SoftTargetIconGameObject = "1", SoftTargetInteractArc = "2", SoftTargetIconInteract = "1" }
 local BLOCKED = { party = true, raid = true, pvp = true, arena = true }
-local GLOW_STRENGTH = { herb = 0.55, ore = 0.8, quest = 0.64 }
+local GLOW_STRENGTH = { herb = 0.72, ore = 0.8, quest = 0.64 }
 local COLORS = {
     herb = { 0.30, 0.74, 0.40 },
     ore = { 0.95, 0.75, 0.25 },
@@ -26,7 +26,7 @@ local PATTERNS = {
     quest = { "crosshair_interact_64", "crosshair_unableinteract_64" },
 }
 local ORDER = { "herb", "ore", "quest" }
-local SPARKS = 7
+local SPARKS = 11
 
 local root, textures, loops = nil, {}, {}
 local glowTextures = {}
@@ -182,7 +182,7 @@ local function Build()
     Try(root, "SetSize", 64, 64)
 
     -- A soft cloud behind the object, with a quieter outer halo.
-    local halo = Texture(GLOW, 104, 90, "BACKGROUND")
+    local halo = Texture(GLOW, 104, 136, "BACKGROUND")
     if halo then
         Try(halo, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(halo, "BOUNCE")
@@ -191,7 +191,7 @@ local function Build()
         Try(fade, "SetToAlpha", 0.26)
     end
 
-    local aura = Texture(GLOW, 78, 70, "BORDER")
+    local aura = Texture(GLOW, 78, 110, "BORDER")
     if aura then
         Try(aura, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(aura, "BOUNCE")
@@ -265,7 +265,7 @@ end
 local function ShowOn(plate, soft, token, kind)
     if not Build() then return end
     local color = COLORS[kind]
-    local glowY = kind == "ore" and 0 or 8
+    local glowY = kind == "ore" and -8 or 0
     for i, tex in ipairs(glowTextures) do
         local width = i == 1 and 104 or 78
         Try(tex, "SetWidth", width * (kind == "quest" and 0.8 or 1))
