@@ -334,8 +334,7 @@ end
 
 for _, event in ipairs({ "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW",
     "ITEM_TEXT_READY" }) do
-    local name = event
-    handlers[name] = function(...) Parchment(name, ...) end
+    handlers[event] = function(...) Parchment(event, ...) end
 end
 
 function handlers.ADDON_LOADED(name, ...)

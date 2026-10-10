@@ -79,11 +79,10 @@ local EVENT_WINDOW = {
     ITEM_TEXT_READY = "ItemTextFrame",
 }
 
-local Unpack = unpack or table.unpack
 local held = {}    -- texture -> alpha held while active
 local saved = {}   -- texture -> alpha before the reskin
 local windows = {} -- window -> { layer }
-local skins = {}   -- button -> { role, paint, fill, glyph, hover, points, size }
+local skins = {}   -- button -> { role, paint, own, hover, points, size }
 
 local function Try(obj, method, ...)
     if type(obj) ~= "table" then return end
@@ -298,8 +297,8 @@ local function RememberPoints(b, s, withSize)
         local points = {}
         local n = Try(b, "GetNumPoints") or 0
         for i = 1, n do
-            local point = { pcall(b.GetPoint, b, i) }
-            if point[1] then points[#points + 1] = { Unpack(point, 2, 6) } end
+            local ok, point, rel, relPoint, x, y = pcall(b.GetPoint, b, i)
+            if ok and point then points[#points + 1] = { point, rel, relPoint, x, y } end
         end
         s.points = points
     end
@@ -339,7 +338,7 @@ local function RestoreButton(b, s)
     if s.points then
         Try(b, "ClearAllPoints")
         for _, p in ipairs(s.points) do
-            if p[1] then Try(b, "SetPoint", Unpack(p, 1, 5)) end
+            Try(b, "SetPoint", p[1], p[2], p[3], p[4], p[5])
         end
         s.points = nil
     end
@@ -351,9 +350,14 @@ end
 
 -- Windows -------------------------------------------------------------------------------
 
-local DEFS = {}
+local SkinWindow
 
-local function SkinWindow(def)
+local function ApplyWindow(def)
+    local ok, err = pcall(SkinWindow, def)
+    if not ok then ns.Report("parchment " .. def.name, err) end
+end
+
+function SkinWindow(def)
     local win = _G[def.name]
     if not Usable(win) then return end
     local state = windows[win]
@@ -369,7 +373,7 @@ local function SkinWindow(def)
         end
         -- Blizzard resets the portrait and alpha on every open.
         Try(win, "HookScript", "OnShow", function()
-            if Active() then DEFS[def.name].apply() end
+            if Active() then ApplyWindow(def) end
         end)
     end
     Try(state.layer, "Show")
@@ -383,15 +387,12 @@ local function SkinWindow(def)
         if type(obj) == "table" then HideChrome(obj) end
     end
     for _, name in ipairs(def.extra or {}) do
-        local obj = _G[name]
-        if IsTexture(obj) then Hold(obj, 0) end
+        Hold(_G[name], 0)
     end
     for _, name in ipairs(def.panels) do
         local panel = _G[name]
         if Usable(panel) then
-            for _, key in ipairs(PANEL_KEYS) do
-                if IsTexture(panel[key]) then Hold(panel[key], 0) end
-            end
+            for _, key in ipairs(PANEL_KEYS) do Hold(panel[key], 0) end
         end
     end
     for _, ref in ipairs(def.scrolls) do
@@ -404,14 +405,6 @@ local function SkinWindow(def)
     local close = win.CloseButton
     if type(close) ~= "table" then close = _G[def.name .. "CloseButton"] end
     if Usable(close) then SkinButton(win, close, "close") end
-end
-
-for _, def in ipairs(WINDOWS) do
-    DEFS[def.name] = def
-    def.apply = function()
-        local ok, err = pcall(SkinWindow, def)
-        if not ok then ns.Report("parchment " .. def.name, err) end
-    end
 end
 
 function ns.RestoreParchment()
@@ -428,19 +421,19 @@ function ns.ApplyParchment()
         ns.RestoreParchment()
         return
     end
-    for _, def in ipairs(WINDOWS) do def.apply() end
+    for _, def in ipairs(WINDOWS) do ApplyWindow(def) end
 end
 
 function ns.ParchmentEvent(event)
     if not Active() then return end
-    if event == "ADDON_LOADED" then
-        -- Load-on-demand windows that did not exist at the last apply.
-        for _, def in ipairs(WINDOWS) do
-            local win = _G[def.name]
-            if win and not windows[win] then def.apply() end
-        end
-        return
-    end
     local name = EVENT_WINDOW[event]
-    if name then DEFS[name].apply() end
+    for _, def in ipairs(WINDOWS) do
+        if event == "ADDON_LOADED" then
+            -- Load-on-demand windows that did not exist at the last apply.
+            local win = _G[def.name]
+            if win and not windows[win] then ApplyWindow(def) end
+        elseif def.name == name then
+            ApplyWindow(def)
+        end
+    end
 end
