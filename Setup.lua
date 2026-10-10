@@ -1599,7 +1599,7 @@ local function CreateSetup()
         widget[choice.key] = button
     end
     widget.questMobsHeader = Section(chat, "Quest mobs",
-        "A yellow exclamation mark shows next to the nameplate of mobs you need to kill for a quest, and a pouch next to mobs that drop a quest item. Only mobs you can attack are marked, and the icon disappears once the objective is complete.")
+        "A gold exclamation mark shows left of the nameplate of mobs you need to kill for a quest, and a pouch for mobs that drop a quest item. Only mobs you can attack are marked, and the icon disappears once the objective is complete.")
     widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -232)
     widget.questMobs = Choice(chat, "Quest mobs", function()
         draft.questMobs = not draft.questMobs

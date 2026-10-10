@@ -321,8 +321,9 @@ local function Highlights(event, ...)
     if type(ns.HighlightsEvent) == "function" then ns.HighlightsEvent(event, ...) end
 end
 
+-- Own Run so an error here or in a neighbouring handler does not skip the other.
 local function QuestMobs(event, ...)
-    if type(ns.QuestMobsEvent) == "function" then ns.QuestMobsEvent(event, ...) end
+    if type(ns.QuestMobsEvent) == "function" then Run("quest mobs", ns.QuestMobsEvent, event, ...) end
 end
 
 function handlers.ADDON_LOADED(name)
