@@ -570,8 +570,11 @@ events:SetScript("OnUpdate", function(_, elapsed)
     end
 end)
 
+-- Without these two the glow cannot follow the soft target, so say so once.
+local HIGHLIGHT_EVENTS = { PLAYER_SOFT_INTERACT_CHANGED = true, NAME_PLATE_UNIT_ADDED = true }
 for eventName in pairs(handlers) do
-    pcall(events.RegisterEvent, events, eventName)
+    local ok, err = pcall(events.RegisterEvent, events, eventName)
+    if not ok and HIGHLIGHT_EVENTS[eventName] then ns.Report("highlights events", err) end
 end
 
 -- Hooked arguments are not ours to forward, except the chat frame.

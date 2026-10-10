@@ -1,6 +1,9 @@
 local _, ns = ...
 
-local TEXTURE = "Interface\\AddOns\\QuietUI\\Media\\round.tga"
+local GLOW = "Interface\\AddOns\\QuietUI\\Media\\glow.tga"
+local SPARK = "Interface\\AddOns\\QuietUI\\Media\\spark.tga"
+-- Where the glow sits on the SoftTargetFrame; tune the offset here.
+local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = 0 }
 local CVARS = { "SoftTargetInteract", "SoftTargetInteractRange", "SoftTargetNameplateInteract",
     "SoftTargetIconGameObject" }
 local WANT = { SoftTargetInteract = "3", SoftTargetInteractRange = "15", SoftTargetNameplateInteract = "1",
@@ -24,6 +27,7 @@ local SPARKS = 7
 
 local root, textures, loops = nil, {}, {}
 local targetGUID, anchorToken
+local recheckToken = 0
 local fighting, stopped = false, false
 
 local function Secret(value)
@@ -131,12 +135,12 @@ local function Animation(group, kind, duration, delay)
     return anim
 end
 
-local function Texture(size, layer)
+local function Texture(path, width, height, layer)
     local tex = Try(root, "CreateTexture", nil, layer or "ARTWORK")
     if type(tex) ~= "table" then return end
-    Try(tex, "SetTexture", TEXTURE)
+    Try(tex, "SetTexture", path)
     Try(tex, "SetBlendMode", "ADD")
-    Try(tex, "SetSize", size, size)
+    Try(tex, "SetSize", width, height)
     textures[#textures + 1] = tex
     return tex
 end
@@ -154,33 +158,46 @@ local function Build()
     Try(root, "EnableMouse", false)
     Try(root, "SetSize", 64, 64)
 
-    local aura = Texture(64, "BACKGROUND")
+    -- A wide, faint halo under an elliptical ground glow.
+    local halo = Texture(GLOW, 150, 76, "BACKGROUND")
+    if halo then
+        Try(halo, "SetPoint", "CENTER", root, "CENTER")
+        local pulse = Loop(halo, "BOUNCE")
+        local fade = Animation(pulse, "Alpha", 1.2)
+        Try(fade, "SetFromAlpha", 0.2)
+        Try(fade, "SetToAlpha", 0.4)
+    end
+
+    local aura = Texture(GLOW, 96, 48, "BORDER")
     if aura then
         Try(aura, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(aura, "BOUNCE")
         local fade = Animation(pulse, "Alpha", 0.8)
-        Try(fade, "SetFromAlpha", 0.45)
-        Try(fade, "SetToAlpha", 0.9)
+        Try(fade, "SetFromAlpha", 0.5)
+        Try(fade, "SetToAlpha", 0.95)
         local grow = Animation(pulse, "Scale", 0.8)
-        Try(grow, "SetScaleFrom", 0.85, 0.85)
-        Try(grow, "SetScaleTo", 1.15, 1.15)
+        Try(grow, "SetScaleFrom", 0.9, 0.9)
+        Try(grow, "SetScaleTo", 1.1, 1.1)
     end
 
     for i = 1, SPARKS do
-        local spark = Texture(6)
+        local spark = Texture(SPARK, 7, 7)
         if spark then
+            -- Spread across the ellipse, alternating near and far from the center.
             local angle = (i - 1) / SPARKS * 2 * math.pi
-            Try(spark, "SetPoint", "CENTER", root, "CENTER", math.cos(angle) * 16, math.sin(angle) * 6 - 6)
+            local reach = (i % 2 == 0) and 0.45 or 0.85
+            Try(spark, "SetPoint", "CENTER", root, "CENTER", math.cos(angle) * 40 * reach,
+                math.sin(angle) * 14 * reach)
             Try(spark, "SetAlpha", 0)
             local rise = Loop(spark, "REPEAT")
-            local delay = (i - 1) * 0.17
-            local move = Animation(rise, "Translation", 1.2, delay)
-            Try(move, "SetOffset", 0, 22)
+            local delay = (i - 1) * 0.19
+            local move = Animation(rise, "Translation", 1.4, delay)
+            Try(move, "SetOffset", 0, 30)
             local fadeIn = Animation(rise, "Alpha", 0.2, delay)
             Try(fadeIn, "SetFromAlpha", 0)
             Try(fadeIn, "SetToAlpha", 1)
             Try(fadeIn, "SetOrder", 1)
-            local fadeOut = Animation(rise, "Alpha", 1.0, delay + 0.2)
+            local fadeOut = Animation(rise, "Alpha", 1.2, delay + 0.2)
             Try(fadeOut, "SetFromAlpha", 1)
             Try(fadeOut, "SetToAlpha", 0)
         end
@@ -201,7 +218,7 @@ local function ShowOn(plate, soft, token, color)
     if not Build() then return end
     Try(root, "SetParent", plate)
     Try(root, "ClearAllPoints")
-    Try(root, "SetPoint", "CENTER", soft, "CENTER")
+    Try(root, "SetPoint", ANCHOR.point, soft, ANCHOR.relative, ANCHOR.x, ANCHOR.y)
     local level = Try(soft, "GetFrameLevel")
     if type(level) == "number" and not Secret(level) then
         Try(root, "SetFrameLevel", math.max(0, level - 1))
@@ -296,6 +313,18 @@ local function ReadTarget(newGUID)
     return guid
 end
 
+-- The icon texture may be set a frame after the event, so look once more on the next frame.
+-- A newer event or a restore invalidates the older check.
+local function Recheck()
+    recheckToken = recheckToken + 1
+    if not targetGUID then return end
+    if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+    local token = recheckToken
+    pcall(C_Timer.After, 0, function()
+        if token == recheckToken then Evaluate() end
+    end)
+end
+
 local function PlateAdded(token)
     if not targetGUID or not Active() or InCombat() then return end
     local api = PlateApi()
@@ -303,7 +332,10 @@ local function PlateAdded(token)
     local get = api and api.GetNamePlateForUnit or GetNamePlateForUnit
     if type(get) ~= "function" then return end
     local ok, plate = pcall(get, token)
-    if ok and ns.Usable(plate) then Evaluate(plate, token) end
+    if ok and ns.Usable(plate) then
+        Evaluate(plate, token)
+        Recheck()
+    end
 end
 
 -- Public ------------------------------------------------------------------------------
@@ -311,12 +343,15 @@ end
 function ns.ApplyHighlights()
     stopped = false
     SyncCVars()
-    if Active() and not targetGUID then targetGUID = ReadTarget() end
+    -- No events arrive while off, so the remembered target may be stale.
+    if Active() then targetGUID = ReadTarget() end
     Evaluate()
 end
 
 function ns.RestoreHighlights()
     stopped = true
+    targetGUID = nil
+    recheckToken = recheckToken + 1
     HideNow()
     SyncCVars()
 end
@@ -326,6 +361,7 @@ function ns.HighlightsEvent(event, ...)
         local _, newGUID = ...
         targetGUID = ReadTarget(newGUID)
         Evaluate()
+        Recheck()
     elseif event == "NAME_PLATE_UNIT_ADDED" then
         PlateAdded((...))
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
