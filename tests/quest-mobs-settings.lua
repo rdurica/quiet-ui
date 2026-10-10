@@ -101,7 +101,7 @@ local function fixture()
     ns.CurrentLayoutRef = function() return { layoutName = 'Original', layoutType = 1 } end
     ns.LayoutChoices = function() return {} end
     ns.ApplyAll = function()
-        applied[#applied + 1] = { enabled = type(ns.QuestMobs) == 'function' and ns.QuestMobs() or nil,
+        applied[#applied + 1] = { enabled = ns.QuestMobs and ns.QuestMobs(),
             saved = QuietUICharDB.questMobs }
     end
     assert(loadfile('Bars.lua'))('QuietUI', ns)
