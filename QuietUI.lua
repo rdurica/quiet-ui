@@ -393,8 +393,13 @@ for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDA
     local name = event
     handlers[name] = function(...)
         if type(ns.QuestNoticeEvent) == "function" then ns.QuestNoticeEvent(name, ...) end
-        if name == "QUEST_LOG_UPDATE" then QuestMobs(name, ...) end
     end
+end
+
+local questLogUpdate = handlers.QUEST_LOG_UPDATE
+function handlers.QUEST_LOG_UPDATE(...)
+    questLogUpdate(...)
+    QuestMobs("QUEST_LOG_UPDATE", ...)
 end
 
 function handlers.QUEST_TURNED_IN(_, xp)
