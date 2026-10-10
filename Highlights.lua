@@ -86,9 +86,10 @@ local function ReadCVar(api, name)
 end
 
 local function WriteCVar(api, name, value)
-    if ReadCVar(api, name) == value then return end
+    if ReadCVar(api, name) == value then return true end
     local ok, err = pcall(api.SetCVar, name, value)
     if not ok then ns.Report("highlights", err) end
+    return ok
 end
 
 -- CVars change only out of combat; REGEN_ENABLED calls this again with the current state.
@@ -112,11 +113,12 @@ local function SyncCVars()
             if db.highlightCVars[name] ~= nil then WriteCVar(api, name, WANT[name]) end
         end
     elseif type(db.highlightCVars) == "table" then
+        local restored = true
         for _, name in ipairs(CVARS) do
             local value = db.highlightCVars[name]
-            if value ~= nil then WriteCVar(api, name, tostring(value)) end
+            if value ~= nil and not WriteCVar(api, name, tostring(value)) then restored = false end
         end
-        db.highlightCVars = nil
+        if restored then db.highlightCVars = nil end
     end
 end
 
