@@ -83,9 +83,9 @@ local function Show(token, plate, kind)
     local anchor = type(bar) == "table" and bar or unitFrame
     if type(anchor) ~= "table" or not ns.Usable(anchor) then anchor = plate end
     local height = Try(anchor, "GetHeight")
-    local size = 14
+    local size = 12
     if type(height) == "number" and not ns.IsSecret(height) and height > 0 then
-        size = math.min(24, math.max(12, height + 6))
+        size = math.min(24, math.max(12, height))
     end
     Try(icon, "SetParent", plate)
     Try(icon, "ClearAllPoints")
@@ -118,7 +118,7 @@ local function Objectives(questID, cache)
         list = {}
         for _, o in ipairs(raw) do
             if type(o) == "table" and type(o.text) == "string" and not ns.IsSecret(o.text) then
-                list[#list + 1] = { text = Normalize(o.text), kind = o.type, finished = True(o.finished) }
+                list[#list + 1] = { text = Normalize(o.text), kind = not ns.IsSecret(o.type) and o.type or nil, finished = True(o.finished) }
             end
         end
     end
@@ -139,23 +139,24 @@ local function KindFromTooltip(token, cache)
     local questID, counted = nil, 0
     for _, line in ipairs(lines) do
         local kind = type(line) == "table" and line.type
-        if ns.IsSecret(kind) then kind = nil end
+        -- Anything unreadable could hide a kill objective.
+        if ns.IsSecret(kind) then return "kill" end
         if kind == LINE_TITLE then
             local id = line.id
-            questID = type(id) == "number" and not ns.IsSecret(id) and id or nil
+            if type(id) ~= "number" or ns.IsSecret(id) then return "kill" end
+            questID = id
         elseif kind == LINE_OBJECTIVE and questID then
             local text = line.leftText
-            if type(text) == "string" and not ns.IsSecret(text) then
-                local have, need = text:match("(%d+)%s*/%s*(%d+)")
-                if not (have and tonumber(have) >= tonumber(need)) then
-                    local wanted, match = Normalize(text), nil
-                    for _, o in ipairs(Objectives(questID, cache) or {}) do
-                        if o.text == wanted then match = o break end
-                    end
-                    if not (match and match.finished) then
-                        if not (match and match.kind == "item") then return "kill" end
-                        counted = counted + 1
-                    end
+            if type(text) ~= "string" or ns.IsSecret(text) then return "kill" end
+            local have, need = text:match("(%d+)%s*/%s*(%d+)")
+            if not (have and tonumber(have) >= tonumber(need)) then
+                local wanted, match = Normalize(text), nil
+                for _, o in ipairs(Objectives(questID, cache) or {}) do
+                    if o.text == wanted then match = o break end
+                end
+                if not (match and match.finished) then
+                    if not (match and match.kind == "item") then return "kill" end
+                    counted = counted + 1
                 end
             end
         end
