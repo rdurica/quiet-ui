@@ -246,4 +246,26 @@ test('Swing scan skips debug names on named frames and keeps a found timer', fun
     assert(walks == 1 and debugs == 1, 'A live swing timer was scanned again inside 10s')
 end)
 
+test('No swing timer waits 10s before the next UIParent walk', function()
+    local ns = {}
+    QuietUIDB = { enabled = true }
+    UIParent = frame()
+    local walks = 0
+    function UIParent:GetChildren()
+        walks = walks + 1
+        return frame(UIParent)
+    end
+    local now = 100
+    GetTime = function() return now end
+    loadAddon('Core.lua', ns)
+    loadAddon('Bars.lua', ns)
+    ns.ScanSwing()
+    now = 101
+    ns.ScanSwing()
+    assert(walks == 1, 'UIParent was walked again inside 10s without a swing timer')
+    now = 111
+    ns.ScanSwing()
+    assert(walks == 2, 'The 10s fallback walk did not run')
+end)
+
 os.exit(failures == 0 and 0 or 1)

@@ -742,13 +742,12 @@ local function WalkSwing(root, depth)
     end
 end
 
+-- No timer found is settled too; walking UIParent every second only makes garbage.
 local function SwingReady()
-    local any = false
     for frame in pairs(swingFound) do
-        any = true
         if not ns.Usable(frame) then return false end
     end
-    return any
+    return true
 end
 
 -- A full UIParent walk waits until a found timer disappears or 10s pass.
