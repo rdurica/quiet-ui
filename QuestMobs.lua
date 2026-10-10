@@ -7,7 +7,7 @@ local ICONS = {
     loot = "Interface\\AddOns\\QuietUI\\Media\\quest-loot.tga",
 }
 local LINE_TITLE, LINE_OBJECTIVE = 17, 8
-local GAP, MIN_SIZE, MAX_SIZE = 2, 12, 24
+local GAP, MIN_SIZE, MAX_SIZE = 6, 14, 24
 
 local pool = {}
 local icons = {} -- unit token -> icon frame on its plate
