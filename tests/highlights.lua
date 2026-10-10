@@ -205,6 +205,13 @@ local function Boot(opts)
         }
     end
     GetNamePlateForUnit = nil
+    -- C_Timer.After only collects callbacks; RunTimers runs them like the next frame.
+    W.timers = {}
+    if opts.noTimer then
+        C_Timer = nil
+    else
+        C_Timer = { After = function(delay, fn) W.timers[#W.timers + 1] = { delay = delay, fn = fn } end }
+    end
 
     QuietUIDB = { enabled = opts.enabled ~= false, highlightCVars = opts.saved }
     QuietUICharDB = {}
@@ -258,6 +265,14 @@ local function RemovePlate(token)
 end
 
 local function event(name, ...) W.ns.HighlightsEvent(name, ...) end
+-- Runs the collected timer callbacks with index in [from, to] (default all), in order.
+local function RunTimers(from, to)
+    local list = W.timers
+    for i = from or 1, to or #list do
+        local t = list[i]
+        if t and not t.ran then t.ran = true; t.fn() end
+    end
+end
 local function Target(guid, ...)
     W.softGUID = guid
     event('PLAYER_SOFT_INTERACT_CHANGED', ...)
@@ -821,6 +836,122 @@ end)
 test('Unknown event is ignored without error', function()
     OreShown()
     event('SOME_UNKNOWN_EVENT', 'x')
+end)
+
+-- Re-enable and late icons ---------------------------------------------------------------
+
+test('Re-enable after the soft target changed while off shows the new target', function()
+    local a = OreShown()
+    assert(ShownOn(a), 'The first target was not shown')
+    W.ns.RestoreHighlights()
+    AssertHiddenAtUIParent()
+    -- While off no events arrive; the game picked another object meanwhile.
+    local b = AddPlate('nameplate2', 'GameObject-B', MINE)
+    W.softGUID = 'GameObject-B'
+    W.ns.ApplyHighlights()
+    assert(ShownOn(b), 'The new soft target was not shown after re-enable (stale GUID kept)')
+    assert(not ShownOn(a), 'The stale target still shows the glow')
+end)
+
+test('Re-enable with no soft target any more shows nothing', function()
+    OreShown()
+    W.ns.RestoreHighlights()
+    W.softGUID = nil
+    W.ns.ApplyHighlights()
+    assert(NothingShown(), 'A stale target was shown after re-enable')
+end)
+
+test('Icon filled one frame after the target event shows after the re-check', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-A', nil)
+    Target('GameObject-A', nil, 'GameObject-A')
+    assert(NothingShown(), 'Something was shown with an empty icon')
+    assert(#W.timers >= 1, 'No next-frame re-check was scheduled after the target event')
+    for _, t in ipairs(W.timers) do assert(t.delay == 0, 'The re-check must run on the next frame (delay 0)') end
+    plate.soft.Icon.texture = MINE
+    RunTimers()
+    assert(ShownOn(plate), 'The re-check did not show the glow for the late icon')
+end)
+
+test('Icon filled one frame after NAME_PLATE_UNIT_ADDED shows after the re-check', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    Target('GameObject-A', nil, 'GameObject-A')
+    RunTimers()
+    local plate = AddPlate('nameplate4', 'GameObject-A', nil)
+    local before = #W.timers
+    event('NAME_PLATE_UNIT_ADDED', 'nameplate4')
+    assert(NothingShown(), 'Something was shown with an empty icon')
+    assert(#W.timers > before, 'No next-frame re-check was scheduled after the plate was added')
+    plate.soft.Icon.texture = MINE
+    RunTimers()
+    assert(ShownOn(plate), 'The re-check did not show the glow for the late plate icon')
+end)
+
+test('A newer target event cancels the older pending re-check', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    AddPlate('nameplate1', 'GameObject-A', nil)
+    local b = AddPlate('nameplate2', 'GameObject-B', nil)
+    Target('GameObject-A', nil, 'GameObject-A')
+    local first = #W.timers
+    assert(first >= 1, 'No re-check was scheduled for the first target')
+    Target('GameObject-B', 'GameObject-A', 'GameObject-B')
+    assert(#W.timers > first, 'No re-check was scheduled for the second target')
+    b.soft.Icon.texture = MINE
+    RunTimers(1, first)
+    assert(NothingShown(), 'An outdated re-check still evaluated')
+    RunTimers(first + 1)
+    assert(ShownOn(b), 'The newest re-check did not show the glow')
+end)
+
+test('RestoreHighlights cancels a pending re-check', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-A', nil)
+    Target('GameObject-A', nil, 'GameObject-A')
+    W.ns.RestoreHighlights()
+    plate.soft.Icon.texture = MINE
+    RunTimers()
+    assert(NothingShown(), 'A re-check after restore showed the glow')
+end)
+
+test('Missing C_Timer: late icon events do not error', function()
+    Boot({ flags = { ore = true }, noTimer = true })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-A', nil)
+    Target('GameObject-A', nil, 'GameObject-A')
+    event('NAME_PLATE_UNIT_ADDED', 'nameplate1')
+    assert(NothingShown(), 'Something was shown with an empty icon')
+    plate.soft.Icon.texture = MINE
+    Target('GameObject-A', 'GameObject-A', 'GameObject-A')
+    assert(ShownOn(plate), 'The next target event did not show the glow')
+end)
+
+-- Textures --------------------------------------------------------------------------------
+
+test('The aura uses Media/glow.tga and the sparks Media/spark.tga, both on disk', function()
+    local plate = OreShown()
+    local root = Glow()
+    assert(root and root.parent == plate, 'The glow was not shown')
+    local glow, spark, round = 0, 0, 0
+    for _, t in ipairs(W.textures) do
+        if within(t, root) and type(t.texture) == 'string' then
+            local path = t.texture:lower()
+            if path == 'interface\\addons\\quietui\\media\\glow.tga' then glow = glow + 1 end
+            if path == 'interface\\addons\\quietui\\media\\spark.tga' then spark = spark + 1 end
+            if path:find('round.tga', 1, true) then round = round + 1 end
+        end
+    end
+    assert(glow >= 1, 'No aura texture uses Media/glow.tga')
+    assert(spark >= 6, 'Expected at least 6 sparks using Media/spark.tga, got ' .. spark)
+    assert(round == 0, 'The glow still uses Media/round.tga')
+    for _, file in ipairs({ 'Media/glow.tga', 'Media/spark.tga' }) do
+        local f = io.open(file, 'rb')
+        assert(f, file .. ' does not exist')
+        f:close()
+    end
 end)
 
 -- Hygiene ---------------------------------------------------------------------------------
