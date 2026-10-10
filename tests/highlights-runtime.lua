@@ -18,7 +18,7 @@ local ARGS = {
 -- opts.throwOn makes RegisterEvent fail for that event name like an unknown event on this client.
 local function Load(opts)
     opts = opts or {}
-    local env = { ns = {}, calls = {}, errors = {}, db = { enabled = true } }
+    local env = { ns = {}, calls = {}, errors = {}, db = opts.db or { enabled = true } }
     local ns, calls = env.ns, env.calls
     local events = { scripts = {}, registered = {} }
     env.events = events
@@ -183,6 +183,46 @@ test('RegisterEvent failing for PLAYER_SOFT_INTERACT_CHANGED keeps the other eve
     local n = env.count('HighlightsEvent')
     env.dispatch('NAME_PLATE_UNIT_ADDED', 'nameplate2')
     assert(#env.forwards('NAME_PLATE_UNIT_ADDED', n) == 1, 'Other events must still forward')
+    -- The failed registration itself is reported once as "highlights events"; nothing else may fail.
+    local other = {}
+    for _, e in ipairs(env.errors) do
+        if e:sub(1, #'highlights events: ') ~= 'highlights events: ' then other[#other + 1] = e end
+    end
+    assert(#other == 0, 'Runtime errors: ' .. table.concat(other, '; '))
+end)
+
+local function EventReports(env)
+    local n = 0
+    for _, e in ipairs(env.errors) do
+        if e:sub(1, #'highlights events: ') == 'highlights events: ' then n = n + 1 end
+    end
+    return n
+end
+
+for _, name in ipairs({ 'PLAYER_SOFT_INTERACT_CHANGED', 'NAME_PLATE_UNIT_ADDED' }) do
+    test('RegisterEvent failing for ' .. name .. ' is reported once as highlights events', function()
+        local env = Load({ throwOn = name })
+        assert(not env.loadError, 'A throwing RegisterEvent must not break loading: ' .. tostring(env.loadError))
+        assert(EventReports(env) == 1, 'Expected one "highlights events" report, got ' .. EventReports(env)
+            .. ' (' .. table.concat(env.errors, '; ') .. ')')
+        assert(#env.errors == 1, 'Unexpected reports: ' .. table.concat(env.errors, '; '))
+    end)
+end
+
+test('RegisterEvent failing for another event stays silent', function()
+    for _, name in ipairs({ 'QUEST_TURNED_IN', 'ZONE_CHANGED_NEW_AREA', 'NAME_PLATE_UNIT_REMOVED' }) do
+        local env = Load({ throwOn = name })
+        assert(not env.loadError, 'Load failed: ' .. tostring(env.loadError))
+        noErrors(env)
+    end
+end)
+
+test('Boot while disabled with stale highlightCVars reaches RestoreHighlights', function()
+    local env = Load({ db = { enabled = false, highlightCVars = { SoftTargetInteract = '1' } } })
+    assert(not env.loadError, 'Load failed: ' .. tostring(env.loadError))
+    env.dispatch('PLAYER_LOGIN')
+    assert(env.count('RestoreHighlights') > 0, 'Boot while disabled must call ns.RestoreHighlights (ApplyAll -> RestoreAll)')
+    assert(env.count('ApplyHighlights') == 0, 'Boot while disabled must not apply highlights')
     noErrors(env)
 end)
 
