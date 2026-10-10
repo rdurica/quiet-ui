@@ -7,7 +7,7 @@ local ICONS = {
     loot = "Interface\\AddOns\\QuietUI\\Media\\quest-loot.tga",
 }
 local LINE_TITLE, LINE_OBJECTIVE = 17, 8
-local GAP = 2
+local GAP, MIN_SIZE, MAX_SIZE = 2, 12, 24
 
 local pool = {}
 local icons = {} -- unit token -> icon frame on its plate
@@ -87,9 +87,9 @@ local function Show(token, plate, kind)
     local anchor = type(bar) == "table" and bar or unitFrame
     if type(anchor) ~= "table" or not ns.Usable(anchor) then anchor = plate end
     local height = Try(anchor, "GetHeight")
-    local size = 12
+    local size = MIN_SIZE
     if type(height) == "number" and not ns.IsSecret(height) and height > 0 then
-        size = math.min(24, math.max(12, height))
+        size = math.min(MAX_SIZE, math.max(MIN_SIZE, height))
     end
     Try(icon, "SetParent", plate)
     Try(icon, "ClearAllPoints")
@@ -172,13 +172,13 @@ local function Kind(token, cache)
     if type(UnitCanAttack) ~= "function" then return end
     local ok, attack = pcall(UnitCanAttack, "player", token)
     if not ok or not True(attack) then return end
-    local related = type(C_QuestLog) == "table" and C_QuestLog.UnitIsRelatedToActiveQuest
-    if type(related) ~= "function" then
+    local isRelated = type(C_QuestLog) == "table" and C_QuestLog.UnitIsRelatedToActiveQuest
+    if type(isRelated) ~= "function" then
         ns.Report("quest mobs relations", "Quest relations are not available on this client.")
         return
     end
-    local ok2, value = pcall(related, token)
-    if not ok2 or not True(value) then return end
+    local okRelated, related = pcall(isRelated, token)
+    if not okRelated or not True(related) then return end
     return KindFromTooltip(token, cache)
 end
 
@@ -272,8 +272,7 @@ function ns.QuestMobsEvent(event, ...)
     if event == "NAME_PLATE_UNIT_ADDED" then
         PlateAdded((...))
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
-        local token = ...
-        if type(token) == "string" then Release(token) end
+        Release((...))
     elseif event == "QUEST_LOG_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
         Schedule()
     elseif event == "UNIT_QUEST_LOG_CHANGED" then
