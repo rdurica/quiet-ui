@@ -120,6 +120,11 @@ function ns.QuestMobs()
     return (ns.Settings and ns.Settings() or ns.CharDB()).questMobs ~= false
 end
 
+-- Missing means on. Only an explicit false keeps the original quest, dialog and book windows.
+function ns.Parchment()
+    return (ns.Settings and ns.Settings() or ns.CharDB()).parchment ~= false
+end
+
 -- Missing means all off. Only explicit true values turn a category on.
 function ns.Highlights()
     local stored = (ns.Settings and ns.Settings() or ns.CharDB()).highlights
@@ -372,6 +377,7 @@ local function Paint()
         PaintBox(frame.questNotice.box, draft.questNotice)
     end
     if frame.questMobs then PaintBox(frame.questMobs.box, draft.questMobs) end
+    if frame.parchment then PaintBox(frame.parchment.box, draft.parchment) end
     if frame.questNoticeSize then
         local size = draft.questNoticeSize
         frame.questNoticeSize.value:SetText(size == "smaller" and "Smaller" or size == "larger" and "Larger" or "Default")
@@ -490,6 +496,7 @@ local function ReadDraft(source)
     draft.alwaysShowDebuffs = source.alwaysShowDebuffs ~= false
     draft.questNotice = source.questNotice ~= false
     draft.questMobs = source.questMobs ~= false
+    draft.parchment = source.parchment ~= false
     local noticeSize = source.questNoticeSize
     draft.questNoticeSize = (noticeSize == "smaller" or noticeSize == "larger") and noticeSize or "default"
     local highlights = type(source.highlights) == "table" and source.highlights or {}
@@ -591,6 +598,7 @@ local function DraftSettings()
     if not draft.alwaysShowDebuffs then db.alwaysShowDebuffs = false end
     if not draft.questNotice then db.questNotice = false end
     if not draft.questMobs then db.questMobs = false end
+    if not draft.parchment then db.parchment = false end
     if draft.questNoticeSize == "smaller" or draft.questNoticeSize == "larger" then
         db.questNoticeSize = draft.questNoticeSize
     end
@@ -940,7 +948,7 @@ local TABS = {
     { id = "bars", label = "Bars", height = 308 },
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
-    { id = "chat", label = "Misc.", height = 302 },
+    { id = "chat", label = "Misc.", height = 320 },
     { id = "info", label = "Info", height = 148 },
 }
 
@@ -1563,29 +1571,29 @@ local function CreateSetup()
         draft.chat = not draft.chat
         Paint()
     end)
-    widget.chat:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -20)
+    widget.chat:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -18)
     widget.fade = Stepper(chat, "Fade after", function(sign)
         NudgeFade(sign * 5)
     end)
-    widget.fade:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -44)
+    widget.fade:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -42)
     widget.questHeader = Section(chat, "Quests",
         "Shows the quest you just accepted, changed, or completed at the top of the quest area for a few seconds. The rest of the tracker stays hidden, and WoW's center-screen quest text stays hidden while this is on.")
-    widget.questHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -98)
+    widget.questHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -88)
     widget.questNotice = Choice(chat, "Quest updates", function()
         draft.questNotice = not draft.questNotice
         Paint()
     end)
-    widget.questNotice:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -118)
+    widget.questNotice:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -106)
     widget.questNoticeSize = Stepper(chat, "Text size", function(sign)
         NudgeNoticeSize(sign)
     end)
-    widget.questNoticeSize:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -144)
+    widget.questNoticeSize:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -130)
     widget.questNoticeSize.value:SetWidth(72)
     widget.highlightHeader = Section(chat, "Highlights",
         "The object the game picks for the Interact key glows: herbs green, ore gold, interact objects white. Set that key in Key Bindings as Interact With Target. Interact objects includes anything with the gear icon, not just quest objects. QuietUI widens soft targeting, hides the highlighted icon and any icon you had turned off, and restores your settings when turned off.")
-    widget.highlightHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -178)
+    widget.highlightHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -162)
     widget.highlightNote = Body(chat, "Turns on soft targeting for the Interact key, so nearby NPCs show their names.")
-    widget.highlightNote:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -196)
+    widget.highlightNote:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -180)
     local highlightChoices = {
         { key = "highlightHerb", label = "Herbs" },
         { key = "highlightOre", label = "Ore" },
@@ -1597,17 +1605,25 @@ local function CreateSetup()
             Paint()
         end)
         button:SetWidth(120)
-        button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -214)
+        button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -196)
         widget[choice.key] = button
     end
     widget.questMobsHeader = Section(chat, "Quest mobs",
         "A gold exclamation mark shows left of the nameplate of mobs you need to kill for a quest, and a pouch for mobs that drop a quest item. Only mobs you can attack are marked, and the icon disappears once the objective is complete.")
-    widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -250)
+    widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -228)
     widget.questMobs = Choice(chat, "Quest mobs", function()
         draft.questMobs = not draft.questMobs
         Paint()
     end)
-    widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -270)
+    widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -246)
+    widget.parchmentHeader = Section(chat, "Parchment windows",
+        "Quest, NPC dialog and book windows show as clean parchment with their buttons inside. Turn it off to keep the original windows.")
+    widget.parchmentHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -278)
+    widget.parchment = Choice(chat, "Parchment windows", function()
+        draft.parchment = not draft.parchment
+        Paint()
+    end)
+    widget.parchment:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -296)
 
     local info = widget.pages[7]
     widget.about = Section(info, "About")

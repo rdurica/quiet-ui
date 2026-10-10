@@ -19,4 +19,5 @@ Setup.lua
 QuestNotice.lua
 Highlights.lua
 QuestMobs.lua
+Parchment.lua
 QuietUI.lua

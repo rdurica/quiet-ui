@@ -159,6 +159,7 @@ local function RestoreAll()
     if type(ns.RestoreQuestNotice) == "function" then ns.RestoreQuestNotice() end
     if type(ns.RestoreHighlights) == "function" then ns.RestoreHighlights() end
     if type(ns.RestoreQuestMobs) == "function" then ns.RestoreQuestMobs() end
+    if type(ns.RestoreParchment) == "function" then Run("parchment", ns.RestoreParchment) end
     ns.HideQuestCatcher()
     ns.HideRangeMark()
     -- Target and action bar events stop while off.
@@ -191,6 +192,7 @@ local function ApplyAll()
     if type(ns.ApplyQuestNotice) == "function" then ns.ApplyQuestNotice() end
     if type(ns.ApplyHighlights) == "function" then ns.ApplyHighlights() end
     if type(ns.ApplyQuestMobs) == "function" then ns.ApplyQuestMobs() end
+    if type(ns.ApplyParchment) == "function" then Run("parchment", ns.ApplyParchment) end
     if ns.ForceQuietLayout() then
         if not layoutChosen then
             layoutPending = "select"
@@ -326,12 +328,24 @@ local function QuestMobs(event, ...)
     if type(ns.QuestMobsEvent) == "function" then Run("quest mobs", ns.QuestMobsEvent, event, ...) end
 end
 
-function handlers.ADDON_LOADED(name)
+local function Parchment(event, ...)
+    if type(ns.ParchmentEvent) == "function" then Run("parchment", ns.ParchmentEvent, event, ...) end
+end
+
+for _, event in ipairs({ "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW",
+    "ITEM_TEXT_READY" }) do
+    local name = event
+    handlers[name] = function(...) Parchment(name, ...) end
+end
+
+function handlers.ADDON_LOADED(name, ...)
     if name == ADDON then
         ns.DB()
     elseif booted then
         ns.RequestRescan()
     end
+    -- Blizzard quest, gossip and item text UIs may load on demand.
+    Parchment("ADDON_LOADED", name, ...)
 end
 
 function handlers.PLAYER_LOGIN()

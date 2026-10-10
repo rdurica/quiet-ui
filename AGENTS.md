@@ -28,6 +28,7 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 - Action bars only through alpha. Do not use `Hide()`, `Show()`, or state drivers on bars.
 - No secure snippets. Do not touch `ChatFrame_OpenChat`.
 - `PlayerFrame` and `PetFrame` only through alpha, per `docs/features/player.md`. TargetFrame may only be faded through alpha for Require a living target. Party and raid frames may only be faded through alpha for the optional autohide rule in `docs/features/visible.md`. Do not hide the minimap, vehicle / extra action / zone ability, or the LFG eye (`QueueStatus`, `LFGEye`).
+- Quest, gossip and item text windows are changed only through textures, button points and an own layer, never through `Hide()` of the window itself.
 - Blizzard overwrites alpha. Hold the wanted value with a `SetAlpha` hook and the `_quietApplying` flag so the hook does not loop.
 - Disabling must restore saved alpha and textures (`RestoreAll`). Wire new behavior into both `ApplyAll` and `RestoreAll`.
 
@@ -42,11 +43,12 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
   - `QuestNotice.lua`: temporary quest snapshots, acceptance/progress/completion notices, and their bounded queue.
   - `Highlights.lua`: soft-interact glow for herbs, ore, and interact objects, and the soft-target CVars it sets and restores.
   - `QuestMobs.lua`: the quest icon left of an attackable quest mob's nameplate.
+  - `Parchment.lua`: quest, gossip and item text parchment reskin.
   - `Menu.lua`: the bag button and the micro menu fade.
   - `Chat.lua`: chat chrome, line bubbles, and the input box.
   - `LayoutString.lua`: only the Edit Mode export string. Update it by pasting a new export.
   - `Layout.lua`: asks to add or update the `QuietUI` Edit Mode layout from that string.
-  - `Setup.lua`: the `/quiet setup` window, `CharDB`, `Pinned`, `PlayerStyle`, `GroupAuras`, `AlwaysShowDebuffs`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`.
+  - `Setup.lua`: the `/quiet setup` window, `CharDB`, `Pinned`, `PlayerStyle`, `GroupAuras`, `AlwaysShowDebuffs`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`, `Parchment`.
   - `QuietUI.lua`: `ApplyAll`, `RestoreAll`, events, `OnUpdate`, `/quiet`.
 - Call other files through `ns` at run time, not through locals captured at load, so load order only matters for `QuietUI.lua` being last.
 - Comments in English, short, only where the reason is not visible from the code.
