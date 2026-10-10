@@ -460,6 +460,53 @@ test('RestoreHighlights restores all six originals and hides the glow', function
     AssertHiddenAtUIParent()
 end)
 
+test('A failed CVar restore keeps its original until a later retry succeeds', function()
+    OreShown()
+    local set = C_CVar.SetCVar
+    C_CVar.SetCVar = function(name, value)
+        if name == 'SoftTargetInteract' then error('temporary restore failure') end
+        return set(name, value)
+    end
+    W.ns.RestoreHighlights()
+    assert(W.cvars.SoftTargetInteract == WANT.SoftTargetInteract, 'The failing write changed the CVar')
+    local saved = QuietUIDB.highlightCVars
+    assert(type(saved) == 'table' and saved.SoftTargetInteract == ORIGINAL.SoftTargetInteract,
+        'A failed restore lost the original CVar value')
+    for name, value in pairs(ORIGINAL) do
+        if name ~= 'SoftTargetInteract' then
+            assert(W.cvars[name] == value, 'One failed restore prevented restoring ' .. name)
+        end
+    end
+    assert(next(W.reports) ~= nil, 'The write failure was not reported')
+    AssertHiddenAtUIParent()
+
+    C_CVar.SetCVar = set
+    event('PLAYER_REGEN_ENABLED')
+    AssertCVars(ORIGINAL, 'After retrying the failed restore')
+    assert(QuietUIDB.highlightCVars == nil, 'The successfully restored snapshot was not cleared')
+end)
+
+test('A failed CVar activation keeps its original and retries the desired value', function()
+    Boot({ flags = { ore = true } })
+    local set = C_CVar.SetCVar
+    C_CVar.SetCVar = function(name, value)
+        if name == 'SoftTargetInteract' then error('temporary activation failure') end
+        return set(name, value)
+    end
+    W.ns.ApplyHighlights()
+    AssertSaved(ORIGINAL)
+    assert(W.cvars.SoftTargetInteract == ORIGINAL.SoftTargetInteract, 'The failing write changed the CVar')
+    assert(next(W.reports) ~= nil, 'The write failure was not reported')
+
+    C_CVar.SetCVar = set
+    event('PLAYER_REGEN_ENABLED')
+    AssertCVars(WANT, 'After retrying the failed activation')
+    AssertSaved(ORIGINAL)
+    W.ns.RestoreHighlights()
+    AssertCVars(ORIGINAL, 'After disabling the recovered activation')
+    assert(QuietUIDB.highlightCVars == nil, 'highlightCVars was not cleared after recovery')
+end)
+
 test('Reload while active keeps the stored originals', function()
     Boot({ flags = { ore = true }, cvars = WANT, saved = {
         SoftTargetInteract = '1', SoftTargetInteractRange = '10', SoftTargetNameplateInteract = '0',
