@@ -799,6 +799,16 @@ test('Parchment off + Restore: original alphas come back and SetAlpha(1) sticks'
     assert(QuestFrameAcceptButton.Middle.alpha == 1, 'Accept Middle was held with Parchment off')
 end)
 
+test('Blizzard alpha change while held is what Restore brings back', function()
+    Ready()
+    local center = QuestFrame.NineSlice.Center
+    center:SetAlpha(0.8)
+    assert(center.alpha == 0, 'Center came back to ' .. tostring(center.alpha))
+    W.parchment = false
+    W.ns.RestoreParchment()
+    assert(center.alpha == 0.8, 'Restore put back a stale alpha: ' .. tostring(center.alpha))
+end)
+
 test('QuietUI off + Restore: SetAlpha(1) sticks', function()
     Ready()
     QuietUIDB.enabled = false
