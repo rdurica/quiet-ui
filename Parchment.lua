@@ -135,8 +135,12 @@ local function Hook(tex)
     tex._quietParchmentHook = true
     pcall(hooksecurefunc, tex, "SetAlpha", function(self, alpha)
         local want = held[self]
-        if want == nil or self._quietApplying or not Active() then return end
-        if not ns.IsSecret(alpha) and type(alpha) == "number" and math.abs(alpha - want) < 0.01 then return end
+        if want == nil or self._quietApplying then return end
+        local plain = not ns.IsSecret(alpha) and type(alpha) == "number"
+        -- Blizzard's latest wish is what restore must bring back, not the alpha from the first hold.
+        if plain and saved[self] ~= nil then saved[self] = alpha end
+        if not Active() then return end
+        if plain and math.abs(alpha - want) < 0.01 then return end
         SetHeldAlpha(self, want)
     end)
 end
