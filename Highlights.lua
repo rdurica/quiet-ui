@@ -7,10 +7,11 @@ local SPARK = "Interface\\AddOns\\QuietUI\\Media\\spark.tga"
 -- so the glow drops by a fixed offset measured in game.
 local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = -90 }
 local CVARS = { "SoftTargetInteract", "SoftTargetInteractRange", "SoftTargetNameplateInteract",
-    "SoftTargetIconGameObject", "SoftTargetInteractArc" }
+    "SoftTargetIconGameObject", "SoftTargetInteractArc", "SoftTargetIconInteract" }
 local WANT = { SoftTargetInteract = "3", SoftTargetInteractRange = "15", SoftTargetNameplateInteract = "1",
-    SoftTargetIconGameObject = "1", SoftTargetInteractArc = "2" }
+    SoftTargetIconGameObject = "1", SoftTargetInteractArc = "2", SoftTargetIconInteract = "1" }
 local BLOCKED = { party = true, raid = true, pvp = true, arena = true }
+local GLOW_STRENGTH = { herb = 0.55, ore = 0.8, quest = 0.64 }
 local COLORS = {
     herb = { 0.30, 0.74, 0.40 },
     ore = { 0.95, 0.75, 0.25 },
@@ -22,12 +23,13 @@ local PATTERNS = {
     herb = { "gatherherbs" },
     ore = { "mine" },
     -- Keep the legacy quest setting key for saved characters and presets.
-    quest = { "crosshair_interact_64" },
+    quest = { "crosshair_interact_64", "crosshair_unableinteract_64" },
 }
 local ORDER = { "herb", "ore", "quest" }
 local SPARKS = 7
 
 local root, textures, loops = nil, {}, {}
+local glowTextures = {}
 local targetGUID, anchorToken, hiddenIcon
 local recheckToken = 0
 local fighting, stopped = false, false
@@ -146,6 +148,7 @@ local function Texture(path, width, height, layer)
     Try(tex, "SetBlendMode", "ADD")
     Try(tex, "SetSize", width, height)
     textures[#textures + 1] = tex
+    if path == GLOW then glowTextures[#glowTextures + 1] = tex end
     return tex
 end
 
@@ -164,7 +167,7 @@ local function Build()
     Try(root, "SetSize", 64, 64)
 
     -- A soft cloud behind the object, with a quieter outer halo.
-    local halo = Texture(GLOW, 124, 90, "BACKGROUND")
+    local halo = Texture(GLOW, 104, 90, "BACKGROUND")
     if halo then
         Try(halo, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(halo, "BOUNCE")
@@ -173,7 +176,7 @@ local function Build()
         Try(fade, "SetToAlpha", 0.26)
     end
 
-    local aura = Texture(GLOW, 92, 70, "BORDER")
+    local aura = Texture(GLOW, 78, 70, "BORDER")
     if aura then
         Try(aura, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(aura, "BOUNCE")
@@ -240,8 +243,16 @@ local function HideNow()
     Try(root, "SetParent", UIParent)
 end
 
-local function ShowOn(plate, soft, token, color)
+local function ShowOn(plate, soft, token, kind)
     if not Build() then return end
+    local color = COLORS[kind]
+    local glowY = kind == "ore" and 0 or 8
+    for i, tex in ipairs(glowTextures) do
+        local width = i == 1 and 104 or 78
+        Try(tex, "SetWidth", width * (kind == "quest" and 0.8 or 1))
+        Try(tex, "ClearAllPoints")
+        Try(tex, "SetPoint", "CENTER", root, "CENTER", 0, glowY)
+    end
     Try(root, "SetParent", plate)
     Try(root, "ClearAllPoints")
     Try(root, "SetPoint", ANCHOR.point, soft, ANCHOR.relative, ANCHOR.x, ANCHOR.y)
@@ -250,6 +261,10 @@ local function ShowOn(plate, soft, token, color)
         Try(root, "SetFrameLevel", math.max(0, level - 1))
     end
     for _, tex in ipairs(textures) do Try(tex, "SetVertexColor", color[1], color[2], color[3]) end
+    local strength = GLOW_STRENGTH[kind]
+    for _, tex in ipairs(glowTextures) do
+        Try(tex, "SetVertexColor", color[1] * strength, color[2] * strength, color[3] * strength)
+    end
     Try(root, "SetAlpha", 1)
     root:Show()
     for _, group in ipairs(loops) do Try(group, "Play") end
@@ -315,7 +330,7 @@ end
 
 -- Reads the icon of plate (or the scanned target plate) and shows or hides the glow.
 local function Evaluate(plate, token)
-    if not Active() or InCombat() or not targetGUID then return HideNow() end
+    if not Active() or not targetGUID then return HideNow() end
     if not plate then plate, token = FindPlate(targetGUID) end
     if not ns.Usable(plate) then return HideNow() end
     local unitFrame = plate.UnitFrame
@@ -327,7 +342,7 @@ local function Evaluate(plate, token)
     local kind = Category(IconTexture(soft))
     if not kind then return HideNow() end
     HideIcon(soft.Icon)
-    ShowOn(plate, soft, token, COLORS[kind])
+    ShowOn(plate, soft, token, kind)
 end
 
 local function ReadTarget(newGUID)
@@ -353,7 +368,7 @@ local function Recheck()
 end
 
 local function PlateAdded(token)
-    if not targetGUID or not Active() or InCombat() then return end
+    if not targetGUID or not Active() then return end
     local api = PlateApi()
     if not SameGUID(token, targetGUID) then return end
     local get = api and api.GetNamePlateForUnit or GetNamePlateForUnit
@@ -396,7 +411,6 @@ function ns.HighlightsEvent(event, ...)
         if anchorToken and token == anchorToken then HideNow() end
     elseif event == "PLAYER_REGEN_DISABLED" then
         fighting = true
-        HideNow()
     elseif event == "PLAYER_REGEN_ENABLED" then
         fighting = false
         SyncCVars()

@@ -1574,12 +1574,12 @@ local function CreateSetup()
     widget.questNoticeSize:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -144)
     widget.questNoticeSize.value:SetWidth(72)
     widget.highlightHeader = Section(chat, "Highlights",
-        "The object the game picks for the Interact key glows: herbs green, ore gold, quest objects white. Set that key in Key Bindings as Interact With Target. While a category is on, QuietUI turns on soft targeting and game object icons and restores them when turned off.")
+        "The object the game picks for the Interact key glows: herbs green, ore gold, interact objects white. Set that key in Key Bindings as Interact With Target. Interact objects includes anything with the gear icon, not just quest objects. QuietUI widens soft targeting, hides the highlighted icon, and restores your settings when turned off.")
     widget.highlightHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -178)
     local highlightChoices = {
         { key = "highlightHerb", label = "Herbs" },
         { key = "highlightOre", label = "Ore" },
-        { key = "highlightQuest", label = "Quest objects" },
+        { key = "highlightQuest", label = "Interact objects" },
     }
     for i, choice in ipairs(highlightChoices) do
         local button = Choice(chat, choice.label, function()
