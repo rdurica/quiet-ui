@@ -109,6 +109,10 @@ open. **X** or **Escape** closes it without saving pending changes.
   as they were before QuietUI: hidden if you had them off (the WoW default),
   shown if you had them on. Your soft-target settings are restored when
   highlights turn off.
+  **Quest mobs** (on by default) puts a small icon left of the nameplate of an
+  attackable mob your quests need: an exclamation mark for a mob to kill, a pouch
+  for a mob that drops a quest item. The icon disappears once the objective is
+  complete.
 - **Info:** A short guide to QuietUI and Glance.
 
 With a preset selected, **Save** updates its settings for every character using
@@ -130,7 +134,7 @@ ends. Presets can also be managed while QuietUI is off.
 shared preset, then applies and saves the defaults immediately: Always visible off except for party/raid
 frames, Only on hover on for XP and off for other elements, default bar groups, player
 frame, grouped buffs, and Always show debuffs on,
-modern chat with a 10-second fade, and Force layout, living-target requirement,
+modern chat with a 10-second fade, Quest mobs on, and Force layout, living-target requirement,
 In range, and Highlights off.
 
 **Import layout** adds or updates the bundled Edit Mode layout immediately,
