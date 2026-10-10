@@ -1,32 +1,34 @@
 local _, ns = ...
 
 local GLOW = "Interface\\AddOns\\QuietUI\\Media\\glow.tga"
+local GLINT = "Interface\\AddOns\\QuietUI\\Media\\glint.tga"
 local SPARK = "Interface\\AddOns\\QuietUI\\Media\\spark.tga"
--- Where the glow sits on the SoftTargetFrame; tune the offset here.
-local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = 0 }
+-- The soft-target icon floats above the object; the plate gives no world position,
+-- so the glow drops by a fixed offset measured in game.
+local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = -90 }
 local CVARS = { "SoftTargetInteract", "SoftTargetInteractRange", "SoftTargetNameplateInteract",
-    "SoftTargetIconGameObject" }
+    "SoftTargetIconGameObject", "SoftTargetInteractArc" }
 local WANT = { SoftTargetInteract = "3", SoftTargetInteractRange = "15", SoftTargetNameplateInteract = "1",
-    SoftTargetIconGameObject = "1" }
+    SoftTargetIconGameObject = "1", SoftTargetInteractArc = "2" }
 local BLOCKED = { party = true, raid = true, pvp = true, arena = true }
 local COLORS = {
-    herb = { 0.35, 0.95, 0.45 },
+    herb = { 0.30, 0.74, 0.40 },
     ore = { 0.95, 0.75, 0.25 },
-    quest = { 1, 0.97, 0.9 },
+    quest = { 0.78, 0.76, 0.70 },
 }
 -- Lower-case substrings of the soft-target icon texture. Out-of-reach herbs use
 -- "UnableGatherHerbs", which still contains the herb pattern.
 local PATTERNS = {
     herb = { "gatherherbs" },
     ore = { "mine" },
-    -- The quest object icon texture has not been verified in game yet.
-    quest = {},
+    -- Keep the legacy quest setting key for saved characters and presets.
+    quest = { "crosshair_interact_64" },
 }
 local ORDER = { "herb", "ore", "quest" }
 local SPARKS = 7
 
 local root, textures, loops = nil, {}, {}
-local targetGUID, anchorToken
+local targetGUID, anchorToken, hiddenIcon
 local recheckToken = 0
 local fighting, stopped = false, false
 
@@ -103,6 +105,8 @@ local function SyncCVars()
         end
         -- Only CVars whose original could be read are changed.
         for _, name in ipairs(CVARS) do
+            -- Older snapshots may predate a newly managed CVar.
+            if db.highlightCVars[name] == nil then db.highlightCVars[name] = ReadCVar(api, name) end
             if db.highlightCVars[name] ~= nil then WriteCVar(api, name, WANT[name]) end
         end
     elseif type(db.highlightCVars) == "table" then
@@ -145,6 +149,7 @@ local function Texture(path, width, height, layer)
     return tex
 end
 
+-- All recognized categories share the same glow and rising particles.
 local function Build()
     if root then return root end
     if type(CreateFrame) ~= "function" then return end
@@ -158,54 +163,75 @@ local function Build()
     Try(root, "EnableMouse", false)
     Try(root, "SetSize", 64, 64)
 
-    -- A wide, faint halo under an elliptical ground glow.
-    local halo = Texture(GLOW, 150, 76, "BACKGROUND")
+    -- A soft cloud behind the object, with a quieter outer halo.
+    local halo = Texture(GLOW, 124, 90, "BACKGROUND")
     if halo then
         Try(halo, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(halo, "BOUNCE")
         local fade = Animation(pulse, "Alpha", 1.2)
-        Try(fade, "SetFromAlpha", 0.2)
-        Try(fade, "SetToAlpha", 0.4)
+        Try(fade, "SetFromAlpha", 0.14)
+        Try(fade, "SetToAlpha", 0.26)
     end
 
-    local aura = Texture(GLOW, 96, 48, "BORDER")
+    local aura = Texture(GLOW, 92, 70, "BORDER")
     if aura then
         Try(aura, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(aura, "BOUNCE")
-        local fade = Animation(pulse, "Alpha", 0.8)
-        Try(fade, "SetFromAlpha", 0.5)
-        Try(fade, "SetToAlpha", 0.95)
-        local grow = Animation(pulse, "Scale", 0.8)
-        Try(grow, "SetScaleFrom", 0.9, 0.9)
-        Try(grow, "SetScaleTo", 1.1, 1.1)
+        local fade = Animation(pulse, "Alpha", 1.2)
+        Try(fade, "SetFromAlpha", 0.38)
+        Try(fade, "SetToAlpha", 0.64)
+        local grow = Animation(pulse, "Scale", 1.2)
+        Try(grow, "SetScaleFrom", 0.96, 0.96)
+        Try(grow, "SetScaleTo", 1.04, 1.04)
     end
 
     for i = 1, SPARKS do
-        local spark = Texture(SPARK, 7, 7)
+        local star = i % 2 == 0
+        local width = star and (12 + i) or 5
+        local spark = Texture(star and GLINT or SPARK, width, star and width * 1.2 or 5)
         if spark then
-            -- Spread across the ellipse, alternating near and far from the center.
+            -- Mix three four-point glints with small motes around the object.
             local angle = (i - 1) / SPARKS * 2 * math.pi
-            local reach = (i % 2 == 0) and 0.45 or 0.85
-            Try(spark, "SetPoint", "CENTER", root, "CENTER", math.cos(angle) * 40 * reach,
-                math.sin(angle) * 14 * reach)
+            local reach = star and 0.65 or 0.95
+            Try(spark, "SetPoint", "CENTER", root, "CENTER", math.cos(angle) * 32 * reach,
+                14 + math.sin(angle) * 20 * reach)
             Try(spark, "SetAlpha", 0)
             local rise = Loop(spark, "REPEAT")
-            local delay = (i - 1) * 0.19
-            local move = Animation(rise, "Translation", 1.4, delay)
-            Try(move, "SetOffset", 0, 30)
-            local fadeIn = Animation(rise, "Alpha", 0.2, delay)
+            local delay = (i - 1) * 0.27
+            local duration = 3.2 + i * 0.08
+            local peak = star and 0.85 or 0.45
+            local move = Animation(rise, "Translation", duration, delay)
+            Try(move, "SetOffset", 0, star and 28 or 34)
+            Try(move, "SetOrder", 1)
+            local fadeIn = Animation(rise, "Alpha", 0.4, delay)
             Try(fadeIn, "SetFromAlpha", 0)
-            Try(fadeIn, "SetToAlpha", 1)
+            Try(fadeIn, "SetToAlpha", peak)
             Try(fadeIn, "SetOrder", 1)
-            local fadeOut = Animation(rise, "Alpha", 1.2, delay + 0.2)
-            Try(fadeOut, "SetFromAlpha", 1)
+            local fadeOut = Animation(rise, "Alpha", duration - 0.4, delay + 0.4)
+            Try(fadeOut, "SetFromAlpha", peak)
             Try(fadeOut, "SetToAlpha", 0)
+            Try(fadeOut, "SetOrder", 1)
         end
     end
     return root
 end
 
+local function RestoreIcon()
+    if not hiddenIcon then return end
+    ns.ReleaseAlpha(hiddenIcon, true)
+    hiddenIcon = nil
+end
+
+local function HideIcon(icon)
+    if hiddenIcon ~= icon then RestoreIcon() end
+    if not ns.Usable(icon) then return end
+    -- Keep the texture readable for category detection while hiding only its artwork.
+    ns.HoldAlpha(icon, 0)
+    hiddenIcon = icon
+end
+
 local function HideNow()
+    RestoreIcon()
     anchorToken = nil
     if not root then return end
     for _, group in ipairs(loops) do Try(group, "Stop") end
@@ -300,6 +326,7 @@ local function Evaluate(plate, token)
     end
     local kind = Category(IconTexture(soft))
     if not kind then return HideNow() end
+    HideIcon(soft.Icon)
     ShowOn(plate, soft, token, COLORS[kind])
 end
 
