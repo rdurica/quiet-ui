@@ -45,13 +45,6 @@ function ns.IsSecret(value)
     return type(issecretvalue) == "function" and issecretvalue(value) and true or false
 end
 
--- Runs fn protected; a failure is reported once under label.
-function ns.Run(label, fn, ...)
-    local ok, err = pcall(fn, ...)
-    if not ok then ns.Report(label, err) end
-    return ok
-end
-
 function ns.Wipe(t)
     if type(t) ~= "table" then return t end
     for key in pairs(t) do t[key] = nil end

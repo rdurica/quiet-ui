@@ -1951,6 +1951,7 @@ function ns.RestoreChat()
             frame._quietStripped = nil
             frame._quietHover = false
             frame._quietCatcherAt = nil
+            frame._quietTextSig = nil
             if frame._quietCatcher then frame._quietCatcher:Hide() end
             HideActive(frame)
             RestoreFonts(frame)
@@ -2031,8 +2032,17 @@ function ns.StripAllChat(force)
 end
 
 -- Blizzard rewrote one window's alpha or color; strip only that window.
+-- Only windows UpdateChat and RestoreChat walk; a temporary window stays native.
+local function OwnChatFrame(frame)
+    for i = 1, ChatCount() do
+        if _G["ChatFrame" .. i] == frame then return true end
+    end
+    return false
+end
+
 function ns.RestripChat(frame)
-    if stripping or not ns.Usable(frame) or not ns.DB().enabled or not ns.ModernChat() then return end
+    if stripping or not ns.Usable(frame) or not OwnChatFrame(frame) or not ns.DB().enabled
+        or not ns.ModernChat() then return end
     stripping = true
     ns.MarkingChat = true
     local ok, err = pcall(StripChat, frame)
