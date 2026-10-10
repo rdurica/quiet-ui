@@ -26,6 +26,8 @@ local WINDOW_GUARD = { Hide = true, SetSize = true, SetWidth = true, SetHeight =
 -- Writes the reskin must never make to a Blizzard FontString.
 local FONT_WRITES = { SetText = true, SetFormattedText = true, SetFont = true, SetFontObject = true,
     SetTextColor = true, SetShadowColor = true }
+-- The only FontString writes allowed, and only on the window title (TitleContainer.TitleText).
+local TITLE_WRITES = { SetTextColor = true, SetFont = true }
 -- Writes the reskin must never make to a Blizzard button's text.
 local BUTTON_TEXT_WRITES = { SetText = true, SetFormattedText = true, SetNormalFontObject = true,
     SetHighlightFontObject = true, SetDisabledFontObject = true }
@@ -165,14 +167,22 @@ local function newObject(kind, parent, name)
     elseif kind == 'FontString' then
         o.layer = 'OVERLAY'
         o.text = ''
+        o.font = { 'Fonts\\FRIZQT__.TTF', 12, '' }
+        o.color = { 1, 1, 1, 1 }
         local function write(method)
-            return function(self, v)
-                if not self.created and not W.fixture then violation(label(self) .. ':' .. method) end
-                if method == 'SetText' then self.text = v end
+            return function(self, a, b, c, d)
+                -- The window title may only get its ink colour and a larger size of the same face.
+                local titleWrite = self.title and TITLE_WRITES[method]
+                if not self.created and not W.fixture and not titleWrite then violation(label(self) .. ':' .. method) end
+                if method == 'SetText' then self.text = a end
+                if method == 'SetFont' then self.font = { a, b, c } end
+                if method == 'SetTextColor' then self.color = { a, b, c, d or 1 } end
             end
         end
         for method in pairs(FONT_WRITES) do o[method] = write(method) end
         function o:GetText() return self.text end
+        function o:GetFont() return self.font[1], self.font[2], self.font[3] end
+        function o:GetTextColor() return self.color[1], self.color[2], self.color[3], self.color[4] end
         function o:SetDrawLayer(layer) self.layer = layer end
         function o:GetDrawLayer() return self.layer end
         function o:GetStringWidth() return 40 end
@@ -349,6 +359,10 @@ local function window(name, opts)
     title.name = name .. '.TitleContainer'
     f.TitleContainer = title
     title.TitleText = fontString(title, name .. ' title', name .. 'TitleText')
+    title.TitleText.title = true
+    title.TitleText.font = { 'Fonts\\FRIZQT__.TTF', 14, 'OUTLINE' }
+    title.TitleText.color = { 1, 0.82, 0, 1 }
+    f.scrolls = {}
     if not opts.noClose then
         f.CloseButton = button(f, name .. 'CloseButton', { 'TOPRIGHT', f, 'TOPRIGHT', 4, 5 },
             { arrow = true, w = 32, h = 32 })
@@ -357,6 +371,19 @@ local function window(name, opts)
 end
 
 local ROLE = {}
+
+-- A scroll frame anchored to the window: TOPLEFT high up, its bottom edge `bottom` px above the window bottom.
+-- `both` adds a BOTTOMLEFT point as well. Scroll frames are not protected.
+local function scrollFrame(win, parent, name, bottom, opts)
+    opts = opts or {}
+    local s = W.New('Frame', parent, name)
+    s.scrollFrame = true
+    s:SetPoint('TOPLEFT', win, 'TOPLEFT', 20, -80)
+    if opts.both then s:SetPoint('BOTTOMLEFT', win, 'BOTTOMLEFT', 20, bottom) end
+    s:SetPoint('BOTTOMRIGHT', win, 'BOTTOMRIGHT', -40, bottom)
+    table.insert(win.scrolls, s)
+    return s
+end
 
 local function BuildQuestFrame(opts)
     opts = opts or {}
@@ -368,7 +395,11 @@ local function BuildQuestFrame(opts)
         panel:SetAllPoints(f)
         panels[p] = panel
     end
-    local scroll = W.New('Frame', panels.QuestFrameDetailPanel, 'QuestDetailScrollFrame')
+    -- Detail, progress and reward text reaches under the button band; greeting sits high enough.
+    local scroll = scrollFrame(f, panels.QuestFrameDetailPanel, 'QuestDetailScrollFrame', 20)
+    scrollFrame(f, panels.QuestFrameProgressPanel, 'QuestProgressScrollFrame', 12)
+    scrollFrame(f, panels.QuestFrameRewardPanel, 'QuestRewardScrollFrame', 4, { both = true })
+    scrollFrame(f, panels.QuestFrameGreetingPanel, 'QuestGreetingScrollFrame', 60)
     scroll.ScrollBar = scrollBar(scroll, 'QuestDetailScrollFrameScrollBar', opts)
     f.reward = tex(panels.QuestFrameRewardPanel, 'QuestInfoRewardsFrameQuestInfoItem1IconTexture', 'ARTWORK')
     f.content = { f.reward }
@@ -402,7 +433,7 @@ local function BuildGossipFrame(opts)
     f.GreetingPanel = panel
     panel.ScrollBar = scrollBar(panel, nil)
     panel.ScrollBar.name = 'GossipFrame.GreetingPanel.ScrollBar'
-    local box = W.New('Frame', panel)
+    local box = scrollFrame(f, panel, nil, 8)
     box.name = 'GossipFrame.GreetingPanel.ScrollBox'
     panel.ScrollBox = box
     f.optionIcon = tex(box, 'GossipOptionIcon', 'ARTWORK')
@@ -418,7 +449,7 @@ end
 
 local function BuildItemTextFrame(opts)
     local f = window('ItemTextFrame', opts)
-    local scroll = W.New('Frame', f, 'ItemTextScrollFrame')
+    local scroll = scrollFrame(f, f, 'ItemTextScrollFrame', 10)
     scroll.ScrollBar = scrollBar(scroll, 'ItemTextScrollFrameScrollBar')
     f.content = {}
     f.fonts = { fontString(scroll, 'Page one', 'ItemTextPageText'), fontString(f, 'Page 1', 'ItemTextCurrentPage') }
@@ -446,7 +477,9 @@ local function snapshot()
         if not o.created then
             s[o] = { alpha = o.alpha, shown = o.shown, points = serializePoints(o), w = o.width, h = o.height,
                 texture = o.texture, normal = o.normal, pushed = o.pushed, highlight = o.highlight,
-                disabled = o.disabled, onClick = o.scripts.OnClick, text = o.text }
+                disabled = o.disabled, onClick = o.scripts.OnClick, text = o.text,
+                font = o.font and table.concat({ tostring(o.font[1]), tostring(o.font[2]), tostring(o.font[3]) }, '>'),
+                color = o.color and { unpack(o.color) } }
         end
     end
     return s
@@ -474,7 +507,8 @@ local function Boot(opts)
     for _, g in ipairs({ 'QuestFrame', 'GossipFrame', 'ItemTextFrame', 'QuestFrameAcceptButton', 'QuestFrameDeclineButton',
         'QuestFrameCompleteButton', 'QuestFrameGoodbyeButton', 'QuestFrameCompleteQuestButton',
         'QuestFrameGreetingGoodbyeButton', 'ItemTextPrevPageButton', 'ItemTextNextPageButton', 'QuestDetailScrollFrame',
-        'ItemTextScrollFrame', 'QuestFrameDetailPanel', 'QuestFrameProgressPanel', 'QuestFrameRewardPanel',
+        'ItemTextScrollFrame', 'QuestProgressScrollFrame', 'QuestRewardScrollFrame', 'QuestGreetingScrollFrame',
+        'QuestFrameDetailPanel', 'QuestFrameProgressPanel', 'QuestFrameRewardPanel',
         'QuestFrameGreetingPanel', 'QuestFrameCloseButton', 'GossipFrameCloseButton', 'ItemTextFrameCloseButton' }) do
         _G[g] = nil
     end
@@ -674,6 +708,16 @@ local function assertOriginal(where)
             assert(near(o.alpha, s.alpha), where .. ': ' .. label(o) .. ' alpha ' .. tostring(o.alpha)
                 .. ', expected ' .. tostring(s.alpha))
             assert(o.shown == s.shown, where .. ': ' .. label(o) .. ' shown state changed')
+        end
+        -- Points of every Blizzard object (buttons, windows, scroll frames, panels) come back exactly.
+        assert(serializePoints(o) == s.points, where .. ': ' .. label(o) .. ' points not restored: '
+            .. serializePoints(o) .. ', expected ' .. s.points)
+        if o.title then
+            local font = table.concat({ tostring(o.font[1]), tostring(o.font[2]), tostring(o.font[3]) }, '>')
+            assert(font == s.font, where .. ': ' .. label(o) .. ' font not restored: ' .. font .. ', expected ' .. s.font)
+            for i = 1, 4 do
+                assert(o.color[i] == s.color[i], where .. ': ' .. label(o) .. ' colour not restored')
+            end
         end
         if o.kind == 'Button' or o.window then
             assert(serializePoints(o) == s.points, where .. ': ' .. label(o) .. ' points not restored')
@@ -1141,6 +1185,186 @@ test('In combat: Apply still reskins without error', function()
     assertOriginal('Restore in combat')
 end)
 
+-- 13. In-game feedback: button band, safe area, title, overhang -------------------------------
+
+-- CzechForever's CZ/EN row sits at the window BOTTOM, y = 6, height 18: its centre is 15 px up.
+local ROW_CENTER = 15
+local SAFE_GAP = 4
+
+-- The BOTTOM* point of o anchored to win: point, x, y.
+local function bottomAnchor(o, win)
+    for _, p in ipairs(o.points) do
+        local point = tostring(p[1])
+        if point:find('BOTTOM') and p[2] == win then return point, p[4] or 0, p[5] or 0 end
+    end
+end
+
+-- Top of the skinned button band, from the actual button anchors (fallback: a 22 px button on the row).
+local function bandTop(f)
+    local top
+    for _, b in ipairs(f.buttons) do
+        local _, _, y = bottomAnchor(b, f)
+        if y then top = math.max(top or y + b.height, y + b.height) end
+    end
+    return top or (ROW_CENTER + 11)
+end
+
+-- y offsets of the BOTTOM* points of a scroll frame, keyed by point name.
+local function scrollBottoms(s, win)
+    local list = {}
+    for _, p in ipairs(s.points) do
+        if tostring(p[1]):find('BOTTOM') then list[#list + 1] = { p[1], p[2], p[3], p[4], p[5] } end
+    end
+    return list
+end
+
+test('Buttons sit level with the CZ/EN row and inside the window', function()
+    Ready()
+    for _, f in ipairs(windows()) do
+        for _, b in ipairs(f.buttons) do
+            local point, x, y = bottomAnchor(b, f)
+            assert(point, label(b) .. ' has no BOTTOM* point anchored to ' .. label(f))
+            local centre = y + b.height / 2
+            assert(math.abs(centre - ROW_CENTER) <= 1, label(b) .. ' centre is ' .. centre
+                .. ' px above the window bottom, expected ' .. ROW_CENTER .. ' (y=' .. y .. ', h=' .. b.height .. ')')
+            if point:find('LEFT') then
+                assert(x >= 10, label(b) .. ' left inset is ' .. x .. ', expected >= 10')
+            elseif point:find('RIGHT') then
+                assert(x <= -10, label(b) .. ' right inset is ' .. x .. ', expected <= -10')
+            end
+        end
+    end
+end)
+
+test('Scroll frames end above the button band; high ones and the window stay untouched', function()
+    Ready()
+    for _, f in ipairs(windows()) do
+        local top = bandTop(f)
+        local o = W.original[f]
+        assert(f.width == o.w and f.height == o.h and serializePoints(f) == o.points, label(f) .. ' size or points changed')
+        for _, sf in ipairs(f.scrolls) do
+            local before = W.original[sf]
+            local origLow = false
+            for _, p in ipairs(sf.points) do
+                assert(p[2] == f, label(sf) .. ' was re-anchored away from ' .. label(f))
+            end
+            local bottoms = scrollBottoms(sf, f)
+            assert(#bottoms > 0, label(sf) .. ' lost its BOTTOM* points')
+            for _, p in ipairs(bottoms) do
+                assert(p[5] >= top + SAFE_GAP, label(sf) .. ' ' .. p[1] .. ' bottom is ' .. p[5]
+                    .. ' px, band top is ' .. top .. ' (needs >= ' .. (top + SAFE_GAP) .. ')')
+            end
+            -- Point names, relative frames, x offsets and the non-bottom points stay as they were.
+            assert(#sf.points == before.points:gsub('[^|]', ''):len() + 1, label(sf) .. ' point count changed')
+            for i, p in ipairs(sf.points) do
+                local orig = {}
+                for part in (before.points .. '|'):gmatch('([^|]*)|') do orig[#orig + 1] = part end
+                local name, rel, relPoint, x, y = orig[i]:match('^(.-)>(.-)>(.-)>(.-)>(.-)$')
+                assert(tostring(p[1]) == name and tostring(p[2]) == rel and tostring(p[3]) == relPoint
+                    and tostring(p[4]) == x, label(sf) .. ' point ' .. i .. ' changed beyond its y offset')
+                if not name:find('BOTTOM') then
+                    assert(tostring(p[5]) == y, label(sf) .. ' ' .. name .. ' y offset changed')
+                elseif tonumber(y) >= top + SAFE_GAP then
+                    assert(tostring(p[5]) == y, label(sf) .. ' was high enough but was moved: ' .. y .. ' -> ' .. p[5])
+                else
+                    origLow = true
+                end
+            end
+            if not origLow then
+                assert(serializePoints(sf) == before.points, label(sf) .. ' was high enough but its points changed')
+            end
+        end
+    end
+    -- The panels stay flush with the window.
+    for _, name in ipairs({ 'QuestFrameDetailPanel', 'QuestFrameRewardPanel' }) do
+        assert(serializePoints(_G[name]) == W.original[_G[name]].points, name .. ' points changed')
+    end
+    assert(serializePoints(GossipFrame.GreetingPanel) == W.original[GossipFrame.GreetingPanel].points,
+        'GossipFrame.GreetingPanel points changed')
+end)
+
+test('Scroll frame lift is idempotent and Restore puts back the exact points', function()
+    Ready()
+    local lifted = {}
+    for _, f in ipairs(windows()) do
+        for _, sf in ipairs(f.scrolls) do lifted[sf] = serializePoints(sf) end
+    end
+    assert(lifted[QuestRewardScrollFrame] ~= W.original[QuestRewardScrollFrame].points, 'QuestRewardScrollFrame was not lifted')
+    W.ns.ApplyParchment()
+    event('QUEST_COMPLETE')
+    event('GOSSIP_SHOW')
+    event('ITEM_TEXT_READY')
+    Blizzard(function() QuestFrame:Hide(); QuestFrame:Show() end)
+    for sf, pts in pairs(lifted) do
+        assert(serializePoints(sf) == pts, label(sf) .. ' was lifted twice: ' .. pts .. ' -> ' .. serializePoints(sf))
+    end
+    W.parchment = false
+    W.ns.RestoreParchment()
+    for sf in pairs(lifted) do
+        assert(serializePoints(sf) == W.original[sf].points, label(sf) .. ' points not restored: '
+            .. serializePoints(sf) .. ', expected ' .. W.original[sf].points)
+    end
+    W.parchment = true
+    W.ns.ApplyParchment()
+    for sf, pts in pairs(lifted) do
+        assert(serializePoints(sf) == pts, label(sf) .. ' lift after Restore differs: ' .. serializePoints(sf))
+    end
+    W.ns.RestoreParchment()
+    assertOriginal('after second Restore')
+end)
+
+test('Window title gets dark ink and a larger size of the same face; Restore brings it back', function()
+    Ready()
+    for _, f in ipairs(windows()) do
+        local t = f.TitleContainer.TitleText
+        local o = W.original[t]
+        local face, size = o.font:match('^(.-)>(.-)>')
+        assert(t.color[1] < 0.35 and t.color[2] < 0.35 and t.color[3] < 0.35, label(t) .. ' is not dark ink: '
+            .. string.format('%.2f,%.2f,%.2f', t.color[1], t.color[2], t.color[3]))
+        assert(t.font[1] == face, label(t) .. ' font face changed to ' .. tostring(t.font[1]))
+        assert(type(t.font[2]) == 'number' and t.font[2] >= tonumber(size) + 1, label(t) .. ' size is '
+            .. tostring(t.font[2]) .. ', expected >= ' .. (tonumber(size) + 1))
+        assert(t.text == o.text, label(t) .. ' text changed')
+    end
+    -- Re-apply does not keep growing the title.
+    local sizes = {}
+    for _, f in ipairs(windows()) do sizes[f] = f.TitleContainer.TitleText.font[2] end
+    W.ns.ApplyParchment()
+    event('QUEST_DETAIL')
+    event('GOSSIP_SHOW')
+    event('ITEM_TEXT_READY')
+    for _, f in ipairs(windows()) do
+        assert(f.TitleContainer.TitleText.font[2] == sizes[f], label(f) .. ' title grew on re-apply')
+    end
+    W.parchment = false
+    W.ns.RestoreParchment()
+    assertOriginal('after Restore')
+    W.parchment = true
+    W.ns.ApplyParchment()
+    for _, f in ipairs(windows()) do
+        assert(f.TitleContainer.TitleText.font[2] == sizes[f], label(f) .. ' title size differs after re-enable')
+    end
+end)
+
+test('Parchment layer overhangs every window edge by at least 10 px', function()
+    Ready()
+    for _, f in ipairs(windows()) do
+        local _, shown = parchmentsOn(f)
+        local p = assert(shown[1], label(f) .. ' has no parchment')
+        local edges = {}
+        for _, pt in ipairs(p.points) do
+            local point, rel, relPoint, x, y = pt[1], pt[2], pt[3], pt[4] or 0, pt[5] or 0
+            assert(rel == f and point == relPoint, label(f) .. ' parchment point ' .. tostring(point)
+                .. ' is not anchored to the matching window point')
+            if point:find('LEFT') then assert(x <= -10, label(f) .. ' left overhang ' .. -x); edges.left = true end
+            if point:find('RIGHT') then assert(x >= 10, label(f) .. ' right overhang ' .. x); edges.right = true end
+            if point:find('TOP') then assert(y >= 10, label(f) .. ' top overhang ' .. y); edges.top = true end
+            if point:find('BOTTOM') then assert(y <= -10, label(f) .. ' bottom overhang ' .. -y); edges.bottom = true end
+        end
+        assert(edges.left and edges.right and edges.top and edges.bottom, label(f) .. ' parchment does not cover all edges')
+    end
+end)
+
 -- Hygiene ----------------------------------------------------------------------------------------
 
 test('Parchment.lua never hides windows or uses secure snippets', function()
@@ -1163,6 +1387,34 @@ test('Media/parchment.tga exists', function()
     f:close()
     assert(size and size > 18, 'Media/parchment.tga is not a TGA image')
     W = W or { violations = {}, prints = {} }
+end)
+
+test('Media/parchment.tga is a warm, darker tone in its central area', function()
+    W = W or { violations = {}, prints = {} }
+    local f = assert(io.open('Media/parchment.tga', 'rb'), 'Media/parchment.tga does not exist')
+    local data = f:read('*a')
+    f:close()
+    local idLen, mapType, imageType = data:byte(1, 3)
+    assert(mapType == 0 and imageType == 2, 'Media/parchment.tga is not an uncompressed true-colour TGA')
+    local w = data:byte(13) + data:byte(14) * 256
+    local h = data:byte(15) + data:byte(16) * 256
+    local bpp = data:byte(17)
+    assert(bpp == 32, 'Media/parchment.tga is ' .. bpp .. '-bit, expected 32')
+    local base = 18 + idLen
+    assert(#data >= base + w * h * 4, 'Media/parchment.tga is truncated')
+    local r, g, b, n = 0, 0, 0, 0
+    for y = math.floor(h / 4), math.floor(h * 3 / 4) - 1 do
+        local row = base + y * w * 4
+        for x = math.floor(w / 4), math.floor(w * 3 / 4) - 1 do
+            local i = row + x * 4 + 1
+            local cb, cg, cr = data:byte(i, i + 2)
+            r, g, b, n = r + cr, g + cg, b + cb, n + 1
+        end
+    end
+    r, g, b = r / n, g / n, b / n
+    local rgb = string.format('%.1f,%.1f,%.1f', r, g, b)
+    assert(r <= 225 and g <= 225 and b <= 225, 'Parchment centre is too white: mean RGB ' .. rgb .. ', each must be <= 225')
+    assert(r - b >= 30, 'Parchment centre is not warm enough: mean RGB ' .. rgb .. ', R - B must be >= 30')
 end)
 
 io.write(string.format('%d parchment cases, %d failed\n', cases, failures))
