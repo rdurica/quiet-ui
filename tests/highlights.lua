@@ -14,6 +14,9 @@ local WANT = { SoftTargetInteract = '3', SoftTargetInteractRange = '15', SoftTar
     SoftTargetIconGameObject = '1', SoftTargetInteractArc = '2', SoftTargetIconInteract = '1' }
 local ORIGINAL = { SoftTargetInteract = '1', SoftTargetInteractRange = '10', SoftTargetNameplateInteract = '0',
     SoftTargetIconGameObject = '0', SoftTargetInteractArc = '0', SoftTargetIconInteract = '0' }
+-- Icons were already on before QuietUI, so unrelated icons belong to the player.
+local ICONS_ON = { SoftTargetInteract = '1', SoftTargetInteractRange = '10', SoftTargetNameplateInteract = '0',
+    SoftTargetIconGameObject = '1', SoftTargetInteractArc = '0', SoftTargetIconInteract = '1' }
 local PLATE_FORBIDDEN = { SetAlpha = true, SetPoint = true, ClearAllPoints = true, Show = true, Hide = true }
 
 -- Per-test world state, rebuilt by Boot().
@@ -638,7 +641,7 @@ end
 
 for _, texture in ipairs({ HERBS, MINE, 'Cursor Crosshair_Speak_64' }) do
     test('Only Interact objects does not highlight ' .. texture, function()
-        Boot({ flags = { quest = true } })
+        Boot({ flags = { quest = true }, cvars = ICONS_ON })
         W.ns.ApplyHighlights()
         local plate = AddPlate('nameplate1', 'GameObject-Other', texture)
         Target('GameObject-Other', nil, 'GameObject-Other')
@@ -646,6 +649,84 @@ for _, texture in ipairs({ HERBS, MINE, 'Cursor Crosshair_Speak_64' }) do
         assert(plate.soft.Icon.alpha == 1, 'An unrelated icon was hidden')
     end)
 end
+
+-- Icons QuietUI turned on --------------------------------------------------------------------
+
+test('An unchecked category hides the icon QuietUI turned on and restores it after', function()
+    Boot({ flags = { herb = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-Ore', MINE)
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    assert(NothingShown(), 'An unchecked category was highlighted')
+    assert(plate.soft.Icon.alpha == 0, 'The icon QuietUI turned on is still visible')
+    assert(plate.soft.Icon.texture == MINE, 'The icon texture was cleared')
+    Target(nil, 'GameObject-Ore', nil)
+    assert(plate.soft.Icon.alpha == 1, 'Losing the target did not restore the icon')
+end)
+
+test('Unchecking a category on the current target keeps its icon hidden', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-Ore', MINE)
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    W.flags.ore = false
+    W.flags.herb = true
+    W.ns.ApplyHighlights()
+    assert(NothingShown(), 'The unchecked category still glows')
+    assert(plate.soft.Icon.alpha == 0, 'Unchecking revealed the icon QuietUI turned on')
+end)
+
+test('Game object icons follow the original SoftTargetIconGameObject', function()
+    local cvars = {}
+    for k, v in pairs(ORIGINAL) do cvars[k] = v end
+    cvars.SoftTargetIconInteract = '1'
+    Boot({ flags = { herb = true }, cvars = cvars })
+    W.ns.ApplyHighlights()
+    local object = AddPlate('nameplate1', 'GameObject-Ore', MINE)
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    assert(object.soft.Icon.alpha == 0, 'A game object icon the player had off is visible')
+    local npc = AddPlate('nameplate2', 'Creature-NPC', 'Cursor Crosshair_Speak_64')
+    Target('Creature-NPC', nil, 'Creature-NPC')
+    assert(object.soft.Icon.alpha == 1, 'The previous icon was not restored')
+    assert(npc.soft.Icon.alpha == 1, 'An NPC icon the player had on was hidden')
+end)
+
+test('An interact icon the player had off is hidden for NPCs too', function()
+    Boot({ flags = { herb = true } })
+    W.ns.ApplyHighlights()
+    local npc = AddPlate('nameplate1', 'Creature-NPC', 'Cursor Crosshair_Speak_64')
+    Target('Creature-NPC', nil, 'Creature-NPC')
+    assert(npc.soft.Icon.alpha == 0, 'An NPC icon QuietUI turned on is visible')
+end)
+
+test('Removing a plate releases the hold on an unchecked icon', function()
+    Boot({ flags = { herb = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-Ore', MINE)
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    event('NAME_PLATE_UNIT_REMOVED', 'nameplate1')
+    assert(plate.soft.Icon.alpha == 1, 'Plate removal did not restore the icon')
+    plate.soft.Icon:SetAlpha(0.8)
+    assert(plate.soft.Icon.alpha == 0.8, 'The removed icon is still held')
+end)
+
+test('Icons stay untouched while the CVars are not changed yet', function()
+    Boot({ flags = { herb = true } })
+    W.inCombat = true
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-Ore', MINE)
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    assert(plate.soft.Icon.alpha == 1, 'An icon was hidden before QuietUI changed the CVars')
+end)
+
+test('Disabling restores an unchecked icon', function()
+    Boot({ flags = { herb = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-Ore', MINE)
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    W.ns.RestoreHighlights()
+    assert(plate.soft.Icon.alpha == 1, 'Disabling did not restore the icon')
+end)
 
 -- Finding the plate -----------------------------------------------------------------------
 
@@ -748,7 +829,10 @@ test('Highlighted icon stays hidden across Blizzard alpha writes without losing 
 end)
 
 test('Changing to an unrelated object restores the old icon and leaves the new one alone', function()
-    local old = OreShown()
+    Boot({ flags = { ore = true }, cvars = ICONS_ON })
+    W.ns.ApplyHighlights()
+    local old = AddPlate('nameplate1', 'GameObject-A', MINE)
+    Target('GameObject-A', nil, 'GameObject-A')
     local other = AddPlate('nameplate2', 'Creature-B', 'Cursor Crosshair_Interact_64')
     Target('Creature-B', nil, 'Creature-B')
     assert(old.soft.Icon.alpha == 1, 'The previous icon was not restored')
@@ -756,7 +840,7 @@ test('Changing to an unrelated object restores the old icon and leaves the new o
 end)
 
 test('Icon restore preserves a partial alpha and captures a fresh value on reuse', function()
-    Boot({ flags = { ore = true } })
+    Boot({ flags = { ore = true }, cvars = ICONS_ON })
     W.ns.ApplyHighlights()
     local plate = AddPlate('nameplate1', 'GameObject-A', MINE)
     local icon = plate.soft.Icon
