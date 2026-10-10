@@ -157,6 +157,7 @@ local function RestoreAll()
     if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
     glancing = false
     if type(ns.RestoreQuestNotice) == "function" then ns.RestoreQuestNotice() end
+    if type(ns.RestoreHighlights) == "function" then ns.RestoreHighlights() end
     ns.HideQuestCatcher()
     ns.HideRangeMark()
     -- Target and action bar events stop while off.
@@ -187,6 +188,7 @@ local function ApplyAll()
     if ns.ForgetBarButtons then ns.ForgetBarButtons() end
     ns.RefreshWorld()
     if type(ns.ApplyQuestNotice) == "function" then ns.ApplyQuestNotice() end
+    if type(ns.ApplyHighlights) == "function" then ns.ApplyHighlights() end
     if ns.ForceQuietLayout() then
         if not layoutChosen then
             layoutPending = "select"
@@ -313,6 +315,10 @@ end
 ------------------------------------------------------------------------------
 local handlers = {}
 
+local function Highlights(event, ...)
+    if type(ns.HighlightsEvent) == "function" then ns.HighlightsEvent(event, ...) end
+end
+
 function handlers.ADDON_LOADED(name)
     if name == ADDON then
         ns.DB()
@@ -336,6 +342,7 @@ function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloading)
     if ns.DB().enabled and type(ns.QuestNoticeEvent) == "function" then
         ns.QuestNoticeEvent("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
     end
+    if ns.DB().enabled then Highlights("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading) end
     -- Boot usually armed it already; arm once if it was skipped.
     if ns.DB().enabled and (isInitialLogin or isReloading) and not settleArmed then
         settleArmed = true
@@ -347,6 +354,7 @@ function handlers.PLAYER_REGEN_DISABLED()
     ns.NoteCombat(true)
     ns.UpdateParty(0)
     UpdateFades(0)
+    Highlights("PLAYER_REGEN_DISABLED")
 end
 
 function handlers.PLAYER_REGEN_ENABLED()
@@ -355,6 +363,12 @@ function handlers.PLAYER_REGEN_ENABLED()
     UpdateFades(0)
     ns.RefreshChrome()
     ns.EnsureLayout()
+    Highlights("PLAYER_REGEN_ENABLED")
+end
+
+for _, event in ipairs({ "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "ZONE_CHANGED_NEW_AREA" }) do
+    local name = event
+    handlers[name] = function(...) Highlights(name, ...) end
 end
 
 for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE" }) do
@@ -394,8 +408,9 @@ function handlers.PLAYER_TARGET_CHANGED()
     ns.ForgetRangePlate()
 end
 
-function handlers.NAME_PLATE_UNIT_REMOVED()
+function handlers.NAME_PLATE_UNIT_REMOVED(...)
     ns.ForgetRangePlate()
+    Highlights("NAME_PLATE_UNIT_REMOVED", ...)
 end
 
 function handlers.ACTIONBAR_SLOT_CHANGED()
@@ -460,7 +475,11 @@ events:SetScript("OnEvent", function(_, event, ...)
     end
     local handler = handlers[event]
     if not handler then return end
-    if not ALWAYS[event] and (not booted or not ns.DB().enabled) then return end
+    if not ALWAYS[event] and (not booted or not ns.DB().enabled) then
+        -- A CVar restore deferred by combat must finish after /quiet off.
+        if event == "PLAYER_REGEN_ENABLED" and booted then Run("highlights", Highlights, event, ...) end
+        return
+    end
     Run(event, handler, ...)
 end)
 
