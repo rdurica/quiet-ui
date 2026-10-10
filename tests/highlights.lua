@@ -17,6 +17,9 @@ local ORIGINAL = { SoftTargetInteract = '1', SoftTargetInteractRange = '10', Sof
 -- Icons were already on before QuietUI, so unrelated icons belong to the player.
 local ICONS_ON = { SoftTargetInteract = '1', SoftTargetInteractRange = '10', SoftTargetNameplateInteract = '0',
     SoftTargetIconGameObject = '1', SoftTargetInteractArc = '0', SoftTargetIconInteract = '1' }
+-- Without a game object target the nameplate and icon CVars keep the originals, so NPCs stay bare.
+local IDLE = { SoftTargetInteract = '3', SoftTargetInteractRange = '15', SoftTargetNameplateInteract = '0',
+    SoftTargetIconGameObject = '1', SoftTargetInteractArc = '2', SoftTargetIconInteract = '0' }
 local PLATE_FORBIDDEN = { SetAlpha = true, SetPoint = true, ClearAllPoints = true, Show = true, Hide = true }
 
 -- Per-test world state, rebuilt by Boot().
@@ -429,8 +432,41 @@ end)
 test('Ore on out of combat and instance sets 3/15/1/1/2/1 and stores originals', function()
     Boot({ flags = { ore = true } })
     W.ns.ApplyHighlights()
-    AssertCVars(WANT, 'After apply')
+    AssertCVars(IDLE, 'After apply')
     AssertSaved(ORIGINAL)
+end)
+
+test('A game object target turns the nameplate and icon CVars on; an NPC turns them back', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    AssertCVars(IDLE, 'Without a target')
+    Target('GameObject-A', nil, 'GameObject-A')
+    AssertCVars(WANT, 'Game object target')
+    Target('Creature-V', nil, 'Creature-V')
+    AssertCVars(IDLE, 'NPC target')
+    Target(nil)
+    AssertCVars(IDLE, 'Target cleared')
+    AssertSaved(ORIGINAL)
+end)
+
+test('An NPC target keeps the original icon when soft interact was already on', function()
+    Boot({ flags = { ore = true }, cvars = ICONS_ON })
+    W.ns.ApplyHighlights()
+    Target('Creature-V', nil, 'Creature-V')
+    assert(W.cvars.SoftTargetIconInteract == '1', 'The original icon was not kept for an NPC')
+    assert(W.cvars.SoftTargetNameplateInteract == '0', 'An NPC got a nameplate')
+end)
+
+test('An NPC target in combat leaves the CVars until combat ends', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    Target('GameObject-A', nil, 'GameObject-A')
+    W.inCombat = true
+    Target('Creature-V', nil, 'Creature-V')
+    AssertCVars(WANT, 'In combat')
+    W.inCombat = false
+    event('PLAYER_REGEN_ENABLED')
+    AssertCVars(IDLE, 'After combat')
 end)
 
 test('ApplyHighlights is idempotent', function()
@@ -438,7 +474,7 @@ test('ApplyHighlights is idempotent', function()
     W.ns.ApplyHighlights()
     W.ns.ApplyHighlights()
     W.ns.ApplyHighlights()
-    AssertCVars(WANT, 'After repeated apply')
+    AssertCVars(IDLE, 'After repeated apply')
     AssertSaved(ORIGINAL)
 end)
 
@@ -500,7 +536,7 @@ test('A failed CVar activation keeps its original and retries the desired value'
 
     C_CVar.SetCVar = set
     event('PLAYER_REGEN_ENABLED')
-    AssertCVars(WANT, 'After retrying the failed activation')
+    AssertCVars(IDLE, 'After retrying the failed activation')
     AssertSaved(ORIGINAL)
     W.ns.RestoreHighlights()
     AssertCVars(ORIGINAL, 'After disabling the recovered activation')
@@ -513,7 +549,7 @@ test('Reload while active keeps the stored originals', function()
         SoftTargetIconGameObject = '0', SoftTargetInteractArc = '0', SoftTargetIconInteract = '0' } })
     W.ns.ApplyHighlights()
     AssertSaved(ORIGINAL)
-    AssertCVars(WANT, 'After reload apply')
+    AssertCVars(IDLE, 'After reload apply')
     W.flags.ore = false
     W.ns.ApplyHighlights()
     AssertCVars(ORIGINAL, 'After off following reload')
@@ -626,7 +662,7 @@ for _, c in ipairs({ { 'herb', HERBS }, { 'out-of-reach herb', HERBS_FAR }, { 'u
     test('Herbs on and a ' .. c[1] .. ' texture shows a green glow', function()
         Boot({ flags = { herb = true } })
         W.ns.ApplyHighlights()
-        AssertCVars(WANT, 'Herbs on')
+        AssertCVars(IDLE, 'Herbs on')
         local plate = AddPlate('nameplate1', 'GameObject-H', c[2])
         Target('GameObject-H', nil, 'GameObject-H')
         assert(ShownOn(plate), 'Nothing is shown for a ' .. c[1] .. ' target')
@@ -1007,7 +1043,7 @@ test('CVar change requested in combat waits for PLAYER_REGEN_ENABLED', function(
     assert(QuietUIDB.highlightCVars == nil, 'Originals were stored in combat before any write')
     W.inCombat = false
     event('PLAYER_REGEN_ENABLED')
-    AssertCVars(WANT, 'After combat')
+    AssertCVars(IDLE, 'After combat')
     AssertSaved(ORIGINAL)
 end)
 
@@ -1062,7 +1098,7 @@ test('A scenario instance is not one of the blocked types', function()
     Boot({ flags = { ore = true } })
     W.instance = 'scenario'
     W.ns.ApplyHighlights()
-    AssertCVars(WANT, 'In a scenario')
+    AssertCVars(IDLE, 'In a scenario')
 end)
 
 -- Missing or hostile client pieces --------------------------------------------------------

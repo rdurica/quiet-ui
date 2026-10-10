@@ -940,7 +940,7 @@ local TABS = {
     { id = "bars", label = "Bars", height = 308 },
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
-    { id = "chat", label = "Misc.", height = 284 },
+    { id = "chat", label = "Misc.", height = 302 },
     { id = "info", label = "Info", height = 148 },
 }
 
@@ -1584,6 +1584,8 @@ local function CreateSetup()
     widget.highlightHeader = Section(chat, "Highlights",
         "The object the game picks for the Interact key glows: herbs green, ore gold, interact objects white. Set that key in Key Bindings as Interact With Target. Interact objects includes anything with the gear icon, not just quest objects. QuietUI widens soft targeting, hides the highlighted icon and any icon you had turned off, and restores your settings when turned off.")
     widget.highlightHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -178)
+    widget.highlightNote = Body(chat, "Turns on soft targeting for the Interact key, so nearby NPCs show their names.")
+    widget.highlightNote:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -196)
     local highlightChoices = {
         { key = "highlightHerb", label = "Herbs" },
         { key = "highlightOre", label = "Ore" },
@@ -1595,17 +1597,17 @@ local function CreateSetup()
             Paint()
         end)
         button:SetWidth(120)
-        button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -198)
+        button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -214)
         widget[choice.key] = button
     end
     widget.questMobsHeader = Section(chat, "Quest mobs",
         "A gold exclamation mark shows left of the nameplate of mobs you need to kill for a quest, and a pouch for mobs that drop a quest item. Only mobs you can attack are marked, and the icon disappears once the objective is complete.")
-    widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -232)
+    widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -250)
     widget.questMobs = Choice(chat, "Quest mobs", function()
         draft.questMobs = not draft.questMobs
         Paint()
     end)
-    widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -252)
+    widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -270)
 
     local info = widget.pages[7]
     widget.about = Section(info, "About")

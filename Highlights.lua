@@ -92,6 +92,19 @@ local function WriteCVar(api, name, value)
     return ok
 end
 
+-- Only a game object needs its nameplate and icon for the glow. Our SoftTargetInteract 3 also
+-- picks NPCs, which would get a friendly plate or a name and icon the player never asked for.
+local function Wanted(name, originals)
+    if type(targetGUID) == "string" and targetGUID:find("^GameObject") then return WANT[name] end
+    if name == "SoftTargetNameplateInteract" then return tostring(originals[name]) end
+    if name == "SoftTargetIconInteract" then
+        -- Keep the player's icon only if they already used soft interact themselves.
+        if tostring(originals.SoftTargetInteract) == "0" then return "0" end
+        return tostring(originals[name])
+    end
+    return WANT[name]
+end
+
 -- CVars change only out of combat; REGEN_ENABLED calls this again with the current state.
 local function SyncCVars()
     if InCombat() then return end
@@ -110,7 +123,7 @@ local function SyncCVars()
         for _, name in ipairs(CVARS) do
             -- Older snapshots may predate a newly managed CVar.
             if db.highlightCVars[name] == nil then db.highlightCVars[name] = ReadCVar(api, name) end
-            if db.highlightCVars[name] ~= nil then WriteCVar(api, name, WANT[name]) end
+            if db.highlightCVars[name] ~= nil then WriteCVar(api, name, Wanted(name, db.highlightCVars)) end
         end
     elseif type(db.highlightCVars) == "table" then
         local restored = true
@@ -409,9 +422,9 @@ end
 
 function ns.ApplyHighlights()
     stopped = false
-    SyncCVars()
     -- No events arrive while off, so the remembered target may be stale.
     if Active() then targetGUID = ReadTarget() end
+    SyncCVars()
     Evaluate()
 end
 
@@ -427,6 +440,7 @@ function ns.HighlightsEvent(event, ...)
     if event == "PLAYER_SOFT_INTERACT_CHANGED" then
         local _, newGUID = ...
         targetGUID = ReadTarget(newGUID)
+        SyncCVars()
         Evaluate()
         Recheck()
     elseif event == "NAME_PLATE_UNIT_ADDED" then
