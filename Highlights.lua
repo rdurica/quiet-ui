@@ -235,14 +235,18 @@ local function HideIcon(icon)
     hiddenIcon = icon
 end
 
-local function HideNow()
-    RestoreIcon()
+local function HideGlow()
     anchorToken = nil
     if not root then return end
     for _, group in ipairs(loops) do Try(group, "Stop") end
     root:Hide()
     Try(root, "ClearAllPoints")
     Try(root, "SetParent", UIParent)
+end
+
+local function HideNow()
+    RestoreIcon()
+    HideGlow()
 end
 
 local function ShowOn(plate, soft, token, kind)
@@ -355,12 +359,11 @@ local function Evaluate(plate, token)
     end
     local kind = Category(IconTexture(soft))
     if not kind then
-        HideNow()
         -- An unchecked category keeps the player's original choice of no icon.
-        if OwnIcon(targetGUID) then
-            HideIcon(soft.Icon)
-            anchorToken = token
-        end
+        if not OwnIcon(targetGUID) then return HideNow() end
+        HideGlow()
+        HideIcon(soft.Icon)
+        anchorToken = token
         return
     end
     HideIcon(soft.Icon)
