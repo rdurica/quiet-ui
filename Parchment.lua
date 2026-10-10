@@ -108,9 +108,8 @@ end
 local function Active()
     local db = ns.DB and ns.DB()
     if not (db and db.enabled) then return false end
-    -- The setting accessor lives in Setup.lua; missing means on.
-    if type(ns.Parchment) == "function" then return ns.Parchment() ~= false end
-    return true
+    -- The setting accessor lives in Setup.lua; missing means off.
+    return type(ns.Parchment) == "function" and ns.Parchment() == true
 end
 
 local function Usable(obj)

@@ -122,7 +122,7 @@ end
 
 -- Missing means on. Only an explicit false keeps the original quest, dialog and book windows.
 function ns.Parchment()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).parchment ~= false
+    return (ns.Settings and ns.Settings() or ns.CharDB()).parchment == true
 end
 
 -- Missing means all off. Only explicit true values turn a category on.
@@ -496,7 +496,7 @@ local function ReadDraft(source)
     draft.alwaysShowDebuffs = source.alwaysShowDebuffs ~= false
     draft.questNotice = source.questNotice ~= false
     draft.questMobs = source.questMobs ~= false
-    draft.parchment = source.parchment ~= false
+    draft.parchment = source.parchment == true
     local noticeSize = source.questNoticeSize
     draft.questNoticeSize = (noticeSize == "smaller" or noticeSize == "larger") and noticeSize or "default"
     local highlights = type(source.highlights) == "table" and source.highlights or {}
@@ -598,7 +598,7 @@ local function DraftSettings()
     if not draft.alwaysShowDebuffs then db.alwaysShowDebuffs = false end
     if not draft.questNotice then db.questNotice = false end
     if not draft.questMobs then db.questMobs = false end
-    if not draft.parchment then db.parchment = false end
+    if draft.parchment then db.parchment = true end
     if draft.questNoticeSize == "smaller" or draft.questNoticeSize == "larger" then
         db.questNoticeSize = draft.questNoticeSize
     end
@@ -1617,7 +1617,7 @@ local function CreateSetup()
     end)
     widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -246)
     widget.parchmentHeader = Section(chat, "Parchment windows",
-        "Quest, NPC dialog and book windows show as clean parchment with their buttons inside. Turn it off to keep the original windows.")
+        "Quest, NPC dialog and book windows show as clean parchment with their buttons inside. Off by default.")
     widget.parchmentHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -278)
     widget.parchment = Choice(chat, "Parchment windows", function()
         draft.parchment = not draft.parchment
