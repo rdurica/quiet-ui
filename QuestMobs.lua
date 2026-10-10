@@ -13,6 +13,7 @@ local pool = {}
 local icons = {} -- unit token -> icon frame on its plate
 local pending, generation = false, 0
 local stopped = false
+local broken = false -- frames cannot be destroyed, so stop creating after a failure
 
 local function Try(obj, method, ...)
     local fn = obj and obj[method]
@@ -39,16 +40,19 @@ end
 local function Acquire()
     local icon = table.remove(pool)
     if icon then return icon end
-    if type(CreateFrame) ~= "function" then return end
+    if broken or type(CreateFrame) ~= "function" then return end
     local ok, frame = pcall(CreateFrame, "Frame", nil, UIParent)
     if not ok or type(frame) ~= "table" then
-        ns.Report("quest mobs", frame)
+        broken = true
+        ns.Report("quest mobs frame", frame)
         return
     end
     Try(frame, "EnableMouse", false)
     local tex = Try(frame, "CreateTexture", nil, "ARTWORK")
     if type(tex) ~= "table" then
-        ns.Report("quest mobs", "Textures are not available on this client.")
+        broken = true
+        frame:Hide()
+        ns.Report("quest mobs texture", "Textures are not available on this client.")
         return
     end
     Try(tex, "SetAllPoints", frame)
