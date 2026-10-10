@@ -115,6 +115,13 @@ function ns.QuestNoticeEnabled()
     return (ns.Settings and ns.Settings() or ns.CharDB()).questNotice ~= false
 end
 
+-- Missing means all off. Only explicit true values turn a category on.
+function ns.Highlights()
+    local stored = (ns.Settings and ns.Settings() or ns.CharDB()).highlights
+    if type(stored) ~= "table" then stored = {} end
+    return { herb = stored.herb == true, ore = stored.ore == true, quest = stored.quest == true }
+end
+
 -- Missing means the tracker size. Only "smaller" and "larger" change it.
 function ns.QuestNoticeSize()
     local size = (ns.Settings and ns.Settings() or ns.CharDB()).questNoticeSize
@@ -363,6 +370,9 @@ local function Paint()
         local size = draft.questNoticeSize
         frame.questNoticeSize.value:SetText(size == "smaller" and "Smaller" or size == "larger" and "Larger" or "Default")
     end
+    if frame.highlightHerb then PaintBox(frame.highlightHerb.box, draft.highlightHerb) end
+    if frame.highlightOre then PaintBox(frame.highlightOre.box, draft.highlightOre) end
+    if frame.highlightQuest then PaintBox(frame.highlightQuest.box, draft.highlightQuest) end
     if frame.chat then
         PaintBox(frame.chat.box, draft.chat)
     end
@@ -475,6 +485,10 @@ local function ReadDraft(source)
     draft.questNotice = source.questNotice ~= false
     local noticeSize = source.questNoticeSize
     draft.questNoticeSize = (noticeSize == "smaller" or noticeSize == "larger") and noticeSize or "default"
+    local highlights = type(source.highlights) == "table" and source.highlights or {}
+    draft.highlightHerb = highlights.herb == true
+    draft.highlightOre = highlights.ore == true
+    draft.highlightQuest = highlights.quest == true
     draft.chat = source.chat ~= false
     local fade = source.chatFade
     draft.chatFade = type(fade) == "number" and fade == fade and math.floor(math.max(0, math.min(60, fade)) / 5) * 5 or 10
@@ -571,6 +585,10 @@ local function DraftSettings()
     if not draft.questNotice then db.questNotice = false end
     if draft.questNoticeSize == "smaller" or draft.questNoticeSize == "larger" then
         db.questNoticeSize = draft.questNoticeSize
+    end
+    if draft.highlightHerb or draft.highlightOre or draft.highlightQuest then
+        db.highlights = { herb = draft.highlightHerb or nil, ore = draft.highlightOre or nil,
+            quest = draft.highlightQuest or nil }
     end
     if draft.chat then
         db.chat = nil
@@ -914,7 +932,7 @@ local TABS = {
     { id = "bars", label = "Bars", height = 308 },
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
-    { id = "chat", label = "Misc.", height = 176 },
+    { id = "chat", label = "Misc.", height = 230 },
     { id = "info", label = "Info", height = 148 },
 }
 
@@ -1555,6 +1573,23 @@ local function CreateSetup()
     end)
     widget.questNoticeSize:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -144)
     widget.questNoticeSize.value:SetWidth(72)
+    widget.highlightHeader = Section(chat, "Highlights",
+        "The object the game picks for the Interact key glows: herbs green, ore gold, quest objects white. Set that key in Key Bindings as Interact With Target. While a category is on, QuietUI turns on soft targeting and game object icons and restores them when turned off.")
+    widget.highlightHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -178)
+    local highlightChoices = {
+        { key = "highlightHerb", label = "Herbs" },
+        { key = "highlightOre", label = "Ore" },
+        { key = "highlightQuest", label = "Quest objects" },
+    }
+    for i, choice in ipairs(highlightChoices) do
+        local button = Choice(chat, choice.label, function()
+            draft[choice.key] = not draft[choice.key]
+            Paint()
+        end)
+        button:SetWidth(120)
+        button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -198)
+        widget[choice.key] = button
+    end
 
     local info = widget.pages[7]
     widget.about = Section(info, "About")

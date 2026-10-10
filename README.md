@@ -99,6 +99,10 @@ open. **X** or **Escape** closes it without saving pending changes.
 - **Misc.:** Toggle modern chat and choose the fade delay. **Stay** keeps messages
   visible at the bottom. Below that, **Quest updates** briefly shows the quest you
   just accepted, changed, or completed. **Text size** is Default, Smaller, or Larger.
+  **Highlights** makes the herb, ore, or quest object the game picks for the
+  Interact key glow, all off by default. Set the key under **Interact With Target**
+  in **Key Bindings**. QuietUI turns on soft targeting and game object icons while
+  highlights are active and restores your settings when they turn off.
 - **Info:** A short guide to QuietUI and Glance.
 
 With a preset selected, **Save** updates its settings for every character using
@@ -120,8 +124,8 @@ ends. Presets can also be managed while QuietUI is off.
 shared preset, then applies and saves the defaults immediately: Always visible off except for party/raid
 frames, Only on hover on for XP and off for other elements, default bar groups, player
 frame, grouped buffs, and Always show debuffs on,
-modern chat with a 10-second fade, and Force layout, living-target requirement, and
-In range off.
+modern chat with a 10-second fade, and Force layout, living-target requirement,
+In range, and Highlights off.
 
 **Import layout** adds or updates the bundled Edit Mode layout immediately,
 including after choosing Not now. Each bundled layout version is offered once;
@@ -175,5 +179,10 @@ arranging it. Elements appear immediately and fade out over 0.3 seconds.
 In range needs a visible target nameplate and a living target. It stays off during
 combat, in vehicles and instances, in Edit Mode, with a spell flyout or item on the
 cursor, and during Glance. Always visible action bar groups do not block it.
+
+Highlights glow green for herbs, gold for ore, and warm white for quest objects
+within 15 yards. They show only outside combat and instances, never change the
+nameplate itself, and ignore Glance and Edit Mode. Changes made in combat wait
+until combat ends.
 
 </details>

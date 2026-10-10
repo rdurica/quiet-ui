@@ -17,4 +17,5 @@ LayoutString.lua
 Layout.lua
 Setup.lua
 QuestNotice.lua
+Highlights.lua
 QuietUI.lua
