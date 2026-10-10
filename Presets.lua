@@ -14,7 +14,7 @@ end
 
 function ns.CopySettings(source, target)
     target = target or {}
-    if ns.MigrateVisibility then ns.MigrateVisibility(source) end
+    if ns.MigrateOnce then ns.MigrateOnce(source) end
     for _, key in ipairs(KEYS) do target[key] = ns.Copy(source[key]) end
     return target
 end
@@ -25,8 +25,7 @@ function ns.Presets()
     return db.presets
 end
 
-function ns.ActivePreset()
-    local char = ns.CharDB()
+local function PresetFor(char)
     local preset = char.presetId and ns.Presets()[char.presetId]
     if type(preset) ~= "table" then
         char.presetId = nil
@@ -35,18 +34,22 @@ function ns.ActivePreset()
     return preset
 end
 
+function ns.ActivePreset()
+    return PresetFor(ns.CharDB())
+end
+
 function ns.Settings()
-    local preset = ns.ActivePreset()
+    local char = ns.CharDB()
+    local preset = PresetFor(char)
     if preset then
-        if ns.MigrateVisibility then ns.MigrateVisibility(preset.settings) end
-        local char = ns.CharDB()
+        if ns.MigrateOnce then ns.MigrateOnce(preset.settings) end
         if snapshotChar ~= char or snapshotPreset ~= preset then
             ns.CopySettings(preset.settings, char)
             snapshotChar, snapshotPreset = char, preset
         end
         return preset.settings
     end
-    return ns.CharDB()
+    return char
 end
 
 function ns.PresetInterfaceStyle(preset)

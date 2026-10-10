@@ -30,20 +30,25 @@ local minimapHooked
 
 -- Per character. An older build kept this on the account; the first character
 -- to load keeps that copy, then the account keys are dropped.
+local accountMoved = false
+
 function ns.CharDB()
     if type(QuietUICharDB) ~= "table" then
         QuietUICharDB = {}
     end
-    local account = ns.DB()
-    if account.visible ~= nil or account.player ~= nil then
-        if QuietUICharDB.visible == nil and QuietUICharDB.player == nil then
-            QuietUICharDB.visible = account.visible
-            QuietUICharDB.player = account.player
+    if not accountMoved then
+        accountMoved = true
+        local account = ns.DB()
+        if account.visible ~= nil or account.player ~= nil then
+            if QuietUICharDB.visible == nil and QuietUICharDB.player == nil then
+                QuietUICharDB.visible = account.visible
+                QuietUICharDB.player = account.player
+            end
+            account.visible = nil
+            account.player = nil
         end
-        account.visible = nil
-        account.player = nil
     end
-    if ns.MigrateVisibility then ns.MigrateVisibility(QuietUICharDB) end
+    if ns.MigrateOnce then ns.MigrateOnce(QuietUICharDB) end
     return QuietUICharDB
 end
 
@@ -444,7 +449,7 @@ end
 local function ReadDraft(source)
     if frame and frame.rangeSpell and frame.rangeSpell.edit:HasFocus() then frame.rangeSpell.edit:ClearFocus() end
     source = source or (ns.Settings and ns.Settings() or ns.CharDB())
-    if ns.MigrateVisibility then ns.MigrateVisibility(source) end
+    if ns.MigrateOnce then ns.MigrateOnce(source) end
     draft.hoverOnly = {}
     for _, row in ipairs(ROWS) do
         draft.hoverOnly[row.key] = ns.HoverSetting(source, row.key)

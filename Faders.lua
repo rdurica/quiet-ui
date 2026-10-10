@@ -60,7 +60,8 @@ local resourceFrames = {}
 local partyFrames = {}
 local partyAlphaBlocks = {}
 local managedParty = {}
-local FindPartyFrames
+local FindPartyFrames, PartyChanged
+local partyActive = false
 local questFrames = {}
 local auraFrames = {}
 local meterFrames = {}
@@ -133,8 +134,18 @@ function ns.FindFaders(deep)
     RefreshKids(resourceFrames)
     RefreshKids(auraFrames)
     FindMeters(deep)
+    local active = ns.AutoHideParty and ns.AutoHideParty() or false
+    if active and (deep or not partyActive or PartyChanged()) then
+        FindPartyFrames()
+    end
+    partyActive = active
+end
+
+-- A roster change can swap members without changing the container counts.
+function ns.ForgetParty()
     if ns.AutoHideParty and ns.AutoHideParty() then
         FindPartyFrames()
+        partyActive = true
     end
 end
 
@@ -908,14 +919,21 @@ local function PlaceQuestCatcher()
         box:ClearAllPoints()
         box:SetAllPoints(target)
         questCatcherTarget = target
+        -- SetParent can move strata and level, so write them again.
+        box._quietStrata, box._quietLevel = nil, nil
     end
     local strata = target.GetFrameStrata and target:GetFrameStrata()
-    if type(strata) == "string" then
+    if type(strata) == "string" and not ns.IsSecret(strata) and box._quietStrata ~= strata then
         box:SetFrameStrata(strata)
+        box._quietStrata = strata
     end
     local level = target.GetFrameLevel and target:GetFrameLevel() or 1
-    if type(level) ~= "number" then level = 1 end
-    box:SetFrameLevel(math.max(level - 1, 0))
+    if type(level) ~= "number" or ns.IsSecret(level) then level = 1 end
+    level = math.max(level - 1, 0)
+    if box._quietLevel ~= level then
+        box:SetFrameLevel(level)
+        box._quietLevel = level
+    end
     if not box:IsShown() then box:Show() end
 end
 
@@ -955,7 +973,39 @@ local function CollectPartyAlpha(frame, root, found, depth)
     end
 end
 
+-- Per root: the frame and its child + region count. A count that cannot be
+-- read is a change, so the full scan stays the fallback.
+local partySigFrames, partySigCounts = {}, {}
+
+local function ReadCount(frame, method)
+    if type(frame[method]) ~= "function" then return nil end
+    local ok, value = pcall(frame[method], frame)
+    if ok and type(value) == "number" and not ns.IsSecret(value) then return value end
+end
+
+local function PartyCount(frame)
+    if not ns.Usable(frame) then return -1 end
+    local kids, regions = ReadCount(frame, "GetNumChildren"), ReadCount(frame, "GetNumRegions")
+    if not kids or not regions then return nil end
+    return kids + regions
+end
+
+-- Reads the signature and remembers it; true when it moved since the last read.
+PartyChanged = function()
+    local changed = false
+    for i = 1, #PARTY_NAMES do
+        local frame = _G[PARTY_NAMES[i]]
+        local count = PartyCount(frame)
+        if count == nil or partySigFrames[i] ~= frame or partySigCounts[i] ~= count then
+            changed = true
+        end
+        partySigFrames[i], partySigCounts[i] = frame, count
+    end
+    return changed
+end
+
 FindPartyFrames = function()
+    PartyChanged()
     local candidates = {}
     FindNamed(candidates, PARTY_NAMES)
     local roots = {}
@@ -1043,7 +1093,9 @@ end
 -- A green gradient over the target nameplate health bar. A flat tint turns the red bar grey. Secret results are left as they were.
 -- Strong on the left, fading out to the right, so the health bar still reads.
 local rangeMark
-local rangeSlot = { at = -1, helpful = nil, slot = nil }
+local rangeSlot = { at = nil, helpful = nil, slot = nil }
+-- Bar 1 changes come as events; the timer only covers a missed one.
+local SLOT_FALLBACK = 5
 
 local function PlainNumber(value)
     return type(value) == "number" and not ns.IsSecret(value)
@@ -1132,7 +1184,7 @@ end
 -- Bar 1 changes rarely, so the chosen spell is cached. Distance is read every frame.
 local function CachedSlot(helpful)
     local now = type(GetTime) == "function" and GetTime() or 0
-    if rangeSlot.helpful == helpful and now - rangeSlot.at < 0.25 then
+    if rangeSlot.at and rangeSlot.helpful == helpful and now - rangeSlot.at < SLOT_FALLBACK then
         return rangeSlot.slot
     end
     local slot = BestSlot(helpful)
@@ -1339,6 +1391,21 @@ local function TightestBar(root)
     return best
 end
 
+function ns.ForgetRangeSlot()
+    rangeSlot.at = nil
+end
+
+-- The last found bar, kept while the target keeps the same plate.
+local cachedPlate, cachedUnit, cachedBar
+
+function ns.ForgetRangePlate()
+    cachedPlate, cachedUnit, cachedBar = nil, nil, nil
+end
+
+local function PlateUnit(plate)
+    return plate.UnitFrame or plate.unitFrame or plate
+end
+
 local function TargetPlate()
     local finder = C_NamePlate and C_NamePlate.GetNamePlateForUnit
     if type(finder) ~= "function" then finder = GetNamePlateForUnit end
@@ -1348,7 +1415,11 @@ local function TargetPlate()
     end
     local ok, plate = pcall(finder, "target")
     if not ok or not ns.Usable(plate) then return nil end
-    local unitOk, unit = pcall(function() return plate.UnitFrame or plate.unitFrame or plate end)
+    if cachedBar and cachedPlate == plate and ShownBox(cachedUnit) and ShownBox(cachedBar) then
+        return cachedBar, plate
+    end
+    cachedPlate, cachedUnit, cachedBar = nil, nil, nil
+    local unitOk, unit = pcall(PlateUnit, plate)
     if not unitOk or not ShownBox(unit) then return nil end
     local namedOk, named = pcall(function()
         return unit.healthBar or unit.HealthBar or unit.HealthBarsContainer
@@ -1363,6 +1434,7 @@ local function TargetPlate()
     end
     bar = bar or TightestBar(unit)
     if not bar then return nil end
+    cachedPlate, cachedUnit, cachedBar = plate, unit, bar
     return bar, plate
 end
 
@@ -1420,19 +1492,21 @@ function ns.UpdateRange(elapsed)
     ns.EaseAlpha(mark, true, elapsed)
 end
 
+local function UpdateVisible(name, frames, usual, noHover, exception, glance, elapsed)
+    local hovered = HoverFrames(name, frames)
+    if ns.OnlyOnHover(name) then
+        UpdateGroup(frames, ns.InEditMode() or glance or exception or hovered, elapsed)
+    else
+        UpdateGroup(frames, usual or ns.Pinned(name) or glance, elapsed, noHover)
+    end
+end
+
 function ns.UpdateFaders(elapsed)
     local glance = ns.Glancing()
-    local function UpdateVisible(name, frames, usual, noHover, exception)
-        local hovered = HoverFrames(name, frames)
-        if ns.OnlyOnHover(name) then
-            UpdateGroup(frames, ns.InEditMode() or glance or exception or hovered, elapsed)
-        else
-            UpdateGroup(frames, usual or ns.Pinned(name) or glance, elapsed, noHover)
-        end
-    end
-    Run("xp bar", UpdateVisible, "xp", statusFrames, XPShouldShow(), false, ns.XPForced())
-    Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true)
-    Run("damage meter", UpdateVisible, "meter", meterFrames, MeterShouldShow(), true)
+    Run("xp bar", UpdateVisible, "xp", statusFrames, XPShouldShow(), false, ns.XPForced(), glance, elapsed)
+    Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true, nil,
+        glance, elapsed)
+    Run("damage meter", UpdateVisible, "meter", meterFrames, MeterShouldShow(), true, nil, glance, elapsed)
     Run("quest catcher", PlaceQuestCatcher)
     local questHot = questCatcher and ns.Hit(questCatcher)
     Run("quest tracker", UpdateGroup, questFrames, ns.VisibilityShow("quests", false, questHot), elapsed)

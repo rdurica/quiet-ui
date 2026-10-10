@@ -50,19 +50,17 @@ function ns.MigrateVisibility(settings)
     local visible = settings.visible
     if type(visible) ~= "table" or (visible.bars == nil and visible.swing == nil) then return end
     local buckets, used = {}, {}
-    local legacy = visible.bars ~= nil or visible.swing ~= nil
     for _, row in ipairs(ns.BAR_ROWS) do
-        if visible[row.id] ~= nil then legacy = true end
         local n = type(settings.groups) == "table" and settings.groups[row.id]
         if type(n) ~= "number" or n ~= n or n < 1 or n > #ns.BAR_ROWS then n = row.group end
         n = math.floor(n)
         used[n] = true
         buckets[n] = buckets[n] or { pinned = {}, normal = {} }
-        local pinned = visible[row.id] or (row.id ~= "swing" and visible.bars)
+        local pinned
+        if row.id == "swing" then pinned = visible.swing else pinned = visible.bars end
         local list = pinned and buckets[n].pinned or buckets[n].normal
         list[#list + 1] = row.id
     end
-    if not legacy then return end
     settings.groupVisibility = type(settings.groupVisibility) == "table" and settings.groupVisibility or {}
     for n = 1, #ns.BAR_ROWS do
         local bucket = buckets[n]
@@ -79,7 +77,18 @@ function ns.MigrateVisibility(settings)
         end
     end
     visible.bars = nil
-    for _, row in ipairs(ns.BAR_ROWS) do visible[row.id] = nil end
+    visible.swing = nil
+end
+
+-- Migration runs once per visible table; a replaced table migrates again.
+local migrated = setmetatable({}, { __mode = "k" })
+
+function ns.MigrateOnce(settings)
+    if type(settings) ~= "table" then return end
+    local visible = settings.visible
+    if type(visible) ~= "table" or migrated[visible] then return end
+    migrated[visible] = true
+    ns.MigrateVisibility(settings)
 end
 
 function ns.GroupVisibility(group)
@@ -292,6 +301,7 @@ end
 local function FlyoutOpen()
     return SpellFlyout and SpellFlyout.IsShown and SpellFlyout:IsShown() and true or false
 end
+ns.FlyoutOpen = FlyoutOpen
 
 -- Explicit HUD/bar-editing exceptions also reveal hover-only bars and XP.
 function ns.XPForced()
@@ -342,15 +352,13 @@ end
 -- Frame ownership changes when the UI structure changes. A bar that parents another stays at
 -- alpha 1 or the child would fade with it.
 local owner = {}
+-- Built with owner in Collect: hosts[bar] lists nested bars of another row, covered[bar]
+-- marks a bar whose outer frame of the same row already carries the alpha.
+local hosts = {}
+local covered = {}
 local resolved = {}
 local held = {}
 local seenHeld = {}
-
-local function Clear(map)
-    for key in pairs(map) do
-        map[key] = nil
-    end
-end
 
 local function UnderOther(frame, bar)
     for other in pairs(owner) do
@@ -362,12 +370,7 @@ local function UnderOther(frame, bar)
 end
 
 local function HostsOther(bar)
-    for other in pairs(owner) do
-        if other ~= bar and owner[other] ~= owner[bar] and IsAncestor(other, bar) then
-            return true
-        end
-    end
-    return false
+    return hosts[bar] ~= nil
 end
 
 local function LeaveAlone(frame)
@@ -464,6 +467,8 @@ end
 function ns.ForgetBarButtons()
     structureDirty = true
     ancestorCache = {}
+    ns.Wipe(hosts)
+    ns.Wipe(covered)
     ns.TouchHud()
     for bar in pairs(buttonCache) do
         buttonCache[bar] = nil
@@ -667,10 +672,10 @@ end
 
 -- Hover on a nested bar belongs to that bar, not the frame behind it.
 local function OverNested(bar)
-    for other in pairs(owner) do
-        if other ~= bar and owner[other] ~= owner[bar] and IsAncestor(other, bar) then
-            if DirectHot(other) then return true end
-        end
+    local nested = hosts[bar]
+    if not nested then return false end
+    for i = 1, #nested do
+        if DirectHot(nested[i]) then return true end
     end
     return false
 end
@@ -762,7 +767,9 @@ end
 local function Collect()
     if not structureDirty then return end
     structureDirty = false
-    Clear(owner)
+    ns.Wipe(owner)
+    ns.Wipe(hosts)
+    ns.Wipe(covered)
     for index, row in ipairs(ns.BAR_ROWS) do
         local entry = resolved[index]
         if not entry then
@@ -801,17 +808,27 @@ local function Collect()
             end
         end
     end
-end
-
--- The outer frame of the same bar already carries the alpha.
-local function CoveredBySameBar(bar)
-    local id = owner[bar]
-    for other, otherId in pairs(owner) do
-        if other ~= bar and otherId == id and IsAncestor(bar, other) and not HostsOther(other) then
-            return true
+    -- Ownership passes run here once per structure change, not every tick.
+    for bar, id in pairs(owner) do
+        for other, otherId in pairs(owner) do
+            if other ~= bar and otherId ~= id and IsAncestor(other, bar) then
+                local list = hosts[bar]
+                if not list then
+                    list = {}
+                    hosts[bar] = list
+                end
+                list[#list + 1] = other
+            end
         end
     end
-    return false
+    for bar, id in pairs(owner) do
+        for other, otherId in pairs(owner) do
+            if other ~= bar and otherId == id and not hosts[other] and IsAncestor(bar, other) then
+                covered[bar] = true
+                break
+            end
+        end
+    end
 end
 
 local function Watch(frame)
@@ -868,7 +885,7 @@ local function FadeChildArt(bar, alpha)
 end
 
 local function ApplyBar(bar, show, elapsed)
-    if CoveredBySameBar(bar) then
+    if covered[bar] then
         if bar._quietAlpha ~= nil then
             ns.ReleaseAlpha(bar)
         end
@@ -895,7 +912,7 @@ local function ReleaseUnwatched()
             held[frame] = nil
         end
     end
-    Clear(seenHeld)
+    ns.Wipe(seenHeld)
 end
 
 local showGroup = {}
@@ -913,8 +930,9 @@ end
 function ns.UpdateBars(showAll, elapsed, rescan)
     if rescan == nil then rescan = true end
     local showAllForced = showAll or ns.Glancing()
+    -- ApplyBar reads hosts/covered, which ForgetBarButtons drops between rescans.
+    Collect()
     if rescan or not haveBarShow then
-        Collect()
         if ns.InEditMode() or not ns.DB().enabled then
             HideCatchers()
         else

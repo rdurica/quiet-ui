@@ -250,29 +250,43 @@ local function KnownMicro(frame)
     return false
 end
 
-local function EachMicroButton(fn)
-    local seen = {}
-    local function Consider(name)
-        if type(name) ~= "string" or seen[name] or name:find("Queue") then return end
-        seen[name] = true
-        local frame = _G[name]
-        if ns.Usable(frame) then fn(frame) end
-    end
+-- Built by RefreshChrome and ResetMenu, so hover ticks do not read globals.
+local microButtons = {}
+local microBuilt = false
+local microSeen = {}
+
+-- Names and frames share the seen set, so a button listed both ways is kept once.
+local function AddMicro(frame, key)
+    if microSeen[key] then return end
+    microSeen[key] = true
+    if not ns.Usable(frame) or microSeen[frame] then return end
+    microSeen[frame] = true
+    microButtons[#microButtons + 1] = frame
+end
+
+local function BuildMicroButtons()
+    for i = #microButtons, 1, -1 do microButtons[i] = nil end
+    for key in pairs(microSeen) do microSeen[key] = nil end
     for _, name in ipairs(MICRO_NAMES) do
-        Consider(name)
+        AddMicro(_G[name], name)
     end
-    if type(MICRO_BUTTONS) ~= "table" then return end
-    for _, entry in ipairs(MICRO_BUTTONS) do
-        if type(entry) == "string" then
-            Consider(entry)
-        elseif ns.Usable(entry) and not seen[entry] then
-            local name = ns.FrameName(entry)
-            if not name or not name:find("Queue") then
-                seen[entry] = true
-                fn(entry)
+    if type(MICRO_BUTTONS) == "table" then
+        for _, entry in ipairs(MICRO_BUTTONS) do
+            if type(entry) == "string" then
+                if not entry:find("Queue") then AddMicro(_G[entry], entry) end
+            elseif ns.Usable(entry) then
+                local name = ns.FrameName(entry)
+                if not name or not name:find("Queue") then AddMicro(entry, entry) end
             end
         end
     end
+    for key in pairs(microSeen) do microSeen[key] = nil end
+    microBuilt = true
+end
+
+local function MicroList()
+    if not microBuilt then BuildMicroButtons() end
+    return microButtons
 end
 
 -- A container that also holds bars, bags, or the LFG eye keeps those children.
@@ -306,6 +320,7 @@ function ns.RefreshChrome()
     if refreshing or not ns.DB().enabled then return end
     refreshing = true
     local ok, err = pcall(function()
+        BuildMicroButtons()
         for _, name in ipairs(MENU_FRAMES) do
             local frame = _G[name]
             if frame and not frame._quietChrome then
@@ -334,24 +349,31 @@ local function EnsureMicroCatcher()
     return created
 end
 
+local function ReadEdge(button, method)
+    local fn = button[method]
+    if type(fn) ~= "function" then return nil end
+    local ok, value = pcall(fn, button)
+    if ok and type(value) == "number" then return value end
+end
+
 local function MicroCorner()
     local tl, br, tlTop, tlLeft, brBottom, brRight
-    EachMicroButton(function(button)
-        if not button.IsShown or not button:IsShown() or not button.GetLeft then return end
-        local ok, left, right, top, bottom = pcall(function()
-            return button:GetLeft(), button:GetRight(), button:GetTop(), button:GetBottom()
-        end)
-        if not ok or type(left) ~= "number" or type(right) ~= "number"
-            or type(top) ~= "number" or type(bottom) ~= "number" then
-            return
+    local list = MicroList()
+    for i = 1, #list do
+        local button = list[i]
+        if ns.Usable(button) and button.IsShown and button:IsShown() then
+            local left, right = ReadEdge(button, "GetLeft"), ReadEdge(button, "GetRight")
+            local top, bottom = ReadEdge(button, "GetTop"), ReadEdge(button, "GetBottom")
+            if left and right and top and bottom then
+                if not tl or top > tlTop or (top == tlTop and left < tlLeft) then
+                    tl, tlTop, tlLeft = button, top, left
+                end
+                if not br or bottom < brBottom or (bottom == brBottom and right > brRight) then
+                    br, brBottom, brRight = button, bottom, right
+                end
+            end
         end
-        if not tl or top > tlTop or (top == tlTop and left < tlLeft) then
-            tl, tlTop, tlLeft = button, top, left
-        end
-        if not br or bottom < brBottom or (bottom == brBottom and right > brRight) then
-            br, brBottom, brRight = button, bottom, right
-        end
-    end)
+    end
     if tl and br then return tl, br end
 end
 
@@ -393,20 +415,21 @@ end
 
 local function MicroHot()
     if microCatcher and ns.Hit(microCatcher) then return true end
-    local hot = false
-    EachMicroButton(function(button)
-        if not hot and ns.Hit(button) then hot = true end
-    end)
-    return hot
+    local list = MicroList()
+    for i = 1, #list do
+        if ns.Hit(list[i]) then return true end
+    end
+    return false
 end
 
 local function UpdateMicro(elapsed)
     if not ns.DB().enabled then return end
     PlaceMicroCatcher()
     local show = ns.VisibilityShow("micro", false, MicroHot())
-    EachMicroButton(function(button)
-        ns.UpdateFaded(button, show, elapsed)
-    end)
+    local list = MicroList()
+    for i = 1, #list do
+        if ns.Usable(list[i]) then ns.UpdateFaded(list[i], show, elapsed) end
+    end
 end
 
 -- Hover, bag slots, a drag, or Glance on keeps the button up. Setup can pin it on.
@@ -445,6 +468,7 @@ function ns.ResetMenu()
         microCatcher._quietA, microCatcher._quietB = nil, nil
     end
     if button then button:Hide() end
+    BuildMicroButtons()
     ns.EachBagFrame(function(frame)
         SetBagInput(frame, true)
     end)

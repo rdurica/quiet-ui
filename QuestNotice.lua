@@ -5,6 +5,8 @@ local noticesOn
 local snapshots, accepted, acceptedShown, queue = {}, {}, {}, {}
 local current, frame, titleText, bodyText
 local drawn, drawnWidth
+-- Last placement and style inputs; Draw repeats the layout only when one changes.
+local placed = {}
 local clock, retryUntil, retryAt = 0, 0, 0
 local reported = false
 -- Default matches the tracker. Smaller is only a little under it; larger is the roomier notice.
@@ -356,8 +358,11 @@ function ns.QuestNoticeEvent(event, first, second)
     dirty, retryUntil, retryAt = true, clock + 10, clock
 end
 
+local TRACKER_NAMES = { "ObjectiveTrackerFrame", "QuestWatchFrame", "WatchFrame" }
+
 local function Tracker()
-    for _, tracker in ipairs({ ObjectiveTrackerFrame or false, QuestWatchFrame or false, WatchFrame or false }) do
+    for i = 1, #TRACKER_NAMES do
+        local tracker = _G[TRACKER_NAMES[i]]
         if tracker and ns.Usable(tracker) and Call(tracker.IsShown, tracker) then return tracker end
     end
 end
@@ -414,12 +419,11 @@ local function FirstSlot(tracker)
     return tracker, "TOPLEFT", 0, 0
 end
 
-local function Style(region, object, anchorScale)
+local function Style(region, object, anchorScale, chosen)
     if type(object) ~= "table" or not ns.Usable(object) then return end
     local path, size, flags = Try(object.GetFont, object)
     local r, g, b, a = Try(object.GetTextColor, object)
     local noticeScale = ScaleOf(region)
-    local chosen = type(ns.QuestNoticeSize) == "function" and ns.QuestNoticeSize() or "default"
     local textScale = TEXT_SCALE[chosen] or TEXT_SCALE.default
     if type(path) == "string" and Number(size) and size > 0 then
         region:SetFont(path, size * textScale * anchorScale / noticeScale, type(flags) == "string" and flags or "")
@@ -450,13 +454,26 @@ local function Draw(alpha)
     local anchor, point, dx, dy = FirstSlot(tracker)
     local anchorScale = ScaleOf(anchor)
     local frameScale = ScaleOf(frame)
-    frame:ClearAllPoints()
-    frame:SetPoint("TOPLEFT", anchor, point, dx * anchorScale / frameScale, dy * anchorScale / frameScale)
-    frame:SetWidth(width)
-    titleText:SetWidth(width)
-    bodyText:SetWidth(width)
-    Style(titleText, ObjectiveTrackerHeaderFont or GameFontNormal, anchorScale)
-    Style(bodyText, ObjectiveTrackerFont or GameFontHighlightSmall, anchorScale)
+    local chosen = type(ns.QuestNoticeSize) == "function" and ns.QuestNoticeSize() or "default"
+    local titleFont = ObjectiveTrackerHeaderFont or GameFontNormal
+    local bodyFont = ObjectiveTrackerFont or GameFontHighlightSmall
+    local key = placed
+    if key.anchor ~= anchor or key.point ~= point or key.dx ~= dx or key.dy ~= dy or key.width ~= width
+        or key.anchorScale ~= anchorScale or key.frameScale ~= frameScale or key.size ~= chosen
+        or key.titleFont ~= titleFont or key.bodyFont ~= bodyFont then
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", anchor, point, dx * anchorScale / frameScale, dy * anchorScale / frameScale)
+        frame:SetWidth(width)
+        titleText:SetWidth(width)
+        bodyText:SetWidth(width)
+        Style(titleText, titleFont, anchorScale, chosen)
+        Style(bodyText, bodyFont, anchorScale, chosen)
+        key.anchor, key.point, key.dx, key.dy, key.width = anchor, point, dx, dy, width
+        key.anchorScale, key.frameScale, key.size = anchorScale, frameScale, chosen
+        key.titleFont, key.bodyFont = titleFont, bodyFont
+        -- A new font size changes the measured height.
+        drawn = nil
+    end
     if drawn ~= current or drawnWidth ~= width then
         titleText:SetText(current.title)
         local lines = {}
@@ -476,7 +493,7 @@ local function Draw(alpha)
         drawn, drawnWidth = current, width
     end
     frame:SetAlpha(alpha)
-    frame:Show()
+    if not frame:IsShown() then frame:Show() end
 end
 
 function ns.UpdateQuestNotice(elapsed)

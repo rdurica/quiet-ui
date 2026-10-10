@@ -45,6 +45,19 @@ function ns.IsSecret(value)
     return type(issecretvalue) == "function" and issecretvalue(value) and true or false
 end
 
+-- Runs fn protected; a failure is reported once under label.
+function ns.Run(label, fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok then ns.Report(label, err) end
+    return ok
+end
+
+function ns.Wipe(t)
+    if type(t) ~= "table" then return t end
+    for key in pairs(t) do t[key] = nil end
+    return t
+end
+
 function ns.FrameName(frame)
     if ns.Usable(frame) and frame.GetName then
         return frame:GetName()
@@ -328,15 +341,10 @@ function ns.FrameHot()
     return frameHot
 end
 
-function ns.UpdateFaded(frame, show, elapsed)
-    if frame._quietTick == fadeTick then return end
-    frame._quietTick = fadeTick
-    local target = show and 1 or 0
-    -- Already there. A fade still runs while the value is between 0 and 1.
-    if frame._quietAlpha == target then return end
+-- Shared fade step: appears at once, fades out over FADE_OUT.
+local function StepAlpha(frame, target, elapsed, current)
     ns.Remember(frame)
     ns.EnsureAlphaHook(frame)
-    local current = frame._quietAlpha
     if type(current) ~= "number" then
         current = CurrentAlpha(frame) or target
     end
@@ -351,27 +359,23 @@ function ns.UpdateFaded(frame, show, elapsed)
     ns.PushAlpha(frame, nextAlpha)
 end
 
+function ns.UpdateFaded(frame, show, elapsed)
+    if frame._quietTick == fadeTick then return end
+    frame._quietTick = fadeTick
+    local target = show and 1 or 0
+    -- Already there. A fade still runs while the value is between 0 and 1.
+    if frame._quietAlpha == target then return end
+    StepAlpha(frame, target, elapsed, frame._quietAlpha)
+end
+
 -- Appears at once and fades out. Same rule as UpdateFaded, without the tick guard.
 function ns.EaseAlpha(frame, show, elapsed)
     if not frame or not frame.SetAlpha then return end
     local target = show and 1 or 0
     if frame._quietSecret == nil and frame._quietAlpha == target then return end
-    ns.Remember(frame)
-    ns.EnsureAlphaHook(frame)
-    local current = frame._quietAlpha
-    if type(current) ~= "number" or frame._quietSecret ~= nil then
-        current = CurrentAlpha(frame)
-        if type(current) ~= "number" then current = target end
-    end
-    local nextAlpha = target
-    if target < current then
-        local step = (elapsed or 0) / FADE_OUT
-        if current - target > step then
-            nextAlpha = current - step
-        end
-    end
-    if nextAlpha ~= target then frameHot = true end
-    ns.PushAlpha(frame, nextAlpha)
+    -- A held secret alpha is stale; read the frame instead.
+    local current = frame._quietSecret == nil and frame._quietAlpha or nil
+    StepAlpha(frame, target, elapsed, current)
 end
 
 ------------------------------------------------------------------------------
@@ -381,7 +385,9 @@ function ns.ForceTextureHidden(tex)
     if not tex or not tex.SetAlpha or not tex.GetAlpha then return end
     if tex.GetObjectType and tex:GetObjectType() ~= "Texture" then return end
     if textureAlpha[tex] == nil then
-        textureAlpha[tex] = tex:GetAlpha()
+        local saved = tex:GetAlpha()
+        if ns.IsSecret(saved) or type(saved) ~= "number" then saved = 1 end
+        textureAlpha[tex] = saved
     end
     if ns.MarkingChat then ns.NoteChat(tex) end
     if not tex._quietTexHook then
@@ -389,14 +395,16 @@ function ns.ForceTextureHidden(tex)
         pcall(hooksecurefunc, tex, "SetAlpha", function(self, alpha)
             if self._quietApplying or not ns.DB().enabled then return end
             if self._quietChat and ns.ModernChat and not ns.ModernChat() then return end
-            if (alpha or 0) < 0.01 then return end
+            if type(alpha) == "number" and not ns.IsSecret(alpha) and alpha < 0.01 then return end
             self._quietApplying = true
             self:SetAlpha(0)
             self._quietApplying = false
         end)
     end
     if not ns.DB().enabled then return end
-    if tex:GetAlpha() >= 0.01 then
+    -- A secret alpha cannot be compared; treat it as visible.
+    local alpha = tex:GetAlpha()
+    if ns.IsSecret(alpha) or type(alpha) ~= "number" or alpha >= 0.01 then
         tex._quietApplying = true
         tex:SetAlpha(0)
         tex._quietApplying = false

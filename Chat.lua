@@ -66,16 +66,6 @@ local function ChatCount()
     return NUM_CHAT_WINDOWS or 10
 end
 
-local function Wipe(t)
-    if type(wipe) == "function" then
-        wipe(t)
-        return
-    end
-    for k in pairs(t) do
-        t[k] = nil
-    end
-end
-
 local function StripTab(tab)
     if not tab or not ns.DB().enabled or not ns.ModernChat() then return end
     local marked = ns.MarkingChat
@@ -484,13 +474,45 @@ local CHAT_TAGS = {
     { "Raid", "R" },
 }
 
--- [2. Trade - English] becomes [2], [Guild] becomes [G].
-local function ShortChannel(text)
-    text = text:gsub("%[(%d+)%.%s*[^%]]+%]", "[%1]")
-    for i = 1, #CHAT_TAGS do
-        text = text:gsub("%[" .. CHAT_TAGS[i][1] .. "%]", "[" .. CHAT_TAGS[i][2] .. "]")
+local TAG_SHORT = {}
+for i = 1, #CHAT_TAGS do
+    TAG_SHORT[CHAT_TAGS[i][1]] = CHAT_TAGS[i][2]
+end
+
+local TIMESTAMPS = {
+    "^%[%d%d?:%d%d:?%d*%s?[AaPp]?[Mm]?%]%s*",
+    "^%d%d?:%d%d:?%d*%s?[AaPp]?[Mm]?%s+",
+}
+
+local function SkipCodes(text, pos)
+    while true do
+        local _, e = text:find("^|c%x%x%x%x%x%x%x%x", pos)
+        if not e then _, e = text:find("^|r", pos) end
+        if not e then _, e = text:find("^%s+", pos) end
+        if not e then return pos end
+        pos = e + 1
     end
-    return text
+end
+
+-- Only the channel tag that opens the line: [2. Trade - English] becomes [2],
+-- [Guild] becomes [G]. Brackets inside the message stay as typed.
+local function ShortChannel(text)
+    if not text:find("[", 1, true) then return text end
+    local pos = SkipCodes(text, 1)
+    for i = 1, #TIMESTAMPS do
+        local _, e = text:find(TIMESTAMPS[i], pos)
+        if e then
+            pos = SkipCodes(text, e + 1)
+            break
+        end
+    end
+    local from, to = text:match("^|Hchannel:[^|]*|h%[()[^%]]*()%]|h", pos)
+    if not from then from, to = text:match("^%[()[^%]]*()%]", pos) end
+    if not from then return text end
+    local inner = text:sub(from, to - 1)
+    local short = inner:match("^(%d+)%.%s*%S") or TAG_SHORT[inner]
+    if not short then return text end
+    return text:sub(1, from - 1) .. short .. text:sub(to)
 end
 
 -- "Changed Channel: |Hchannel:%d|h[%s]|h" -> "Changed Channel:".
@@ -570,9 +592,15 @@ local function PushLine(frame, text, r, g, b, animate)
     -- Always the newest entry. The client sometimes passes addToStart, which
     -- would pin a new line to the top of this stack.
     lines[#lines + 1] = entry
-    local cap = MaxLines(frame)
-    while #lines > cap do
-        table.remove(lines, 1)
+    local n = #lines
+    local over = n - MaxLines(frame)
+    if over > 0 then
+        for i = 1, n - over do
+            lines[i] = lines[i + over]
+        end
+        for i = n - over + 1, n do
+            lines[i] = nil
+        end
     end
     frame._quietDirty = true
 end
@@ -637,9 +665,42 @@ local function RepairTinyFont(frame)
     pcall(frame.SetFont, frame, font or "Fonts\\FRIZQT__.TTF", 14, flags or "")
 end
 
-local function HideNativeText(frame)
+local function ShapeCount(obj)
+    local regions = obj.GetNumRegions and obj:GetNumRegions()
+    local children = obj.GetNumChildren and obj:GetNumChildren()
+    if type(regions) ~= "number" or type(children) ~= "number" then return nil end
+    if ns.IsSecret(regions) or ns.IsSecret(children) then return nil end
+    return regions + children
+end
+
+-- Regions and children of the frame and its direct children. Nil means unknown.
+local function TextSignature(frame, children)
+    local sum = ShapeCount(frame)
+    if not sum then return nil end
+    for i = 1, #children do
+        local child = children[i]
+        if ns.Usable(child) then
+            local count = ShapeCount(child)
+            if not count then return nil end
+            sum = sum + count
+        end
+    end
+    return sum
+end
+
+local function HideNativeText(frame, force)
     if not ns.DB().enabled or not ns.ModernChat() then return end
-    local function walk(obj, depth)
+    if Forbidden(frame) then return end
+    -- The root child list is read once and shared by the signature and the walk.
+    local okKids, rootKids = pcall(function()
+        return frame.GetChildren and { frame:GetChildren() } or {}
+    end)
+    if not okKids then rootKids = {} end
+    local okSig, sig = pcall(TextSignature, frame, rootKids)
+    if not okSig then sig = nil end
+    if not force and sig ~= nil and sig == frame._quietTextSig then return end
+    frame._quietTextSig = sig
+    local function walk(obj, depth, kids)
         if not obj or depth > 5 or Forbidden(obj) then return end
         if obj.GetNumRegions then
             local regions = { obj:GetRegions() }
@@ -651,7 +712,7 @@ local function HideNativeText(frame)
             end
         end
         if not obj.GetNumChildren then return end
-        local children = { obj:GetChildren() }
+        local children = kids or { obj:GetChildren() }
         for i = 1, #children do
             local child = children[i]
             if ns.Usable(child) and not SkipChild(child) then
@@ -659,7 +720,7 @@ local function HideNativeText(frame)
             end
         end
     end
-    pcall(walk, frame, 0)
+    pcall(walk, frame, 0, rootKids)
 end
 
 local function RestoreFonts(frame)
@@ -1816,7 +1877,7 @@ local function BindBubbles(frame)
     if not ok then ns.Report("chat line", err) end
     if type(frame.Clear) == "function" then
         pcall(hooksecurefunc, frame, "Clear", function(self)
-            if self._quietLines then Wipe(self._quietLines) end
+            if self._quietLines then ns.Wipe(self._quietLines) end
             self._quietScroll = 0
             self._quietDirty = true
         end)
@@ -1905,7 +1966,7 @@ end
 local function MarkStripped(frame)
     if not frame then return end
     if frame._quietLines and #frame._quietLines > 0 then
-        HideNativeText(frame)
+        HideNativeText(frame, true)
     end
     frame._quietStripped = true
     frame._quietDirty = true
@@ -1964,6 +2025,17 @@ function ns.StripAllChat(force)
             chromeStripped = true
         end
     end)
+    ns.MarkingChat = false
+    stripping = false
+    if not ok then ns.Report("chat", err) end
+end
+
+-- Blizzard rewrote one window's alpha or color; strip only that window.
+function ns.RestripChat(frame)
+    if stripping or not ns.Usable(frame) or not ns.DB().enabled or not ns.ModernChat() then return end
+    stripping = true
+    ns.MarkingChat = true
+    local ok, err = pcall(StripChat, frame)
     ns.MarkingChat = false
     stripping = false
     if not ok then ns.Report("chat", err) end
