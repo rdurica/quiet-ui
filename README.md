@@ -105,8 +105,10 @@ open. **X** or **Escape** closes it without saving pending changes.
   (`SoftTargetInteractArc 2`) and the required interact icons automatically when
   you enable a category and Save, so you do not need to face the object directly
   or configure anything through console commands.
-  The highlighted object's overhead icon is hidden. Your soft-target settings
-  are restored when highlights turn off.
+  The highlighted object's overhead icon is hidden. Other soft-target icons stay
+  as they were before QuietUI: hidden if you had them off (the WoW default),
+  shown if you had them on. Your soft-target settings are restored when
+  highlights turn off.
 - **Info:** A short guide to QuietUI and Glance.
 
 With a preset selected, **Save** updates its settings for every character using

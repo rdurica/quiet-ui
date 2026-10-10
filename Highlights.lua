@@ -332,6 +332,14 @@ local function Category(texture)
     end
 end
 
+-- True when the icon shows only because QuietUI turned it on; the saved originals tell.
+local function OwnIcon(guid)
+    local saved = type(QuietUIDB) == "table" and QuietUIDB.highlightCVars
+    if type(saved) ~= "table" then return false end
+    if tostring(saved.SoftTargetIconInteract) == "0" then return true end
+    return guid:find("^GameObject") ~= nil and tostring(saved.SoftTargetIconGameObject) == "0"
+end
+
 -- Reads the icon of plate (or the scanned target plate) and shows or hides the glow.
 local function Evaluate(plate, token)
     if not Active() or not targetGUID then return HideNow() end
@@ -344,7 +352,15 @@ local function Evaluate(plate, token)
         return HideNow()
     end
     local kind = Category(IconTexture(soft))
-    if not kind then return HideNow() end
+    if not kind then
+        HideNow()
+        -- An unchecked category keeps the player's original choice of no icon.
+        if OwnIcon(targetGUID) then
+            HideIcon(soft.Icon)
+            anchorToken = token
+        end
+        return
+    end
     HideIcon(soft.Icon)
     ShowOn(plate, soft, token, kind)
 end
