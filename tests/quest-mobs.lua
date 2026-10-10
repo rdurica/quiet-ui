@@ -52,6 +52,10 @@ local function newFrame(parent, opts)
     function f:GetWidth() return self.height * 8 end
     function f:GetSize() return self.height * 8, self.height end
     function f:GetFrameLevel() return 1 end
+    -- Requested size, kept apart from the fixture height that GetHeight reports.
+    function f:SetSize(w, h) rawset(self, 'sizeW', w); rawset(self, 'sizeH', h or w) end
+    function f:SetWidth(w) rawset(self, 'sizeW', w) end
+    function f:SetHeight(h) rawset(self, 'sizeH', h) end
     function f:EnableMouse(v) self.mouse = v end
     function f:IsMouseEnabled() return self.mouse == true end
     function f:SetScript(name, fn)
@@ -242,7 +246,7 @@ local function AddPlate(token, spec, opts)
     unitFrame.unit = token
     plate.namePlateUnitToken = token
     if not opts.noHealthBar then
-        local bar = newFrame(unitFrame, { plate = true, name = token .. '.healthBar', height = 8 })
+        local bar = newFrame(unitFrame, { plate = true, name = token .. '.healthBar', height = opts.barHeight or 8 })
         unitFrame.healthBar = bar
         plate.bar = bar
     end
@@ -516,6 +520,57 @@ test('A tooltip line at its goal is skipped even while the quest log still lags 
     local plate = Add('nameplate1', { lines = { Q(OTHER_Q), O('10/10 Kobold Vermin slain'), O('2/8 Tough Wolf Meat') } })
     assert(IconOn(plate) == 'loot', 'x >= y on the tooltip line marks it done, got ' .. tostring(IconOn(plate)))
 end)
+
+-- Unreadable data -------------------------------------------------------------------------
+-- Any secret or missing value in the tooltip lines or quest objectives leads to the
+-- exclamation, even next to a readable unfinished item objective that alone shows the pouch.
+
+local UNREADABLE = {
+    { 'a quest title with a secret id', { Q(SECRET, 'Hidden Quest'), O('0/3 Gnoll Paws'),
+        Q(LOOT_Q), O('4/8 Tough Wolf Meat') } },
+    { 'a quest title with a missing id', { Q(nil, 'Hidden Quest'), O('0/3 Gnoll Paws'),
+        Q(LOOT_Q), O('4/8 Tough Wolf Meat') } },
+    { 'an objective line with secret text', { Q(LOOT_Q), { type = OBJECTIVE, leftText = SECRET },
+        O('4/8 Tough Wolf Meat') } },
+    { 'a line with a secret type', { Q(LOOT_Q), { type = SECRET, leftText = '0/3 Gnoll Paws' },
+        O('4/8 Tough Wolf Meat') } },
+}
+for _, c in ipairs(UNREADABLE) do
+    test('Readable item objective next to ' .. c[1] .. ' shows the exclamation, not the pouch', function()
+        Ready()
+        local plate = Add('nameplate1', { lines = c[2] })
+        local kind = IconOn(plate)
+        assert(kind == 'kill', 'Unreadable data must lead to the exclamation, got ' .. tostring(kind))
+    end)
+end
+
+test('A matched quest objective with a secret type shows the exclamation without error', function()
+    Ready()
+    W.objectives[OTHER_Q] = {
+        { text = 'Gnoll Paws: 0/3', type = SECRET, finished = false },
+        { text = 'Tough Wolf Meat: 4/8', type = 'item', finished = false },
+    }
+    local plate = Add('nameplate1', { lines = { Q(OTHER_Q), O('4/8 Tough Wolf Meat'), O('0/3 Gnoll Paws') } })
+    local kind = IconOn(plate)
+    assert(kind == 'kill', 'A secret objective type must lead to the exclamation, got ' .. tostring(kind))
+end)
+
+-- Icon size follows the health bar height, clamped to 12..24.
+for _, h in ipairs({ 8, 10, 20 }) do
+    test('With a health bar of height ' .. h .. ' the icon is a square about that tall', function()
+        Ready()
+        local plate = Add('nameplate1', { lines = KOBOLD }, { barHeight = h })
+        local kind, tex = IconOn(plate)
+        assert(kind == 'kill', 'Expected the exclamation, got ' .. tostring(kind))
+        local frame = tex.parent
+        local w, hh = rawget(frame, 'sizeW'), rawget(frame, 'sizeH')
+        assert(type(w) == 'number' and type(hh) == 'number', 'The icon frame size was not set')
+        assert(w == hh, 'The icon must be square, got ' .. w .. 'x' .. hh)
+        local want = math.min(24, math.max(12, h))
+        assert(math.abs(hh - want) <= 2,
+            'Icon size ' .. hh .. ' must be within 2 of ' .. want .. ' for a health bar of height ' .. h)
+    end)
+end
 
 -- Gating ------------------------------------------------------------------------------------
 
