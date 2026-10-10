@@ -367,8 +367,7 @@ function handlers.PLAYER_REGEN_ENABLED()
 end
 
 for _, event in ipairs({ "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "ZONE_CHANGED_NEW_AREA" }) do
-    local name = event
-    handlers[name] = function(...) Highlights(name, ...) end
+    handlers[event] = function(...) Highlights(event, ...) end
 end
 
 for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE" }) do

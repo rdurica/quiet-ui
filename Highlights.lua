@@ -21,7 +21,7 @@ local COLORS = {
 -- "UnableGatherHerbs", which still contains the herb pattern.
 local PATTERNS = {
     herb = { "gatherherbs" },
-    ore = { "mine" },
+    ore = { "crosshair_mine", "crosshair_unablemine" },
     -- Keep the legacy quest setting key for saved characters and presets.
     quest = { "crosshair_interact_64", "crosshair_unableinteract_64" },
 }
@@ -266,8 +266,12 @@ local function ShowOn(plate, soft, token, kind)
         Try(tex, "SetVertexColor", color[1] * strength, color[2] * strength, color[3] * strength)
     end
     Try(root, "SetAlpha", 1)
+    -- Play again only after HideNow stopped the loops, so re-checks do not restart the pulse.
+    local wasShown = Try(root, "IsShown")
     root:Show()
-    for _, group in ipairs(loops) do Try(group, "Play") end
+    if not wasShown then
+        for _, group in ipairs(loops) do Try(group, "Play") end
+    end
     anchorToken = token
 end
 
