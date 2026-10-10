@@ -206,6 +206,41 @@ test('Boot while disabled reaches RestoreQuestMobs and not ApplyQuestMobs', func
     noErrors(env)
 end)
 
+test('A throwing QuestMobsEvent keeps the other handlers and reports once under quest mobs', function()
+    local env = Load()
+    assert(not env.loadError, 'Load failed: ' .. tostring(env.loadError))
+    -- The real Core report: once per key, printed to chat.
+    local core = {}
+    assert(loadfile('Core.lua'))('QuietUI', core)
+    env.ns.Report = core.Report
+    env.dispatch('PLAYER_LOGIN')
+    local thrown = 0
+    env.ns.QuestMobsEvent = function() thrown = thrown + 1; error('quest mobs exploded') end
+    local printed = {}
+    local realPrint = print
+    print = function(...)
+        local parts = {}
+        for i = 1, select('#', ...) do parts[#parts + 1] = tostring((select(i, ...))) end
+        printed[#printed + 1] = table.concat(parts, ' ')
+    end
+    local before = {}
+    for _, key in ipairs({ 'ForgetRangePlate', 'HighlightsEvent', 'QuestNoticeEvent' }) do before[key] = env.count(key) end
+    local ok, err = pcall(function()
+        env.dispatch('NAME_PLATE_UNIT_REMOVED', 'nameplate4')
+        env.dispatch('QUEST_LOG_UPDATE')
+        env.dispatch('NAME_PLATE_UNIT_ADDED', 'nameplate4')
+    end)
+    print = realPrint
+    assert(ok, 'Dispatch crashed: ' .. tostring(err))
+    assert(thrown == 3, 'Expected QuestMobsEvent to be reached for all three events, got ' .. thrown)
+    assert(env.count('ForgetRangePlate') == before.ForgetRangePlate + 1, 'NAME_PLATE_UNIT_REMOVED skipped ForgetRangePlate')
+    assert(env.count('HighlightsEvent') == before.HighlightsEvent + 2, 'Plate events skipped HighlightsEvent')
+    assert(env.count('QuestNoticeEvent') == before.QuestNoticeEvent + 1, 'QUEST_LOG_UPDATE skipped QuestNoticeEvent')
+    assert(#printed == 1, 'Expected exactly one error report, got ' .. #printed .. ': ' .. table.concat(printed, ' | '))
+    assert(printed[1]:find('quest mobs', 1, true) and printed[1]:find('exploded', 1, true),
+        'The report is not under the quest mobs key: ' .. printed[1])
+end)
+
 test('TOC loads QuestMobs.lua after Highlights.lua and before QuietUI.lua', function()
     local f = assert(io.open('QuietUI.toc')); local toc = f:read('*a'); f:close()
     local highlights = toc:find('\nHighlights.lua', 1, true)
