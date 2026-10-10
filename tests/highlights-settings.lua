@@ -134,7 +134,7 @@ local function expect(ns, herb, ore, quest, message)
             tostring(value.herb), tostring(value.ore), tostring(value.quest)))
 end
 local KEYS = { herb = 'highlightHerb', ore = 'highlightOre', quest = 'highlightQuest' }
-local LABELS = { herb = 'Herbs', ore = 'Ore', quest = 'Quest objects' }
+local LABELS = { herb = 'Herbs', ore = 'Ore', quest = 'Interact objects' }
 local function choice(ui, key)
     local widget = ui[KEYS[key]]
     assert(widget and widget.box and widget.label, 'Misc. ' .. LABELS[key] .. ' choice is missing')

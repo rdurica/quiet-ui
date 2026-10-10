@@ -99,10 +99,14 @@ open. **X** or **Escape** closes it without saving pending changes.
 - **Misc.:** Toggle modern chat and choose the fade delay. **Stay** keeps messages
   visible at the bottom. Below that, **Quest updates** briefly shows the quest you
   just accepted, changed, or completed. **Text size** is Default, Smaller, or Larger.
-  **Highlights** makes the herb, ore, or quest object the game picks for the
+  **Highlights** makes the herb, ore, or interact object the game picks for the
   Interact key glow, all off by default. Set the key under **Interact With Target**
-  in **Key Bindings**. QuietUI turns on soft targeting and game object icons while
-  highlights are active and restores your settings when they turn off.
+  in **Key Bindings**. QuietUI enables soft targeting with a wider selection arc
+  (`SoftTargetInteractArc 2`) and the required interact icons automatically when
+  you enable a category and Save, so you do not need to face the object directly
+  or configure anything through console commands.
+  The highlighted object's overhead icon is hidden. Your soft-target settings
+  are restored when highlights turn off.
 - **Info:** A short guide to QuietUI and Glance.
 
 With a preset selected, **Save** updates its settings for every character using
@@ -180,9 +184,14 @@ In range needs a visible target nameplate and a living target. It stays off duri
 combat, in vehicles and instances, in Edit Mode, with a spell flyout or item on the
 cursor, and during Glance. Always visible action bar groups do not block it.
 
-Highlights glow green for herbs, gold for ore, and warm white for quest objects
-within 15 yards. They show only outside combat and instances, never change the
-nameplate itself, and ignore Glance and Edit Mode. Changes made in combat wait
-until combat ends.
+Highlights use a softly pulsing glow with four-point glints and small motes
+that slowly rise and fade:
+muted green for herbs, gold for ore, and warm white for interact objects
+within 15 yards, one object at a time as the game selects it for Interact.
+They work during combat, stay off in instances, and hide the highlighted object's
+overhead icon. Glance and Edit Mode do not affect them. Soft-target setting
+changes made in combat wait until combat ends. **Interact objects** matches the generic gear icon, including
+its out-of-reach variant and non-quest interactions; it does not indicate that an
+object belongs to a quest.
 
 </details>

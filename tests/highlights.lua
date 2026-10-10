@@ -1,19 +1,19 @@
 -- Run from the addon directory: lua tests/highlights.lua
 -- Highlights.lua in isolation: soft-target CVars, the glow on the soft-interact nameplate,
--- combat / instance gating and graceful failure on missing client APIs.
+-- combat-safe CVars / instance gating and graceful failure on missing client APIs.
 local failures, cases = 0, 0
 
 local ORE = { 0.95, 0.75, 0.25 }
-local HERB = { 0.35, 0.95, 0.45 }
+local HERB = { 0.30, 0.74, 0.40 }
 local HERBS = 'Cursor Crosshair_GatherHerbs_64'
 local HERBS_FAR = 'Cursor Crosshair_UnableGatherHerbs_64'
 local MINE = 'Cursor Crosshair_Mine_64'
 local NAMES = { 'SoftTargetInteract', 'SoftTargetInteractRange', 'SoftTargetNameplateInteract',
-    'SoftTargetIconGameObject' }
+    'SoftTargetIconGameObject', 'SoftTargetInteractArc', 'SoftTargetIconInteract' }
 local WANT = { SoftTargetInteract = '3', SoftTargetInteractRange = '15', SoftTargetNameplateInteract = '1',
-    SoftTargetIconGameObject = '1' }
+    SoftTargetIconGameObject = '1', SoftTargetInteractArc = '2', SoftTargetIconInteract = '1' }
 local ORIGINAL = { SoftTargetInteract = '1', SoftTargetInteractRange = '10', SoftTargetNameplateInteract = '0',
-    SoftTargetIconGameObject = '0' }
+    SoftTargetIconGameObject = '0', SoftTargetInteractArc = '0', SoftTargetIconInteract = '0' }
 local PLATE_FORBIDDEN = { SetAlpha = true, SetPoint = true, ClearAllPoints = true, Show = true, Hide = true }
 
 -- Per-test world state, rebuilt by Boot().
@@ -100,7 +100,7 @@ local function newFrame(parent, opts)
     end
     -- Fields a frame may lack must read as nil, not as the catch-all method.
     setmetatable(f, { __index = function(_, k)
-        if k == 'plate' or k == 'parent' or k == 'name' then return nil end
+        if k == 'plate' or k == 'parent' or k == 'name' or k:find('^_quiet') then return nil end
         return noop
     end })
     return f
@@ -243,7 +243,7 @@ local function AddPlate(token, guid, texture, opts)
     plate.namePlateUnitToken = token
     if not opts.noSoftTarget then
         local soft = newFrame(unitFrame, { plate = true, name = token .. '.SoftTargetFrame', level = 5 })
-        local icon = newTexture(soft, { plate = true, name = token .. '.Icon', level = 5 })
+        local icon = newTexture(soft, { name = token .. '.Icon', level = 5 })
         icon.texture = texture
         if opts.atlas then
             function icon:GetAtlas() return opts.atlas end
@@ -423,7 +423,7 @@ end)
 
 -- CVars -----------------------------------------------------------------------------------
 
-test('Ore on out of combat and instance sets 3/15/1/1 and stores originals', function()
+test('Ore on out of combat and instance sets 3/15/1/1/2/1 and stores originals', function()
     Boot({ flags = { ore = true } })
     W.ns.ApplyHighlights()
     AssertCVars(WANT, 'After apply')
@@ -439,7 +439,7 @@ test('ApplyHighlights is idempotent', function()
     AssertSaved(ORIGINAL)
 end)
 
-test('Turning the last category off restores all four originals', function()
+test('Turning the last category off restores all six originals', function()
     Boot({ flags = { ore = true } })
     W.ns.ApplyHighlights()
     W.flags.ore = false
@@ -448,7 +448,7 @@ test('Turning the last category off restores all four originals', function()
     assert(QuietUIDB.highlightCVars == nil, 'highlightCVars was not cleared')
 end)
 
-test('RestoreHighlights restores all four originals and hides the glow', function()
+test('RestoreHighlights restores all six originals and hides the glow', function()
     OreShown()
     assert(Glow(), 'The glow was not shown before restore')
     W.ns.RestoreHighlights()
@@ -460,7 +460,7 @@ end)
 test('Reload while active keeps the stored originals', function()
     Boot({ flags = { ore = true }, cvars = WANT, saved = {
         SoftTargetInteract = '1', SoftTargetInteractRange = '10', SoftTargetNameplateInteract = '0',
-        SoftTargetIconGameObject = '0' } })
+        SoftTargetIconGameObject = '0', SoftTargetInteractArc = '0', SoftTargetIconInteract = '0' } })
     W.ns.ApplyHighlights()
     AssertSaved(ORIGINAL)
     AssertCVars(WANT, 'After reload apply')
@@ -538,7 +538,7 @@ end)
 for _, c in ipairs({
     { 'herb', HERBS },
     { 'out-of-reach herb', HERBS_FAR },
-    { 'unknown', 'Cursor Crosshair_Interact_64' },
+    { 'interact', 'Cursor Crosshair_Interact_64' },
     { 'missing', nil },
     { 'numeric', 136243 },
 }) do
@@ -559,7 +559,7 @@ for _, c in ipairs({ { 'herb', HERBS }, { 'out-of-reach herb', HERBS_FAR }, { 'u
         assert(ShownOn(plate), 'Nothing is shown for a ' .. c[1] .. ' target')
         local root = Glow()
         assert(root and root.parent == plate, 'The herb glow is not parented to the plate')
-        assert(HasColor(root, HERB), 'No texture uses the herb color 0.35, 0.95, 0.45')
+        assert(HasColor(root, HERB), 'No texture uses the herb color 0.30, 0.74, 0.40')
         assert(not HasColor(root, ORE), 'The herb glow still uses the ore color')
         assert(LoopsPlaying(root), 'No looping animation plays on the herb glow')
     end)
@@ -594,6 +594,35 @@ test('Herb and Quest on show nothing for the mine icon', function()
     Target('GameObject-A', nil, 'GameObject-A')
     assert(NothingShown(), 'A mine target was highlighted with Ore off')
 end)
+
+-- Generic interact objects retain the legacy quest flag. -----------------------------------
+
+for _, texture in ipairs({ 'Cursor Crosshair_Interact_64', 'CURSOR CROSSHAIR_INTERACT_64',
+    'Cursor Crosshair_UnableInteract_64', 'CURSOR CROSSHAIR_UNABLEINTERACT_64' }) do
+    test('Interact objects recognizes ' .. texture .. ' with warm-white particles', function()
+        Boot({ flags = { quest = true } })
+        W.ns.ApplyHighlights()
+        local plate = AddPlate('nameplate1', 'GameObject-Interact', texture)
+        Target('GameObject-Interact', nil, 'GameObject-Interact')
+        assert(ShownOn(plate), 'The generic gear object was not highlighted')
+        assert(HasColor(Glow(), { 0.78, 0.76, 0.70 }), 'The interact glow is not warm white')
+        assert(plate.soft.Icon.alpha == 0, 'The gear icon is still visible')
+        assert(LoopsPlaying(Glow()), 'The interact particles are not animated')
+        W.ns.RestoreHighlights()
+        assert(plate.soft.Icon.alpha == 1, 'The gear icon was not restored')
+    end)
+end
+
+for _, texture in ipairs({ HERBS, MINE, 'Cursor Crosshair_Speak_64' }) do
+    test('Only Interact objects does not highlight ' .. texture, function()
+        Boot({ flags = { quest = true } })
+        W.ns.ApplyHighlights()
+        local plate = AddPlate('nameplate1', 'GameObject-Other', texture)
+        Target('GameObject-Other', nil, 'GameObject-Other')
+        assert(NothingShown(), 'An unrelated category was highlighted')
+        assert(plate.soft.Icon.alpha == 1, 'An unrelated icon was hidden')
+    end)
+end
 
 -- Finding the plate -----------------------------------------------------------------------
 
@@ -678,14 +707,91 @@ test('Removing the anchor plate hides at once; an unrelated removal does nothing
     AssertHiddenAtUIParent()
 end)
 
+-- Icon ownership --------------------------------------------------------------------------
+
+test('Highlighted icon stays hidden across Blizzard alpha writes without losing its texture', function()
+    local plate = OreShown()
+    local icon = plate.soft.Icon
+    assert(icon.alpha == 0, 'The overhead icon is still visible')
+    assert(icon.texture == MINE, 'The category texture was removed')
+    icon:SetAlpha(1)
+    assert(icon.alpha == 0, 'Blizzard revealed the held icon')
+    event('NAME_PLATE_UNIT_ADDED', 'nameplate1')
+    assert(ShownOn(plate), 'Hiding the icon broke category detection')
+    W.ns.RestoreHighlights()
+    assert(icon.alpha == 1, 'The original icon alpha was not restored')
+    icon:SetAlpha(0.6)
+    assert(icon.alpha == 0.6, 'The icon hook still holds after restore')
+end)
+
+test('Changing to an unrelated object restores the old icon and leaves the new one alone', function()
+    local old = OreShown()
+    local other = AddPlate('nameplate2', 'Creature-B', 'Cursor Crosshair_Interact_64')
+    Target('Creature-B', nil, 'Creature-B')
+    assert(old.soft.Icon.alpha == 1, 'The previous icon was not restored')
+    assert(other.soft.Icon.alpha == 1, 'An unrelated interact icon was hidden')
+end)
+
+test('Icon restore preserves a partial alpha and captures a fresh value on reuse', function()
+    Boot({ flags = { ore = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-A', MINE)
+    local icon = plate.soft.Icon
+    icon:SetAlpha(0.4)
+    Target('GameObject-A', nil, 'GameObject-A')
+    assert(icon.alpha == 0, 'The partial alpha icon was not hidden')
+    Target(nil, 'GameObject-A', nil)
+    assert(icon.alpha == 0.4, 'The partial alpha was not restored')
+    icon:SetAlpha(0.7)
+    Target('GameObject-A', nil, 'GameObject-A')
+    W.flags.ore = false
+    W.ns.ApplyHighlights()
+    assert(icon.alpha == 0.7, 'Reusing a plate restored a stale alpha')
+end)
+
+test('Removing the highlighted plate releases the icon hold', function()
+    local plate = OreShown()
+    event('NAME_PLATE_UNIT_REMOVED', 'nameplate1')
+    assert(plate.soft.Icon.alpha == 1, 'Plate removal did not restore the icon')
+    plate.soft.Icon:SetAlpha(0.8)
+    assert(plate.soft.Icon.alpha == 0.8, 'The removed icon is still held')
+end)
+
+test('Combat keeps the icon hidden; instances restore it', function()
+    local plate = OreShown()
+    event('PLAYER_REGEN_DISABLED')
+    assert(plate.soft.Icon.alpha == 0, 'Combat revealed the highlighted icon')
+    event('PLAYER_REGEN_ENABLED')
+    assert(plate.soft.Icon.alpha == 0, 'Leaving combat did not hide the icon again')
+    W.instance = 'party'
+    event('PLAYER_ENTERING_WORLD')
+    assert(plate.soft.Icon.alpha == 1, 'Entering an instance did not restore the icon')
+end)
+
+test('An older CVar snapshot captures the arc before changing it', function()
+    local saved, cvars = {}, {}
+    for name, value in pairs(ORIGINAL) do saved[name] = value end
+    for name, value in pairs(WANT) do cvars[name] = value end
+    saved.SoftTargetInteractArc = nil
+    cvars.SoftTargetInteractArc = '1'
+    Boot({ flags = { ore = true }, saved = saved, cvars = cvars })
+    W.ns.ApplyHighlights()
+    assert(QuietUIDB.highlightCVars.SoftTargetInteractArc == '1', 'The existing arc was not saved')
+    assert(W.cvars.SoftTargetInteractArc == '2', 'The wider arc was not applied')
+    W.ns.RestoreHighlights()
+    assert(W.cvars.SoftTargetInteractArc == '1', 'The existing arc was not restored')
+end)
+
 -- Combat ----------------------------------------------------------------------------------
 
-test('PLAYER_REGEN_DISABLED hides without CVar changes; ENABLED shows again', function()
+test('Combat keeps the glow and particles without CVar changes', function()
     local plate = OreShown()
     local writes = #W.writes
     W.inCombat = true
     event('PLAYER_REGEN_DISABLED')
-    AssertHiddenAtUIParent()
+    assert(ShownOn(plate), 'Entering combat hid the glow')
+    assert(LoopsPlaying(Glow()), 'Entering combat stopped the particles')
+    assert(plate.soft.Icon.alpha == 0, 'Entering combat revealed the icon')
     assert(#W.writes == writes, 'Entering combat wrote a CVar')
     W.inCombat = false
     event('PLAYER_REGEN_ENABLED')
@@ -694,22 +800,32 @@ test('PLAYER_REGEN_DISABLED hides without CVar changes; ENABLED shows again', fu
     AssertCVars(WANT, 'After combat')
 end)
 
-test('Combat by REGEN_DISABLED alone (InCombatLockdown false) still hides', function()
-    OreShown()
+test('Combat event alone keeps the glow visible', function()
+    local plate = OreShown()
     event('PLAYER_REGEN_DISABLED')
-    AssertHiddenAtUIParent()
+    assert(ShownOn(plate), 'Combat event hid the glow')
 end)
 
-test('Target events during combat show nothing', function()
-    Boot({ flags = { ore = true } })
-    W.ns.ApplyHighlights()
-    W.inCombat = true
-    event('PLAYER_REGEN_DISABLED')
-    AddPlate('nameplate1', 'GameObject-A', MINE)
-    Target('GameObject-A', nil, 'GameObject-A')
-    event('NAME_PLATE_UNIT_ADDED', 'nameplate1')
-    assert(NothingShown(), 'The glow appeared in combat')
-end)
+for _, category in ipairs({ { 'herb', HERBS }, { 'ore', MINE },
+    { 'quest', 'Cursor Crosshair_UnableInteract_64' } }) do
+    test(category[1] .. ' target and late plate changes work during combat', function()
+        Boot({ flags = { [category[1]] = true } })
+        W.ns.ApplyHighlights()
+        W.inCombat = true
+        event('PLAYER_REGEN_DISABLED')
+        local writes = #W.writes
+        Target('GameObject-A', nil, 'GameObject-A')
+        local plate = AddPlate('nameplate1', 'GameObject-A', category[2])
+        event('NAME_PLATE_UNIT_ADDED', 'nameplate1')
+        assert(ShownOn(plate), 'A new target plate was not highlighted during combat')
+        assert(LoopsPlaying(Glow()), 'Combat particles are not playing')
+        assert(plate.soft.Icon.alpha == 0, 'Combat target icon was not hidden')
+        Target(nil, 'GameObject-A', nil)
+        AssertHiddenAtUIParent()
+        assert(plate.soft.Icon.alpha == 1, 'Losing a combat target did not restore its icon')
+        assert(#W.writes == writes, 'Combat target changes wrote CVars')
+    end)
+end
 
 test('CVar change requested in combat waits for PLAYER_REGEN_ENABLED', function()
     Boot({ flags = { ore = true } })
@@ -931,23 +1047,26 @@ end)
 
 -- Textures --------------------------------------------------------------------------------
 
-test('The aura uses Media/glow.tga and the sparks Media/spark.tga, both on disk', function()
+test('The aura uses Media/glow.tga, glints Media/glint.tga and sparks Media/spark.tga, all on disk', function()
     local plate = OreShown()
     local root = Glow()
     assert(root and root.parent == plate, 'The glow was not shown')
-    local glow, spark, round = 0, 0, 0
+    local glow, spark, round, glint = 0, 0, 0, 0
     for _, t in ipairs(W.textures) do
         if within(t, root) and type(t.texture) == 'string' then
             local path = t.texture:lower()
             if path == 'interface\\addons\\quietui\\media\\glow.tga' then glow = glow + 1 end
             if path == 'interface\\addons\\quietui\\media\\spark.tga' then spark = spark + 1 end
+            if path == 'interface\\addons\\quietui\\media\\glint.tga' then glint = glint + 1 end
+            assert(not path:find('ripple.tga', 1, true), 'The unwanted ground ripple is still present')
             if path:find('round.tga', 1, true) then round = round + 1 end
         end
     end
     assert(glow >= 1, 'No aura texture uses Media/glow.tga')
-    assert(spark >= 6, 'Expected at least 6 sparks using Media/spark.tga, got ' .. spark)
+    assert(spark == 4, 'Expected four small motes, got ' .. spark)
+    assert(glint == 3, 'Expected three four-point glints')
     assert(round == 0, 'The glow still uses Media/round.tga')
-    for _, file in ipairs({ 'Media/glow.tga', 'Media/spark.tga' }) do
+    for _, file in ipairs({ 'Media/glow.tga', 'Media/spark.tga', 'Media/glint.tga' }) do
         local f = io.open(file, 'rb')
         assert(f, file .. ' does not exist')
         f:close()
