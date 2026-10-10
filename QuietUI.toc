@@ -18,4 +18,5 @@ Layout.lua
 Setup.lua
 QuestNotice.lua
 Highlights.lua
+QuestMobs.lua
 QuietUI.lua

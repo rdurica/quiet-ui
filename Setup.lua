@@ -115,6 +115,11 @@ function ns.QuestNoticeEnabled()
     return (ns.Settings and ns.Settings() or ns.CharDB()).questNotice ~= false
 end
 
+-- Missing means on. Only an explicit false turns quest mob icons off.
+function ns.QuestMobs()
+    return (ns.Settings and ns.Settings() or ns.CharDB()).questMobs ~= false
+end
+
 -- Missing means all off. Only explicit true values turn a category on.
 function ns.Highlights()
     local stored = (ns.Settings and ns.Settings() or ns.CharDB()).highlights
@@ -366,6 +371,7 @@ local function Paint()
     if frame.questNotice then
         PaintBox(frame.questNotice.box, draft.questNotice)
     end
+    if frame.questMobs then PaintBox(frame.questMobs.box, draft.questMobs) end
     if frame.questNoticeSize then
         local size = draft.questNoticeSize
         frame.questNoticeSize.value:SetText(size == "smaller" and "Smaller" or size == "larger" and "Larger" or "Default")
@@ -483,6 +489,7 @@ local function ReadDraft(source)
     draft.groupAuras = source.groupAuras ~= false
     draft.alwaysShowDebuffs = source.alwaysShowDebuffs ~= false
     draft.questNotice = source.questNotice ~= false
+    draft.questMobs = source.questMobs ~= false
     local noticeSize = source.questNoticeSize
     draft.questNoticeSize = (noticeSize == "smaller" or noticeSize == "larger") and noticeSize or "default"
     local highlights = type(source.highlights) == "table" and source.highlights or {}
@@ -583,6 +590,7 @@ local function DraftSettings()
     end
     if not draft.alwaysShowDebuffs then db.alwaysShowDebuffs = false end
     if not draft.questNotice then db.questNotice = false end
+    if not draft.questMobs then db.questMobs = false end
     if draft.questNoticeSize == "smaller" or draft.questNoticeSize == "larger" then
         db.questNoticeSize = draft.questNoticeSize
     end
@@ -932,7 +940,7 @@ local TABS = {
     { id = "bars", label = "Bars", height = 308 },
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
-    { id = "chat", label = "Misc.", height = 230 },
+    { id = "chat", label = "Misc.", height = 284 },
     { id = "info", label = "Info", height = 148 },
 }
 
@@ -1590,6 +1598,14 @@ local function CreateSetup()
         button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -198)
         widget[choice.key] = button
     end
+    widget.questMobsHeader = Section(chat, "Quest mobs",
+        "A yellow exclamation mark shows over mobs you need to kill for a quest, and a pouch over mobs that drop a quest item. Only mobs you can attack are marked, and the icon disappears once the objective is complete.")
+    widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -232)
+    widget.questMobs = Choice(chat, "Quest mobs", function()
+        draft.questMobs = not draft.questMobs
+        Paint()
+    end)
+    widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -252)
 
     local info = widget.pages[7]
     widget.about = Section(info, "About")

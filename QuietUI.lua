@@ -158,6 +158,7 @@ local function RestoreAll()
     glancing = false
     if type(ns.RestoreQuestNotice) == "function" then ns.RestoreQuestNotice() end
     if type(ns.RestoreHighlights) == "function" then ns.RestoreHighlights() end
+    if type(ns.RestoreQuestMobs) == "function" then ns.RestoreQuestMobs() end
     ns.HideQuestCatcher()
     ns.HideRangeMark()
     -- Target and action bar events stop while off.
@@ -189,6 +190,7 @@ local function ApplyAll()
     ns.RefreshWorld()
     if type(ns.ApplyQuestNotice) == "function" then ns.ApplyQuestNotice() end
     if type(ns.ApplyHighlights) == "function" then ns.ApplyHighlights() end
+    if type(ns.ApplyQuestMobs) == "function" then ns.ApplyQuestMobs() end
     if ns.ForceQuietLayout() then
         if not layoutChosen then
             layoutPending = "select"
@@ -319,6 +321,10 @@ local function Highlights(event, ...)
     if type(ns.HighlightsEvent) == "function" then ns.HighlightsEvent(event, ...) end
 end
 
+local function QuestMobs(event, ...)
+    if type(ns.QuestMobsEvent) == "function" then ns.QuestMobsEvent(event, ...) end
+end
+
 function handlers.ADDON_LOADED(name)
     if name == ADDON then
         ns.DB()
@@ -342,7 +348,10 @@ function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloading)
     if ns.DB().enabled and type(ns.QuestNoticeEvent) == "function" then
         ns.QuestNoticeEvent("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
     end
-    if ns.DB().enabled then Highlights("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading) end
+    if ns.DB().enabled then
+        Highlights("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
+        QuestMobs("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
+    end
     -- Boot usually armed it already; arm once if it was skipped.
     if ns.DB().enabled and (isInitialLogin or isReloading) and not settleArmed then
         settleArmed = true
@@ -366,14 +375,24 @@ function handlers.PLAYER_REGEN_ENABLED()
     Highlights("PLAYER_REGEN_ENABLED")
 end
 
-for _, event in ipairs({ "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "ZONE_CHANGED_NEW_AREA" }) do
+for _, event in ipairs({ "PLAYER_SOFT_INTERACT_CHANGED", "ZONE_CHANGED_NEW_AREA" }) do
     handlers[event] = function(...) Highlights(event, ...) end
+end
+
+function handlers.NAME_PLATE_UNIT_ADDED(...)
+    Highlights("NAME_PLATE_UNIT_ADDED", ...)
+    QuestMobs("NAME_PLATE_UNIT_ADDED", ...)
+end
+
+function handlers.UNIT_QUEST_LOG_CHANGED(...)
+    QuestMobs("UNIT_QUEST_LOG_CHANGED", ...)
 end
 
 for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE" }) do
     local name = event
     handlers[name] = function(...)
         if type(ns.QuestNoticeEvent) == "function" then ns.QuestNoticeEvent(name, ...) end
+        if name == "QUEST_LOG_UPDATE" then QuestMobs(name, ...) end
     end
 end
 
@@ -410,6 +429,7 @@ end
 function handlers.NAME_PLATE_UNIT_REMOVED(...)
     ns.ForgetRangePlate()
     Highlights("NAME_PLATE_UNIT_REMOVED", ...)
+    QuestMobs("NAME_PLATE_UNIT_REMOVED", ...)
 end
 
 function handlers.ACTIONBAR_SLOT_CHANGED()
