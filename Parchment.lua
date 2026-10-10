@@ -1,10 +1,15 @@
 local _, ns = ...
 
 -- The quest, gossip and item text windows as clean parchment with flat buttons. The windows
--- stay Blizzard frames: only textures, button points and the addon's own layer change.
+-- stay Blizzard frames: only textures, button points, scroll frame bottoms, the title's colour
+-- and size, and the addon's own layer change.
 local PARCHMENT = "Interface\\AddOns\\QuietUI\\Media\\parchment.tga"
-local OVERHANG = 6 -- the torn edge is transparent, so the layer reaches past the window
-local INSET_X, INSET_Y = 14, 12
+local OVERHANG = 12 -- the torn edge is transparent, so the layer reaches past the window
+local INSET_X = 14
+local ROW_CENTER = 15 -- button centre above the window bottom, level with CzechForever's CZ/EN row
+local SAFE_GAP = 4    -- space between the scroll text and the button band
+local TITLE_INK = { 0.24, 0.16, 0.09 }
+local TITLE_GROW = 2
 local CLOSE_SIZE, CLOSE_INSET, CROSS_LENGTH = 20, 8, 13
 local TRACK_ALPHA = 0.3
 local FILL_ALPHA, DISABLED_ALPHA = 0.95, 0.35
@@ -36,6 +41,7 @@ local WINDOWS = {
         name = "QuestFrame",
         panels = { "QuestFrameDetailPanel", "QuestFrameProgressPanel", "QuestFrameRewardPanel", "QuestFrameGreetingPanel" },
         scrolls = { "QuestDetailScrollFrame", "QuestProgressScrollFrame", "QuestRewardScrollFrame", "QuestGreetingScrollFrame" },
+        lifts = { "QuestDetailScrollFrame", "QuestProgressScrollFrame", "QuestRewardScrollFrame", "QuestGreetingScrollFrame" },
         buttons = {
             { "QuestFrameAcceptButton", "primary", "BOTTOMLEFT" },
             { "QuestFrameDeclineButton", "secondary", "BOTTOMRIGHT" },
@@ -50,6 +56,10 @@ local WINDOWS = {
         name = "GossipFrame",
         panels = {},
         scrolls = { GossipPanel, "GossipGreetingScrollFrame" },
+        lifts = { function(win)
+            local panel = GossipPanel(win)
+            return panel and panel.ScrollBox
+        end },
         buttons = {
             { function(win)
                 local panel = GossipPanel(win)
@@ -63,6 +73,7 @@ local WINDOWS = {
         extra = { "ItemTextMaterialTopLeft", "ItemTextMaterialTopRight", "ItemTextMaterialBotLeft",
             "ItemTextMaterialBotRight" },
         scrolls = { "ItemTextScrollFrame" },
+        lifts = { "ItemTextScrollFrame" },
         buttons = {
             { "ItemTextPrevPageButton", "secondary", "BOTTOMLEFT", "<" },
             { "ItemTextNextPageButton", "primary", "BOTTOMRIGHT", ">" },
@@ -83,13 +94,15 @@ local held = {}    -- texture -> alpha held while active
 local saved = {}   -- texture -> alpha before the reskin
 local windows = {} -- window -> { layer }
 local skins = {}   -- button -> { role, paint, own, hover, points, size }
+local lifts = {}   -- scroll frame -> { points, lift } saved for the active period
+local titles = {}  -- title font string -> { font, color } saved for the active period
 
 local function Try(obj, method, ...)
     if type(obj) ~= "table" then return end
     local fn = obj[method]
     if type(fn) ~= "function" then return end
-    local ok, a, b = pcall(fn, obj, ...)
-    if ok then return a, b end
+    local ok, a, b, c, d = pcall(fn, obj, ...)
+    if ok then return a, b, c, d end
 end
 
 local function Active()
@@ -292,16 +305,27 @@ local function NewSkin(b, role, glyph)
     return s
 end
 
-local function RememberPoints(b, s, withSize)
-    if not s.points then
-        local points = {}
-        local n = Try(b, "GetNumPoints") or 0
-        for i = 1, n do
-            local ok, point, rel, relPoint, x, y = pcall(b.GetPoint, b, i)
-            if ok and point then points[#points + 1] = { point, rel, relPoint, x, y } end
-        end
-        s.points = points
+local function Points(obj)
+    local points = {}
+    local n = Try(obj, "GetNumPoints") or 0
+    for i = 1, n do
+        local ok, point, rel, relPoint, x, y = pcall(obj.GetPoint, obj, i)
+        if ok and point then points[#points + 1] = { point, rel, relPoint, x, y } end
     end
+    return points
+end
+
+local function SetPoints(obj, points, lift)
+    Try(obj, "ClearAllPoints")
+    for _, p in ipairs(points) do
+        local y = p[5]
+        if lift and type(p[1]) == "string" and p[1]:find("BOTTOM") then y = (y or 0) + lift end
+        Try(obj, "SetPoint", p[1], p[2], p[3], p[4], y)
+    end
+end
+
+local function RememberPoints(b, s, withSize)
+    if not s.points then s.points = Points(b) end
     if withSize and not s.size then
         local w, h = Try(b, "GetSize")
         if type(w) == "number" and type(h) == "number" then s.size = { w, h } end
@@ -326,20 +350,88 @@ local function SkinButton(win, b, role, side, glyph)
         Place(b, "TOPRIGHT", win, "TOPRIGHT", -CLOSE_INSET, -CLOSE_INSET)
     else
         local x = side:find("LEFT") and INSET_X or -INSET_X
-        Place(b, side, win, side, x, INSET_Y)
+        local h = Try(b, "GetHeight")
+        if type(h) ~= "number" or ns.IsSecret(h) then h = 22 end
+        local y = math.max(0, math.floor(ROW_CENTER - h / 2 + 0.5))
+        Place(b, side, win, side, x, y)
+        s.top = y + h
     end
     for _, obj in ipairs(s.own) do Try(obj, "Show") end
     Paint(b)
 end
 
+-- How far the scroll frame's bottom edge sits above the window bottom, or nil if unknown.
+local function BottomOffset(win, sf, points)
+    local sb, wb = Try(sf, "GetBottom"), Try(win, "GetBottom")
+    local ss, ws = Try(sf, "GetEffectiveScale"), Try(win, "GetEffectiveScale")
+    local function plain(v) return type(v) == "number" and not ns.IsSecret(v) end
+    if plain(sb) and plain(wb) and plain(ss) and plain(ws) and math.abs(ss - ws) < 0.001 then
+        return sb - wb
+    end
+    -- Not laid out yet: only an anchor straight on the window tells the offset.
+    local low
+    for _, p in ipairs(points) do
+        if type(p[1]) == "string" and p[1]:find("BOTTOM") then
+            if p[2] ~= win or not plain(p[5]) then return end
+            low = math.min(low or p[5], p[5])
+        end
+    end
+    return low
+end
+
+-- Lifts the BOTTOM* points so the text ends above the button band. The lift is computed once
+-- per active period from the original points, so reapplying never lifts twice.
+local function LiftScroll(win, sf, bandTop)
+    local s = lifts[sf]
+    if not s then
+        s = { points = Points(sf) }
+        lifts[sf] = s
+    end
+    if s.lift == nil then
+        local offset = BottomOffset(win, sf, s.points)
+        if offset == nil then return end
+        s.lift = math.max(0, bandTop + SAFE_GAP - offset)
+    end
+    if s.lift > 0 then SetPoints(sf, s.points, s.lift) end
+end
+
+local function InkTitle(win, def)
+    local title = type(win.TitleContainer) == "table" and win.TitleContainer.TitleText or nil
+    if type(title) ~= "table" then title = _G[def.name .. "TitleText"] end
+    if not Usable(title) then return end
+    local t = titles[title]
+    if not t then
+        local face, size, flags = Try(title, "GetFont")
+        local r, g, b, a = Try(title, "GetTextColor")
+        if type(face) ~= "string" or type(size) ~= "number" or ns.IsSecret(size) or type(r) ~= "number" then return end
+        t = { font = { face, size, flags }, color = { r, g, b, a } }
+        titles[title] = t
+    end
+    Try(title, "SetTextColor", TITLE_INK[1], TITLE_INK[2], TITLE_INK[3], 1)
+    Try(title, "SetFont", t.font[1], t.font[2] + TITLE_GROW, t.font[3] or "")
+end
+
+local function RestoreTitles()
+    for title, t in pairs(titles) do
+        titles[title] = nil
+        Try(title, "SetFont", t.font[1], t.font[2], t.font[3] or "")
+        Try(title, "SetTextColor", t.color[1], t.color[2], t.color[3], t.color[4])
+    end
+end
+
+local function RestoreLifts()
+    for sf, s in pairs(lifts) do
+        lifts[sf] = nil
+        if s.lift and s.lift > 0 then SetPoints(sf, s.points) end
+    end
+end
+
 local function RestoreButton(b, s)
     for _, obj in ipairs(s.own) do Try(obj, "Hide") end
     s.hover = nil
+    s.top = nil
     if s.points then
-        Try(b, "ClearAllPoints")
-        for _, p in ipairs(s.points) do
-            Try(b, "SetPoint", p[1], p[2], p[3], p[4], p[5])
-        end
+        SetPoints(b, s.points)
         s.points = nil
     end
     if s.size then
@@ -398,10 +490,21 @@ function SkinWindow(def)
     for _, ref in ipairs(def.scrolls) do
         DimScrollBar(Resolve(win, ref))
     end
+    local bandTop
     for _, spec in ipairs(def.buttons) do
         local b = Resolve(win, spec[1])
-        if b then SkinButton(win, b, spec[2], spec[3], spec[4]) end
+        if b then
+            SkinButton(win, b, spec[2], spec[3], spec[4])
+            local top = skins[b].top
+            if top then bandTop = math.max(bandTop or top, top) end
+        end
     end
+    bandTop = bandTop or (ROW_CENTER + 11)
+    for _, ref in ipairs(def.lifts or {}) do
+        local sf = Resolve(win, ref)
+        if sf then LiftScroll(win, sf, bandTop) end
+    end
+    InkTitle(win, def)
     local close = win.CloseButton
     if type(close) ~= "table" then close = _G[def.name .. "CloseButton"] end
     if Usable(close) then SkinButton(win, close, "close") end
@@ -412,6 +515,8 @@ function ns.RestoreParchment()
         ReleaseAll()
         for _, state in pairs(windows) do Try(state.layer, "Hide") end
         for b, s in pairs(skins) do RestoreButton(b, s) end
+        RestoreLifts()
+        RestoreTitles()
     end)
     if not ok then ns.Report("parchment restore", err) end
 end

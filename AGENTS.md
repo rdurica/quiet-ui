@@ -28,7 +28,7 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 - Action bars only through alpha. Do not use `Hide()`, `Show()`, or state drivers on bars.
 - No secure snippets. Do not touch `ChatFrame_OpenChat`.
 - `PlayerFrame` and `PetFrame` only through alpha, per `docs/features/player.md`. TargetFrame may only be faded through alpha for Require a living target. Party and raid frames may only be faded through alpha for the optional autohide rule in `docs/features/visible.md`. Do not hide the minimap, vehicle / extra action / zone ability, or the LFG eye (`QueueStatus`, `LFGEye`).
-- Quest, gossip and item text windows are changed only through textures, button points and an own layer, never through `Hide()` of the window itself.
+- Quest, gossip and item text windows are changed only through textures, button points, scroll frame bottom anchors, the title's colour and size, and an own layer, never through `Hide()` of the window itself.
 - Blizzard overwrites alpha. Hold the wanted value with a `SetAlpha` hook and the `_quietApplying` flag so the hook does not loop.
 - Disabling must restore saved alpha and textures (`RestoreAll`). Wire new behavior into both `ApplyAll` and `RestoreAll`.
 
