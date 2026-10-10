@@ -746,6 +746,24 @@ test('An interact icon the player had off is hidden for NPCs too', function()
     assert(npc.soft.Icon.alpha == 0, 'An NPC icon QuietUI turned on is visible')
 end)
 
+test('Re-checking an unchecked target does not reveal its icon in between', function()
+    Boot({ flags = { herb = true } })
+    W.ns.ApplyHighlights()
+    local plate = AddPlate('nameplate1', 'GameObject-Ore', MINE)
+    local icon = plate.soft.Icon
+    local writes = {}
+    local set = icon.SetAlpha
+    function icon:SetAlpha(a) writes[#writes + 1] = a; return set(self, a) end
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    writes = {}
+    Target('GameObject-Ore', nil, 'GameObject-Ore')
+    event('PLAYER_REGEN_ENABLED')
+    for _, a in ipairs(writes) do
+        assert(a == 0, 'The held icon was written to alpha ' .. tostring(a) .. ' during a re-check')
+    end
+    assert(icon.alpha == 0, 'The icon is visible after re-checks')
+end)
+
 test('Removing a plate releases the hold on an unchecked icon', function()
     Boot({ flags = { herb = true } })
     W.ns.ApplyHighlights()
