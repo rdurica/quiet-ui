@@ -915,6 +915,39 @@ test('Missing GetQuestObjectives: exclamation, no crash, one report', function()
     assert(Reports() == 1, 'Expected exactly one report, got ' .. Reports() .. ': ' .. table.concat(W.prints, ' | '))
 end)
 
+-- Frames cannot be destroyed, so a failed icon must not be retried for every plate.
+local function BrokenIcons(mode)
+    Ready()
+    W.expectReports = true
+    local attempts = 0
+    local real = CreateFrame
+    CreateFrame = function(...)
+        attempts = attempts + 1
+        if mode == 'throw' then error('CreateFrame is not available') end
+        local f = real(...)
+        f.CreateTexture = function() return nil end
+        return f
+    end
+    local plates = {}
+    for i = 1, 3 do plates[i] = Add('nameplate' .. i, { lines = i == 2 and WOLF or KOBOLD }) end
+    W.ns.ApplyQuestMobs()
+    event('QUEST_LOG_UPDATE')
+    NextFrame()
+    for i = 1, 3 do assert(IconOn(plates[i]) == nil, 'An icon was shown on nameplate' .. i) end
+    assert(attempts == 1, 'Expected exactly one CreateFrame attempt for quest mob icons, got ' .. attempts)
+    assert(Reports() == 1, 'Expected exactly one report, got ' .. Reports() .. ': ' .. table.concat(W.prints, ' | '))
+    return W.prints[1]
+end
+
+test('CreateTexture returning nil: one CreateFrame, one texture report, no crash', function()
+    local line = BrokenIcons('nil')
+    assert(line:lower():find('texture', 1, true), 'The report does not mention the texture failure: ' .. line)
+end)
+
+test('CreateFrame throwing: one attempt, one report, no crash', function()
+    BrokenIcons('throw')
+end)
+
 test('Forbidden plate is skipped without calling its methods', function()
     Ready()
     local proxy = forbiddenProxy()
