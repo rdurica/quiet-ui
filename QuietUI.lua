@@ -343,9 +343,10 @@ function handlers.ADDON_LOADED(name, ...)
         ns.DB()
     elseif booted then
         ns.RequestRescan()
+        -- Blizzard quest, gossip and item text UIs may load on demand. Before boot the
+        -- saved variables may not exist yet, and ApplyAll skins the windows at boot.
+        Parchment("ADDON_LOADED", name, ...)
     end
-    -- Blizzard quest, gossip and item text UIs may load on demand.
-    Parchment("ADDON_LOADED", name, ...)
 end
 
 function handlers.PLAYER_LOGIN()

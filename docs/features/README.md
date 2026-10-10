@@ -12,5 +12,5 @@ The goal is a clean UI, not a configurable framework. It works out of the box; s
 | [visible.md](visible.md) | Always visible and Only on hover, and the rules for each faded HUD element except action bars and the player frame. |
 | [bars.md](bars.md) | Action bar fade groups, the swing timer, Enemy/Friend, and group visibility. |
 | [player.md](player.md) | Player and pet frames, thresholds, a living target, buffs and debuffs, and the In range gradient. |
-| [misc.md](misc.md) | Modern chat, quest update notices, Highlights, and Quest mobs. |
+| [misc.md](misc.md) | Modern chat, quest update notices, Highlights, Quest mobs, and Parchment windows. |
 | [glance.md](glance.md) | The Glance key and `/quiet glance`. |
