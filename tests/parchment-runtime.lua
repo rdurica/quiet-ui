@@ -236,6 +236,20 @@ test('A throwing ParchmentEvent keeps the other handlers and reports once under 
         'The report is not under the parchment key: ' .. printed[1])
 end)
 
+test('ADDON_LOADED before boot does not reach ParchmentEvent, so saved variables are not touched early', function()
+    local env = Load()
+    assert(not env.loadError, 'Load failed: ' .. tostring(env.loadError))
+    -- An addon sorted before QuietUI loads before our saved variables exist.
+    env.dispatch('ADDON_LOADED', 'CzechForever', false)
+    env.dispatch('ADDON_LOADED', 'QuietUI', false)
+    assert(env.count('ParchmentEvent') == 0, 'ADDON_LOADED before boot must not reach ns.ParchmentEvent')
+    env.dispatch('PLAYER_LOGIN')
+    env.ns.RequestRescan = env.spy('RequestRescan')
+    env.dispatch('ADDON_LOADED', 'Blizzard_ItemTextUI', false)
+    assert(#env.forwards('ADDON_LOADED') == 1, 'ADDON_LOADED after boot must reach ns.ParchmentEvent')
+    noErrors(env)
+end)
+
 test('TOC loads Parchment.lua after QuestMobs.lua and before QuietUI.lua', function()
     local f = assert(io.open('QuietUI.toc')); local toc = f:read('*a'); f:close()
     local questMobs = toc:find('\nQuestMobs.lua', 1, true)
