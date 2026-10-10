@@ -1042,6 +1042,8 @@ end
 function ns.UpdateParty(elapsed)
     local active = ns.DB().enabled and ns.AutoHideParty and ns.AutoHideParty() or false
     if not active then
+        -- Roster events stop while off; the next FindFaders scans in full.
+        partyActive = false
         ParkHover("party")
         for frame in pairs(managedParty) do
             ns.ReleaseAlpha(frame, true)

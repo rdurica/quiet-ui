@@ -14,6 +14,7 @@ local settleUntil = 0
 local settleToken = 0
 local settleArmed = false
 local rescanPending = false
+local rescanMissed = false
 local cpuProfile
 
 local function StartCPUProfile()
@@ -158,6 +159,9 @@ local function RestoreAll()
     if type(ns.RestoreQuestNotice) == "function" then ns.RestoreQuestNotice() end
     ns.HideQuestCatcher()
     ns.HideRangeMark()
+    -- Target and action bar events stop while off.
+    if ns.ForgetRangeSlot then ns.ForgetRangeSlot() end
+    if ns.ForgetRangePlate then ns.ForgetRangePlate() end
     ns.HideBarCatchers()
     ns.ResetMenu()
     ns.RestoreChat()
@@ -230,7 +234,13 @@ end
 
 -- Events coalesce into at most one rescan per frame.
 function ns.RequestRescan()
-    if rescanPending or not ns.DB().enabled then return end
+    if not ns.DB().enabled then
+        -- Catch up on enable; frames may have loaded meanwhile.
+        rescanMissed = true
+        return
+    end
+    if rescanPending then return end
+    rescanMissed = false
     if not (C_Timer and C_Timer.After) then
         RunRescan()
         return
@@ -605,7 +615,12 @@ SlashCmdList["QUIETUI"] = function(msg)
         db.enabled = not db.enabled
     end
     if booted then
-        if db.enabled then ApplyAll() else RestoreAll() end
+        if db.enabled then
+            ApplyAll()
+            if rescanMissed then ns.RequestRescan() end
+        else
+            RestoreAll()
+        end
     end
     ns.Print(db.enabled and "enabled" or "disabled")
 end

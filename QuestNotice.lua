@@ -457,10 +457,16 @@ local function Draw(alpha)
     local chosen = type(ns.QuestNoticeSize) == "function" and ns.QuestNoticeSize() or "default"
     local titleFont = ObjectiveTrackerHeaderFont or GameFontNormal
     local bodyFont = ObjectiveTrackerFont or GameFontHighlightSmall
+    -- The tracker text size option resizes the same font objects in place.
+    local _, titleSize = Try(titleFont and titleFont.GetFont, titleFont)
+    local _, bodySize = Try(bodyFont and bodyFont.GetFont, bodyFont)
+    if not Number(titleSize) then titleSize = nil end
+    if not Number(bodySize) then bodySize = nil end
     local key = placed
     if key.anchor ~= anchor or key.point ~= point or key.dx ~= dx or key.dy ~= dy or key.width ~= width
         or key.anchorScale ~= anchorScale or key.frameScale ~= frameScale or key.size ~= chosen
-        or key.titleFont ~= titleFont or key.bodyFont ~= bodyFont then
+        or key.titleFont ~= titleFont or key.bodyFont ~= bodyFont
+        or key.titleSize ~= titleSize or key.bodySize ~= bodySize then
         frame:ClearAllPoints()
         frame:SetPoint("TOPLEFT", anchor, point, dx * anchorScale / frameScale, dy * anchorScale / frameScale)
         frame:SetWidth(width)
@@ -471,6 +477,7 @@ local function Draw(alpha)
         key.anchor, key.point, key.dx, key.dy, key.width = anchor, point, dx, dy, width
         key.anchorScale, key.frameScale, key.size = anchorScale, frameScale, chosen
         key.titleFont, key.bodyFont = titleFont, bodyFont
+        key.titleSize, key.bodySize = titleSize, bodySize
         -- A new font size changes the measured height.
         drawn = nil
     end
