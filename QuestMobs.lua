@@ -6,6 +6,8 @@ local ICONS = {
     kill = "Interface\\AddOns\\QuietUI\\Media\\quest-kill.tga",
     loot = "Interface\\AddOns\\QuietUI\\Media\\quest-loot.tga",
 }
+-- The pouch reads smaller than the exclamation at the same size, so its texture overhangs the frame.
+local SCALE = { kill = 1, loot = 1.12 }
 local LINE_TITLE, LINE_OBJECTIVE = 17, 8
 local GAP, MIN_SIZE, MAX_SIZE = 6, 14, 24
 
@@ -55,7 +57,7 @@ local function Acquire()
         ns.Report("quest mobs texture", "Textures are not available on this client.")
         return
     end
-    Try(tex, "SetAllPoints", frame)
+    Try(tex, "SetPoint", "CENTER", frame, "CENTER")
     frame.icon = tex
     frame:Hide()
     return frame
@@ -95,6 +97,7 @@ local function Show(token, plate, kind)
     Try(icon, "ClearAllPoints")
     Try(icon, "SetPoint", "RIGHT", anchor, "LEFT", -GAP, 0)
     Try(icon, "SetSize", size, size)
+    Try(icon.icon, "SetSize", size * SCALE[kind], size * SCALE[kind])
     Try(icon.icon, "SetTexture", ICONS[kind])
     icon:Show()
 end
