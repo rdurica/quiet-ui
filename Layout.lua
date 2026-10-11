@@ -417,23 +417,6 @@ local CHROME = {
     flat = { width = 380, side = 16, titleY = -14, textY = -40, buttonY = 16, height = 132 },
 }
 
-local function Flat(frame, alpha)
-    if not frame.SetBackdrop then return end
-    frame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    frame:SetBackdropColor(0.05, 0.05, 0.05, alpha)
-    frame:SetBackdropBorderColor(0.85, 0.85, 0.85, 0.35)
-end
-
-local function Backdropped(kind, name, parent)
-    local ok, frame = pcall(CreateFrame, kind, name, parent, "BackdropTemplate")
-    if ok and frame then return frame end
-    return CreateFrame(kind, name, parent)
-end
-
 local function PortraitChrome(widget)
     return widget.SetTitle or widget.TitleText or widget.TitleContainer
         or widget.PortraitContainer or widget.portrait
@@ -514,10 +497,10 @@ local function CreatePrompt()
         HideClose(frame)
     else
         if not (ok and frame) then
-            frame = Backdropped("Frame", nil, UIParent)
+            frame = ns.Backdropped("Frame", nil, UIParent)
         end
         if ns.DialogGoldWindow(frame) then kind = "gold"
-        else Flat(frame, 1) end
+        else ns.Flat(frame, 1) end
     end
     ns.DialogBackground(frame)
     local metrics = CHROME[kind]

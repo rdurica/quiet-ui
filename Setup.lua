@@ -28,148 +28,6 @@ local frame
 local minimapButton
 local minimapHooked
 
--- Per character. An older build kept this on the account; the first character
--- to load keeps that copy, then the account keys are dropped.
-local accountMoved = false
-
-function ns.CharDB()
-    if type(QuietUICharDB) ~= "table" then
-        QuietUICharDB = {}
-    end
-    if not accountMoved then
-        accountMoved = true
-        local account = ns.DB()
-        if account.visible ~= nil or account.player ~= nil then
-            if QuietUICharDB.visible == nil and QuietUICharDB.player == nil then
-                QuietUICharDB.visible = account.visible
-                QuietUICharDB.player = account.player
-            end
-            account.visible = nil
-            account.player = nil
-        end
-    end
-    if ns.MigrateOnce then ns.MigrateOnce(QuietUICharDB) end
-    return QuietUICharDB
-end
-
-function ns.HoverSetting(settings, name)
-    local hover = settings.hoverOnly
-    local value
-    if type(hover) == "table" then value = hover[name] end
-    if type(value) == "boolean" then return value end
-    -- XP defaults to hover unless an existing Always visible choice keeps it up.
-    return name == "xp" and not (type(settings.visible) == "table" and settings.visible.xp == true)
-end
-
-function ns.OnlyOnHover(name)
-    return ns.HoverSetting(ns.Settings and ns.Settings() or ns.CharDB(), name)
-end
-
-function ns.VisibilityShow(name, usual, hovered)
-    if ns.InEditMode() or ns.Glancing() then return true end
-    if ns.OnlyOnHover(name) then return hovered and true or false end
-    return ns.Pinned(name) or usual or hovered or false
-end
-
-function ns.AutoHideParty()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).autoHideParty == true
-end
-
-function ns.Pinned(name)
-    local visible = (ns.Settings and ns.Settings() or ns.CharDB()).visible
-    return type(visible) == "table" and visible[name] and true or false
-end
-
--- Missing means on. Only an explicit "resource" keeps the portrait for edit mode.
-function ns.PlayerStyle()
-    if (ns.Settings and ns.Settings() or ns.CharDB()).player == "resource" then return "resource" end
-    return "classic"
-end
-
-function ns.PlayerThreshold()
-    local settings = ns.Settings and ns.Settings() or ns.CharDB()
-    local kind = settings.playerThresholdKind == "resource" and "resource" or "health"
-    local value = settings.playerThresholdPercent
-    if value == false then return kind, nil end
-    if type(value) == "number" and not ns.IsSecret(value)
-        and value >= 1 and value <= 100 and value == math.floor(value) then return kind, value end
-    return kind, 70
-end
-
-function ns.RequireLivingTarget()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).requireLivingTarget == true
-end
-
--- Missing means on. Only an explicit false leaves buffs on their own.
-function ns.GroupAuras()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).groupAuras ~= false
-end
-
--- Missing means on. Only an explicit false lets debuffs fade.
-function ns.AlwaysShowDebuffs()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).alwaysShowDebuffs ~= false
-end
-
--- Missing means on. Only an explicit false turns quest update notices off.
-function ns.QuestNoticeEnabled()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).questNotice ~= false
-end
-
--- Missing means on. Only an explicit false turns quest mob icons off.
-function ns.QuestMobs()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).questMobs ~= false
-end
-
--- Missing means all off. Only explicit true values turn a category on.
-function ns.Highlights()
-    local stored = (ns.Settings and ns.Settings() or ns.CharDB()).highlights
-    if type(stored) ~= "table" then stored = {} end
-    return { herb = stored.herb == true, ore = stored.ore == true, quest = stored.quest == true }
-end
-
--- Missing means the tracker size. Only "smaller" and "larger" change it.
-function ns.QuestNoticeSize()
-    local size = (ns.Settings and ns.Settings() or ns.CharDB()).questNoticeSize
-    if size == "smaller" or size == "larger" then return size end
-    return "default"
-end
-
--- Missing means on. Only an explicit false turns the modern chat off.
-function ns.ModernChat()
-    return (ns.Settings and ns.Settings() or ns.CharDB()).chat ~= false
-end
-
--- Missing means off. Only an explicit true selects the QuietUI layout when the addon turns on.
-function ns.ForceQuietLayout()
-    return (ns.ActivePreset and ns.ActivePreset()) ~= nil
-        or (ns.Settings and ns.Settings() or ns.CharDB()).forceLayout == true
-end
-
--- Seconds a line stays at the bottom. Missing means 10. 0 keeps the line.
-function ns.ChatFade()
-    local n = (ns.Settings and ns.Settings() or ns.CharDB()).chatFade
-    if type(n) ~= "number" or n ~= n then return 10 end
-    if n <= 0 then return 0 end
-    n = math.floor(n)
-    if n > 60 then n = 60 end
-    return math.floor(n / 5) * 5
-end
-
--- Missing means off. yards is 10, 28, or "spell". kind is "hostile" or "friendly".
--- spell is an optional name. Missing means the longest matching spell on bar 1.
-function ns.Range()
-    local range = (ns.Settings and ns.Settings() or ns.CharDB()).range
-    if type(range) ~= "table" then return nil end
-    local yards = range.yards
-    if yards ~= 10 and yards ~= 28 and yards ~= "spell" then return nil end
-    local kind = range.kind == "friendly" and "friendly" or "hostile"
-    local spell = range.spell
-    if type(spell) ~= "string" or ns.IsSecret(spell) then return yards, kind end
-    spell = spell:match("^%s*(.-)%s*$")
-    if not spell or spell == "" then return yards, kind end
-    return yards, kind, spell
-end
-
 local function FadeText(seconds)
     if not seconds or seconds <= 0 then return "Stay" end
     return seconds .. " s"
@@ -186,27 +44,6 @@ end
 local function RangeKindText(kind)
     if kind == "friendly" then return "Friendly" end
     return "Unfriendly"
-end
-
-local function Flat(widget, alpha)
-    if not widget.SetBackdrop then return end
-    widget:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    widget:SetBackdropColor(0.05, 0.05, 0.05, alpha)
-    widget:SetBackdropBorderColor(0.85, 0.85, 0.85, 0.35)
-end
-
-local function Backdropped(kind, name, parent, template)
-    if template then
-        local ok, widget = pcall(CreateFrame, kind, name, parent, template)
-        if ok and widget then return widget end
-    end
-    local ok, widget = pcall(CreateFrame, kind, name, parent, "BackdropTemplate")
-    if ok and widget then return widget end
-    return CreateFrame(kind, name, parent)
 end
 
 -- Gold edge for input fields, short tabs and steppers.
@@ -278,7 +115,7 @@ end
 
 local function SkinSmall(button, gold)
     if gold == nil then gold = true end
-    if not gold or not GoldEdge(button) then Flat(button, 1) end
+    if not gold or not GoldEdge(button) then ns.Flat(button, 1) end
     ns.DialogBackground(button)
     -- Texture edges also work when SetBackdrop is unavailable.
     for _, edge in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
@@ -655,7 +492,7 @@ end
 local function ActionButton(parent, text, onClick)
     local ok, button = pcall(CreateFrame, "Button", nil, parent, "UIPanelButtonTemplate")
     if not ok or not button then
-        button = Backdropped("Button", nil, parent)
+        button = ns.Backdropped("Button", nil, parent)
         button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         button.label:SetPoint("CENTER")
         if type(button.SetFontString) == "function" then button:SetFontString(button.label) end
@@ -763,7 +600,7 @@ local function NudgeGroup(id, delta)
 end
 
 local function Mini(parent, text, onClick)
-    local button = Backdropped("Button", nil, parent)
+    local button = ns.Backdropped("Button", nil, parent)
     button:SetSize(22, 22)
     button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     button.label:SetPoint("CENTER")
@@ -819,7 +656,7 @@ local function SpellField(parent)
     row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.label:SetPoint("LEFT", 2, 0)
     row.label:SetText("Spell")
-    local box = Backdropped("EditBox", nil, row)
+    local box = ns.Backdropped("EditBox", nil, row)
     box:SetSize(144, 22)
     box:SetPoint("RIGHT", 0, 0)
     box:SetFontObject("GameFontHighlightSmall")
@@ -829,7 +666,7 @@ local function SpellField(parent)
     box:SetJustifyH("LEFT")
     if box.SetTextColor then box:SetTextColor(1, 0.95, 0.8, 1) end
     local gold = GoldEdge(box)
-    if not gold then Flat(box, 0.9) end
+    if not gold then ns.Flat(box, 0.9) end
     box._quietGold = gold and true or false
     local hint = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("LEFT", 6, 0)
@@ -872,7 +709,7 @@ local function PercentField(parent, label, key)
     row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.label:SetPoint("LEFT", 2, 0)
     row.label:SetText(label)
-    local box = Backdropped("EditBox", nil, row)
+    local box = ns.Backdropped("EditBox", nil, row)
     box:SetSize(72, 22)
     box:SetPoint("RIGHT", 0, 0)
     box:SetFontObject("GameFontHighlightSmall")
@@ -880,7 +717,7 @@ local function PercentField(parent, label, key)
     box:SetMaxLetters(16)
     box:SetTextInsets(6, 6, 0, 0)
     box:SetJustifyH("LEFT")
-    if not GoldEdge(box) then Flat(box, 0.9) end
+    if not GoldEdge(box) then ns.Flat(box, 0.9) end
     box:SetScript("OnTextChanged", function(self) draft[key] = self:GetText() or "" end)
     box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -960,7 +797,7 @@ local function MaxPage()
 end
 
 local function TabButton(parent, text, width, onClick)
-    local button = Backdropped("Button", nil, parent)
+    local button = ns.Backdropped("Button", nil, parent)
     button:SetSize(width, 22)
     button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     button.label:SetPoint("CENTER")
@@ -1053,7 +890,7 @@ end
 ns.DialogGoldWindow = GoldWindow
 
 local function CloseButton(parent, metrics)
-    local button = Backdropped("Button", nil, parent)
+    local button = ns.Backdropped("Button", nil, parent)
     button:SetSize(22, 22)
     button:SetPoint("TOPRIGHT", metrics.closeX, metrics.closeY)
     button:SetFrameLevel(parent:GetFrameLevel() + 20)
@@ -1079,10 +916,10 @@ local function SelectMenu(owner, key, anchor, entries)
     local menu = owner[key]
     if menu and menu:IsShown() then menu:Hide(); return end
     if not menu then
-        menu = Backdropped("Frame", nil, owner)
+        menu = ns.Backdropped("Frame", nil, owner)
         menu:SetFrameStrata("DIALOG")
         menu:SetFrameLevel(owner:GetFrameLevel() + 60)
-        Flat(menu, 1)
+        ns.Flat(menu, 1)
         ns.DialogBackground(menu)
         if menu.SetBackdropBorderColor then menu:SetBackdropBorderColor(0.95, 0.75, 0.25, 0.7) end
         menu:EnableMouse(true)
@@ -1165,12 +1002,12 @@ local function PresetDialog(owner, title, text, accept)
             ApplyPortrait(dialog)
             dialog:SetSize(420, 244)
         else
-            dialog = ok and widget or Backdropped("Frame", nil, blocker)
+            dialog = ok and widget or ns.Backdropped("Frame", nil, blocker)
             if GoldWindow(dialog) then
                 side, bodyY, editY, buttonY = 28, -56, -114, 28
                 dialog:SetSize(420, 214)
             else
-                Flat(dialog, 1)
+                ns.Flat(dialog, 1)
                 side, bodyY, editY, buttonY = 16, -40, -98, 16
                 dialog:SetSize(380, 186)
             end
@@ -1190,8 +1027,8 @@ local function PresetDialog(owner, title, text, accept)
         local contentWidth = (side == 16 and 380 or 420) - 2 * side
         dialog.body:SetWidth(contentWidth)
         dialog.body:SetPoint("TOPLEFT", side, bodyY)
-        dialog.edit = Backdropped("EditBox", nil, dialog)
-        if not GoldEdge(dialog.edit) then Flat(dialog.edit, 1) end
+        dialog.edit = ns.Backdropped("EditBox", nil, dialog)
+        if not GoldEdge(dialog.edit) then ns.Flat(dialog.edit, 1) end
         dialog.edit:SetSize(contentWidth, 24)
         dialog.edit:SetPoint("TOPLEFT", side, editY)
         dialog.edit:SetFontObject("GameFontHighlightSmall")
@@ -1229,12 +1066,12 @@ local function CreateSetup()
         ApplyPortrait(widget)
     else
         if not (ok and widget) then
-            widget = Backdropped("Frame", "QuietUISetup", UIParent)
+            widget = ns.Backdropped("Frame", "QuietUISetup", UIParent)
         end
         if GoldWindow(widget) then
             kind = "gold"
         else
-            Flat(widget, 0.9)
+            ns.Flat(widget, 0.9)
         end
     end
     local metrics = CHROME[kind]

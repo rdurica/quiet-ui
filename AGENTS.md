@@ -34,8 +34,9 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 ## Code
 
 - Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key. Do not add libraries.
-  - `Core.lua`: `DB`, `Print`, `Report`, alpha hooks, fading, texture hiding, restore.
+  - `Core.lua`: `DB`, `Print`, `Report`, `Run`, `Flat`, `Backdropped`, alpha hooks, fading, texture hiding, restore.
   - `Presets.lua`: shared preset CRUD, effective settings, and personal snapshots.
+  - `Settings.lua`: `CharDB` and the settings getters (`Pinned`, `PlayerStyle`, `GroupAuras`, `AlwaysShowDebuffs`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`, and the rest).
   - `Frames.lua`: bar / bag / spared classification, `Mute`.
   - `Bars.lua`: action bars, `ShowAll`, and `BarTarget`.
   - `Faders.lua`: XP bar, cooldown manager, damage meter, player frame, pet frame, quest tracker, buffs, and the range gradient.
@@ -46,10 +47,17 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
   - `Chat.lua`: chat chrome, line bubbles, and the input box.
   - `LayoutString.lua`: only the Edit Mode export string. Update it by pasting a new export.
   - `Layout.lua`: asks to add or update the `QuietUI` Edit Mode layout from that string.
-  - `Setup.lua`: the `/quiet setup` window, `CharDB`, `Pinned`, `PlayerStyle`, `GroupAuras`, `AlwaysShowDebuffs`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`.
+  - `Setup.lua`: the `/quiet setup` window.
   - `QuietUI.lua`: `ApplyAll`, `RestoreAll`, events, `OnUpdate`, `/quiet`.
 - Call other files through `ns` at run time, not through locals captured at load, so load order only matters for `QuietUI.lua` being last.
 - Comments in English, short, only where the reason is not visible from the code.
+
+## Tests
+
+- `lua tests/run.lua [filter]` runs every test; the filter matches area or script names. Exit code 0 means all passed.
+- New tests go in `tests/<area>/` and use only the public `ns.*`, never internals or production file names.
+- A legacy script in `tests/*.lua` is converted to an area test when its area changes.
+- `--measure` is a direct script run, for example `lua tests/performance.lua . --measure`.
 
 ## Agent skills
 

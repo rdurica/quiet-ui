@@ -8,6 +8,7 @@
 
 Core.lua
 Presets.lua
+Settings.lua
 Frames.lua
 Bars.lua
 Faders.lua
