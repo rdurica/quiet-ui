@@ -1,7 +1,7 @@
 -- WoW API mock for the shared test harness. Lua 5.1-compatible syntax.
 --
---   local mock = dofile-free: runner/addon.lua call require-less `loadfile` on this file;
---   mock.new() returns a fresh mock; mock:install() writes its globals into _G.
+--   Loaded with `loadfile` by tests/run.lua. mock.new() returns a fresh mock;
+--   mock:install() writes its globals into _G.
 --
 -- What a test can use (all reached through the harness context `t.mock`):
 --   mock.frames                 every frame/texture/fontstring created, in order
