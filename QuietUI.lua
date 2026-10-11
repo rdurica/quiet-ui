@@ -70,11 +70,10 @@ end
 local function Run(label, fn, ...)
     local profile = label and cpuProfile
     local started = profile and debugprofilestop()
-    local ok, err = pcall(fn, ...)
+    ns.Run(label or "fades", fn, ...)
     if profile then
         RecordCPU(profile.sections, label, started)
     end
-    if not ok then ns.Report(label or "fades", err) end
 end
 
 local function ProfileSmooth(label, fn, ...)

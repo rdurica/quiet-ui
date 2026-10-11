@@ -876,11 +876,6 @@ local function UpdateAuras(elapsed)
     end
 end
 
-local function Run(label, fn, ...)
-    local ok, err = pcall(fn, ...)
-    if not ok then ns.Report(label, err) end
-end
-
 -- The tracker container is not mouse-enabled, so the gaps between quests are
 -- not hover. This frame is not its child: a faded parent would drop the mouse.
 local questCatcher
@@ -1085,7 +1080,7 @@ function ns.UpdateSmooth(elapsed, profile)
     for i = 1, thresholdSampleCount do thresholdAlphas[i] = nil end
     thresholdSampleCount = 0
     samplingPower = true
-    local run = profile or Run
+    local run = profile or ns.Run
     run("resource bar", UpdateResource, elapsed)
     run("player frame", UpdatePlayer, elapsed)
     run("party frames", ns.UpdateParty, elapsed)
@@ -1506,11 +1501,11 @@ end
 
 function ns.UpdateFaders(elapsed)
     local glance = ns.Glancing()
-    Run("xp bar", UpdateVisible, "xp", statusFrames, XPShouldShow(), false, ns.XPForced(), glance, elapsed)
-    Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true, nil,
+    ns.Run("xp bar", UpdateVisible, "xp", statusFrames, XPShouldShow(), false, ns.XPForced(), glance, elapsed)
+    ns.Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true, nil,
         glance, elapsed)
-    Run("damage meter", UpdateVisible, "meter", meterFrames, MeterShouldShow(), true, nil, glance, elapsed)
-    Run("quest catcher", PlaceQuestCatcher)
+    ns.Run("damage meter", UpdateVisible, "meter", meterFrames, MeterShouldShow(), true, nil, glance, elapsed)
+    ns.Run("quest catcher", PlaceQuestCatcher)
     local questHot = questCatcher and ns.Hit(questCatcher)
-    Run("quest tracker", UpdateGroup, questFrames, ns.VisibilityShow("quests", false, questHot), elapsed)
+    ns.Run("quest tracker", UpdateGroup, questFrames, ns.VisibilityShow("quests", false, questHot), elapsed)
 end
