@@ -167,7 +167,7 @@ end
 local legacy = lines("find " .. shq(testsDir) .. " -maxdepth 1 -name '*.lua' -not -name 'run.lua'")
 for _, path in ipairs(legacy) do
     local name = path:match("([^/]*)$")
-    if matches(name, name:gsub("%.lua$", "")) then
+    if matches((name:gsub("%.lua$", "")), name) then
         matched = matched + 1
         local cmd = "cd " .. shq(root) .. " && " .. shq(luaBin) .. " " .. shq(path) .. " " .. shq(root)
             .. " 2>&1; echo \"__EXIT:$?\""
