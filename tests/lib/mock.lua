@@ -236,6 +236,9 @@ end
 function Frame:GetNumMessages() return self._lines and #self._lines or 0 end
 function Frame:GetMessageInfo(i) return self._lines and self._lines[i] end
 function Frame:IsMouseWheelEnabled() return false end
+-- Scroll frame surface (the setup window reads it back).
+function Frame:SetVerticalScroll(v) self._vscroll = v end
+function Frame:GetVerticalScroll() return self._vscroll or 0 end
 
 ------------------------------------------------------------------------------
 
@@ -431,6 +434,7 @@ function M:build()
             local curve = { points = {}, kind = nil }
             function curve:SetType(v) self.kind = v end
             function curve:AddPoint(x, y) self.points[#self.points + 1] = { x, y } end
+            function curve:ClearPoints() self.points = {} end
             function curve:GetPointCount() return #self.points end
             function curve:Evaluate(x)
                 local pts, last = self.points, nil
