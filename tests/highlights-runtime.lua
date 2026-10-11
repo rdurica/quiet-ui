@@ -26,6 +26,7 @@ local function Load(opts)
         return function(...) calls[name] = calls[name] or {}; calls[name][#calls[name] + 1] = { n = select('#', ...), ... } end
     end
     ns.DB = function() return env.db end
+    ns.Run = function(label, fn, ...) local ok, err = pcall(fn, ...); if not ok then ns.Report(label, err) end end
     ns.CharDB = function() return {} end
     ns.ForceQuietLayout = function() return false end
     ns.ModernChat = function() return false end

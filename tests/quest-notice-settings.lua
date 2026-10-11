@@ -49,6 +49,7 @@ function methods:SetColorTexture(...) self.color = { ... } end
 function methods:SetAlpha(alpha) self.alpha = alpha end
 function methods:GetAlpha() return self.alpha end
 function methods:SetTexture(texture) self.texture = texture; return true end
+function methods:SetVertexColor() end
 function methods:SetAtlas(atlas) self.texture = atlas; return true end
 function methods:GetTexture() return self.texture end
 function methods:SetDrawLayer(layer, sublevel) self.layer, self.sublevel = layer, sublevel end
@@ -105,8 +106,10 @@ local function fixture()
             saved = QuietUICharDB.questNotice }
     end
     assert(loadfile('Bars.lua'))('QuietUI', ns)
+    assert(loadfile('Core.lua'))('QuietUI', ns)
     assert(loadfile('Presets.lua'))('QuietUI', ns)
     assert(loadfile('Setup.lua'))('QuietUI', ns)
+    assert(loadfile('Settings.lua'))('QuietUI', ns)
     return ns, applied
 end
 

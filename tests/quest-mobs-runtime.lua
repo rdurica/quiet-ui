@@ -48,6 +48,7 @@ local function Load(opts)
     end
     for _, key in ipairs({ 'HighlightsEvent', 'QuestNoticeEvent', 'ForgetRangePlate' }) do ns[key] = spy(key) end
     ns.Report = function(key, err) env.errors[#env.errors + 1] = tostring(key) .. ': ' .. tostring(err) end
+    ns.Run = function(label, fn, ...) local ok, err = pcall(fn, ...); if not ok then ns.Report(label, err) end end
     if not opts.noQuestMobs then
         for _, key in ipairs({ 'ApplyQuestMobs', 'RestoreQuestMobs', 'QuestMobsEvent' }) do ns[key] = spy(key) end
     end
@@ -213,6 +214,7 @@ test('A throwing QuestMobsEvent keeps the other handlers and reports once under 
     local core = {}
     assert(loadfile('Core.lua'))('QuietUI', core)
     env.ns.Report = core.Report
+    env.ns.Run = core.Run
     env.dispatch('PLAYER_LOGIN')
     local thrown = 0
     env.ns.QuestMobsEvent = function() thrown = thrown + 1; error('quest mobs exploded') end

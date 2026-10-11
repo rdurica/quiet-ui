@@ -17,6 +17,7 @@ for _, key in ipairs({'UpdateRange','UpdateSmooth','ForgetCursor','BeginTick','N
     'EnsureMinimap','NoteCombat','MarkCombatEnd','MarkQuestXP','ForgetBarButtons'}) do ns[key] = function() end end
 local errors={}
 ns.Report = function(key,err) errors[#errors+1]=key..': '..tostring(err) end
+ns.Run = function(label, fn, ...) local ok, err = pcall(fn, ...); if not ok then ns.Report(label, err) end end
 for _, key in ipairs({'ApplyQuestNotice','RestoreQuestNotice','QuestNoticeEvent','UpdateQuestNotice'}) do ns[key]=spy(key) end
 function events:SetScript(key,value) self.scripts[key]=value end
 function events:RegisterEvent(name) self.registered[name]=true end

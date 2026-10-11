@@ -193,6 +193,7 @@ local function scenario(mode)
     ns.LAYOUT_STRING = 'export'
     assert(loadfile('Layout.lua'))('QuietUI', ns)
     assert(loadfile('Setup.lua'))('QuietUI', ns)
+    assert(loadfile('Settings.lua'))('QuietUI', ns)
     return ns, objects, function() return writes, layouts end
 end
 

@@ -56,6 +56,7 @@ for _, name in ipairs({ 'InEditMode', 'InCombat', 'InForcedInstance', 'InGroup',
     'HasTarget', 'Glancing', 'Pinned', 'OnlyOnHover', 'Hit' }) do ns[name] = function() return false end end
 loadAddon('Presets.lua')
 loadAddon('Setup.lua')
+loadAddon('Settings.lua')
 loadAddon('Faders.lua')
 ns.FindFaders(false)
 local function tick() ns.UpdateSmooth(1) end
