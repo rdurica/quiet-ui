@@ -1271,8 +1271,8 @@ test('The aura uses Media/glow.tga, glints Media/glint.tga and sparks Media/spar
         end
     end
     assert(glow >= 1, 'No aura texture uses Media/glow.tga')
-    assert(spark == 4, 'Expected four small motes, got ' .. spark)
-    assert(glint == 3, 'Expected three four-point glints')
+    assert(spark == 6, 'Expected six small motes, got ' .. spark)
+    assert(glint == 5, 'Expected five four-point glints, got ' .. glint)
     assert(round == 0, 'The glow still uses Media/round.tga')
     for _, file in ipairs({ 'Media/glow.tga', 'Media/spark.tga', 'Media/glint.tga' }) do
         local f = io.open(file, 'rb')
