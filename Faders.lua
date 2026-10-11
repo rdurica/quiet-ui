@@ -326,7 +326,7 @@ local powerWeights, powerAlphas = {}, {}
 local powerSampleCount = 0
 
 local function DeadTargetBlocked()
-    if not ns.RequireLivingTarget() or ns.InEditMode() then return false end
+    if not ns.RequireLivingTarget() or ns.InEditMode() or ns.Glancing() then return false end
     local fn = type(UnitIsDeadOrGhost) == "function" and UnitIsDeadOrGhost
         or (type(UnitIsDead) == "function" and UnitIsDead)
     if not fn then return false end
