@@ -26,6 +26,7 @@ local function namespace(char, db)
     loadAddon('Frames.lua', ns)
     loadAddon('Bars.lua', ns)
     loadAddon('Setup.lua', ns)
+    loadAddon('Settings.lua', ns)
     local calls = {}
     local real = ns.MigrateVisibility
     ns.MigrateVisibility = function(settings)

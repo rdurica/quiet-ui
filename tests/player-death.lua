@@ -122,6 +122,7 @@ local function environment(inherited, preset)
     ns.Hit = function(obj) return obj and obj.hot == true end
     loadAddon('Presets.lua', ns)
     loadAddon('Setup.lua', ns)
+    loadAddon('Settings.lua', ns)
     loadAddon('Faders.lua', ns)
     if preset then
         QuietUIDB.presets = { [1] = { name = 'Existing', interfaceStyle = 0,

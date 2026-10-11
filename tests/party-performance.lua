@@ -32,7 +32,7 @@ hooksecurefunc = function(obj, name, hook)
         hook(self, ...)
     end
 end
-for _, file in ipairs({ 'Core.lua', 'Setup.lua', 'Faders.lua' }) do
+for _, file in ipairs({ 'Core.lua', 'Settings.lua', 'Setup.lua', 'Faders.lua' }) do
     assert(loadfile(file))('QuietUI', ns)
 end
 ns.InGroup = function() return grouped end

@@ -26,6 +26,7 @@ local validate = ns.ValidatePresetInterface
 ns.ValidatePresetInterface = function() checks = checks + 1; return validate() end
 ns.ForceQuietLayout = function() return ns.ActivePreset() ~= nil end
 ns.ModernChat = function() return false end
+ns.Run = function(label, fn, ...) local ok, err = pcall(fn, ...); if not ok then ns.Report(label, err) end end
 for _, key in ipairs({ 'RefreshWorld', 'FindFaders', 'ScanSwing', 'EnsureLayout', 'RefreshChrome',
     'RestoreChat', 'NextFadeTick', 'BeginTick', 'UpdateBars', 'UpdateFaders', 'UpdateMenuButton',
     'UpdateParty', 'UpdateBagSlots', 'EnsureMinimap', 'ForgetCursor', 'UpdateRange', 'UpdateSmooth' }) do

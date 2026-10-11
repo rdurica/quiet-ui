@@ -33,6 +33,7 @@ CreateFrame = function(_, name, parent) local obj = widget(parent); obj.name = n
 UISpecialFrames = {}
 ns.DB = function() return QuietUIDB end
 ns.IsSecret = function() return false end
+assert(loadfile('Core.lua'))('QuietUI', ns)
 ns.Print = function(message) ns.message = message end
 assert(loadfile('Bars.lua'))('QuietUI', ns)
 ns.Glancing = function() return false end
@@ -47,6 +48,7 @@ ns.CommitLayoutPreview = function() committed = true; preview = nil end
 ns.CancelLayoutPreview = function() cancelled = true; preview = nil end
 assert(loadfile('Presets.lua'))('QuietUI', ns)
 assert(loadfile('Setup.lua'))('QuietUI', ns)
+assert(loadfile('Settings.lua'))('QuietUI', ns)
 local id = ns.SavePreset(nil, 'Healer', ns.CurrentLayoutRef(), { chat = false, chatFade = 0, groupAuras = false, player = 'resource',
     requireLivingTarget = true, visible = { bars = true, swing = true },
     groups = { ['1'] = 2 }, hostile = { ['1'] = true }, friendly = { ['2'] = true },

@@ -58,6 +58,7 @@ test('Quest catcher keeps strata and level writes out of a stable tracker', func
     ns.UpdateFaded = function() end
     ns.ArmCatcher = function() end
     ns.Report = function(key, err) errors[#errors + 1] = key .. ': ' .. tostring(err) end
+    ns.Run = function(label, fn, ...) local ok, err = pcall(fn, ...); if not ok then ns.Report(label, err) end end
     loadAddon('Faders.lua', ns)
     ns.FindFaders(false)
     for _ = 1, 60 do ns.UpdateFaders(0.016) end
