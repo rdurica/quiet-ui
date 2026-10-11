@@ -229,20 +229,40 @@ for _, life in ipairs({ 'dead', 'ghost' }) do
     end)
 end
 
-test('Dead-target Glance block and its threshold exception stay independent', function()
+test('Glance bypasses the dead-target block, then the block applies again', function()
     local _, s = environment()
     QuietUICharDB.requireLivingTarget = true
-    s.targetDead, s.life, s.Glancing = true, 'dead', true
+    s.targetDead = true
     s.tick(); s.portrait(0)
-    assert(unwrap(PetFrame.alpha) == 0 and TargetFrame.alpha == 0)
+    assert(unwrap(PetFrame.alpha) == 0 and TargetFrame.alpha == 0, 'Dead target blocks player, pet and target')
+    s.Glancing = true; s.tick(0); s.portrait(1)
+    assert(unwrap(PetFrame.alpha) == 1, 'Glance shows the pet')
+    assert(TargetFrame.alpha == 0.7, 'Glance releases the target to its original alpha')
+    s.Glancing = false; s.tick(); s.portrait(0)
+    assert(unwrap(PetFrame.alpha) == 0 and TargetFrame.alpha == 0, 'Block applies again after Glance')
+end)
+
+test('Dead-target threshold exception still overrides only player and pet outside Glance', function()
+    local _, s = environment()
+    QuietUICharDB.requireLivingTarget = true
+    s.targetDead = true
     s.health = 0.4; s.tick(); s.portrait(1)
     assert(unwrap(PetFrame.alpha) == 1 and TargetFrame.alpha == 0, 'Threshold only overrides player and pet')
+    s.Glancing = true; s.tick(0); s.portrait(1)
+    assert(TargetFrame.alpha == 0.7, 'Glance still releases the target')
+    s.Glancing = false; s.tick(); s.portrait(1)
+    assert(unwrap(PetFrame.alpha) == 1 and TargetFrame.alpha == 0, 'Threshold persists after Glance, target faded again')
+end)
+
+test('Player frame off keeps the portrait hidden during Glance with a dead target', function()
+    local _, s = environment()
+    QuietUICharDB.requireLivingTarget = true
+    QuietUICharDB.player = 'resource'
+    s.targetDead, s.Glancing = true, true
+    s.tick(); s.portrait(0)
+    assert(TargetFrame.alpha == 0.7, 'Glance releases the target even with the portrait off')
     s.Glancing = false; s.tick(); s.portrait(0)
-    assert(unwrap(PetFrame.alpha) == 1 and TargetFrame.alpha == 0, 'Death must not remove pet threshold override')
-    QuietUICharDB.player = 'resource'; s.Glancing = true; s.tick(); s.portrait(0)
-    assert(unwrap(PetFrame.alpha) == 0 and TargetFrame.alpha == 0)
-    s.InEditMode = true; s.tick(0); s.portrait(1)
-    assert(TargetFrame.alpha == 0.7, 'Edit Mode releases the target to its original alpha')
+    assert(TargetFrame.alpha == 0, 'Block applies again after Glance')
 end)
 
 for _, life in ipairs({ 'dead', 'ghost' }) do
