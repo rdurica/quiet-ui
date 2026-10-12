@@ -271,3 +271,31 @@ h.test("The unfocused input lets clicks through to the tabs", function(t)
     ns.RestoreChat()
     A.ok(edit:IsMouseEnabled(), "restore gives the input its mouse back")
 end)
+
+-- Clicking a tab leaves the pointer on the tab row; that row counts as the chat block's
+-- hover, so the selected window shows its lines, including faded ones.
+h.test("Hovering the tab row shows the window's faded lines", function(t)
+    local A, mock = t.assert, t.mock
+    t.boot()
+    local events = mock:eventFrame("PLAYER_LOGIN")
+    local function tick(elapsed) events._scripts.OnUpdate(events, elapsed) end
+    GeneralDockManager:Show()
+    local before = #mock.frames
+    ChatFrame1:AddMessage("old line", 1, 1, 1)
+    tick(1 / 60)
+    local bubble
+    for i = before + 1, #mock.frames do
+        local f = mock.frames[i]
+        if f._parent == ChatFrame1 and f._scripts.OnEnter then bubble = f break end
+    end
+    A.ok(bubble, "precondition: a chat line created a bubble")
+    mock:advance(20)
+    tick(1)
+    tick(1)
+    A.falsy(bubble:IsShown() and (bubble._alpha or 1) > 0.01, "precondition: the line faded")
+    GeneralDockManager:SetMouseOver(true)
+    mock.state.cursor = { 10, 10 }
+    tick(1 / 60)
+    tick(1 / 60)
+    A.ok(bubble:IsShown() and (bubble._alpha or 1) > 0.5, "tab row hover shows the faded line")
+end)
