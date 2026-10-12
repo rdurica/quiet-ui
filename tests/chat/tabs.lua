@@ -188,3 +188,31 @@ h.test("Missing Blizzard tab functions and tabs do not break placement", functio
     t.mock:drain()
     A.notPrinted(t.mock, "error (shown once)")
 end)
+
+-- Blizzard sizes the dock by anchoring both of its sides to ChatFrame1; with only one
+-- point left it has no width and FCF_DockUpdate hides every tab as overflow.
+local function spansWindow(A, frame, rel, msg)
+    local left, right
+    for i = 1, frame:GetNumPoints() do
+        local p, r = frame:GetPoint(i)
+        if r == rel and p:find("LEFT", 1, true) then left = true end
+        if r == rel and p:find("RIGHT", 1, true) then right = true end
+    end
+    A.ok(left and right, msg .. ": needs a LEFT and a RIGHT point for its width")
+end
+
+h.test("The moved dock keeps its width from both sides of the window", function(t)
+    local ns, A = t.ns, t.assert
+    setup(t)
+    ChatFrame1.GetLeft = function() return 20 end
+    ChatFrame1.GetRight = function() return 320 end
+    ns.StripAllChat()
+    assertBelow(A, GeneralDockManager, ChatFrame1, "dock")
+    spansWindow(A, GeneralDockManager, ChatFrame1, "dock below")
+    ns.RestoreChat()
+    blizzardLayout(t, 10)
+    ChatFrame1.GetLeft = function() return 20 end
+    ChatFrame1.GetRight = function() return 320 end
+    ns.StripAllChat()
+    spansWindow(A, GeneralDockManager, UIParent, "clamped dock")
+end)
