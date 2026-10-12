@@ -1907,6 +1907,19 @@ local function EaseEdit(edit, elapsed)
     end
 end
 
+-- ChatFrame1 is the dock itself; other windows say so with isDocked.
+local function Docked(window, i)
+    if i == 1 then return true end
+    local d = window and window.isDocked
+    return d == true or (type(d) == "number" and d > 0)
+end
+
+-- A tab click leaves the pointer on the tab row, so the row counts as the chat's hover.
+local function TabRowHot(frame, i)
+    if ns.MouseOver(_G["ChatFrame" .. i .. "Tab"]) then return true end
+    return Docked(frame, i) and ns.MouseOver(GeneralDockManager)
+end
+
 -- Tabs show while the chat or the tab row is hovered, or while a tab flashes for new messages.
 local function TabAlerting(tab)
     if tab.alerting then return true end
@@ -1950,7 +1963,7 @@ function ns.UpdateChat(elapsed)
                     PlaceCatcher(frame)
                     frame._quietCatcherAt = now + 0.1
                 end
-                local hot = FrameHot(frame)
+                local hot = FrameHot(frame) or TabRowHot(frame, i)
                 if hot ~= frame._quietHover then
                     frame._quietHover = hot
                     frame._quietDirty = true
@@ -2037,9 +2050,7 @@ local function PlaceTabs()
             local window = _G["ChatFrame" .. i]
             local tab = _G["ChatFrame" .. i .. "Tab"]
             -- A docked tab lives inside the dock, which moves instead.
-            local d = window and window.isDocked
-            local docked = d == true or (type(d) == "number" and d > 0)
-            if window and tab and not docked and i ~= 1 then
+            if window and tab and not Docked(window, i) then
                 MoveBelow(tab, window, _G["ChatFrame" .. i .. "EditBox"])
             end
         end
