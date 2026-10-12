@@ -288,7 +288,7 @@ function M:build()
     end
     G.hooksecurefunc = function(a, b, c)
         local obj, method, hook
-        if type(a) == "string" then obj, method, hook = G, a, b else obj, method, hook = a, b, c end
+        if type(a) == "string" then obj, method, hook = _G, a, b else obj, method, hook = a, b, c end
         local original = obj[method]
         if type(original) ~= "function" then error("hooksecurefunc: missing " .. tostring(method), 2) end
         mock.hooks[#mock.hooks + 1] = { obj = obj, method = method }

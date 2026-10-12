@@ -33,6 +33,7 @@ end
 function T.deep(actual, expected, msg)
     local function same(a, b, path)
         if type(a) ~= type(b) then return false, path end
+        if rawequal(a, b) then return true, path end
         if type(a) ~= "table" then return a == b, path end
         for k, v in pairs(a) do
             local ok, p = same(v, b[k], path .. "." .. tostring(k))

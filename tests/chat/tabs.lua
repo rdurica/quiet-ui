@@ -155,7 +155,7 @@ h.test("Disabling QuietUI restores the original dock and tab points", function(t
     ns.StripAllChat()
     assertBelow(A, GeneralDockManager, ChatFrame1, "moved")
     QuietUIDB.enabled = false
-    ns.RestoreAll()
+    ns.ApplyAll() -- disabled: ApplyAll falls through to RestoreAll
     A.deep(snapshot(GeneralDockManager), dock0, "dock points")
     A.deep(snapshot(ChatFrame2Tab), tab0, "tab points")
 end)
