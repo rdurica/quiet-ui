@@ -595,6 +595,7 @@ function M:build()
     G.FCF_DockUpdate = function() end
     G.FCF_SetTabPosition = function() end
     G.FCF_RestorePositionAndDimensions = function() end
+    G.FCF_OpenTemporaryWindow = function() end
     G.UpdateMicroButtons = function() end
     G.ChatFrame_OnHyperlinkShow = function(...) mock.hyperlinkShown = { ... } end
     G.SetItemRef = function(...) mock.itemRef = { ... } end
