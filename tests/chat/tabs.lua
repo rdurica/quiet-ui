@@ -113,23 +113,57 @@ h.test("Tabs below the screen bottom clamp to it and the focused input draws ove
     end
 end)
 
-h.test("Tab alpha is left to Blizzard", function(t)
+-- Tabs show only on hover (the tab row) or while a tab flashes for new messages.
+-- elapsed 1 is past the fade-out, so a hidden tab reaches 0.
+h.test("Tabs are hidden until hovered", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    local tabs = { GeneralDockManager, ChatFrame1Tab, ChatFrame2Tab }
-    for _, f in ipairs(tabs) do f._alpha = 0.4; f._calls.SetAlpha = 0 end
+    for _, f in ipairs({ ChatFrame1Tab, ChatFrame2Tab }) do f:Show(); f._alpha = 0.4 end
+    GeneralDockManager:Show()
     ns.StripAllChat()
-    FCF_SetTabPosition(ChatFrame2, 0)
-    FCF_DockUpdate()
+    ns.UpdateChat(1)
+    A.near(ChatFrame1Tab._alpha, 0, 0.01, "docked tab hidden")
+    A.near(ChatFrame2Tab._alpha, 0, 0.01, "undocked tab hidden")
+    -- Blizzard's own fade does not bring it back.
+    ChatFrame1Tab:SetAlpha(0.4)
+    A.near(ChatFrame1Tab._alpha, 0, 0.01, "Blizzard alpha held off")
+    GeneralDockManager:SetMouseOver(true)
+    ns.UpdateChat(0.01)
+    A.near(ChatFrame1Tab._alpha, 1, 0.01, "dock hover shows the tabs")
+    A.near(ChatFrame2Tab._alpha, 1, 0.01, "dock hover shows every tab")
+    GeneralDockManager:SetMouseOver(false)
+    ns.UpdateChat(1)
+    A.near(ChatFrame1Tab._alpha, 0, 0.01, "hidden again after hover")
+    ChatFrame2Tab:SetMouseOver(true)
+    ns.UpdateChat(0.01)
+    A.near(ChatFrame2Tab._alpha, 1, 0.01, "tab hover shows it")
+end)
+
+h.test("A tab with new messages stays visible", function(t)
+    local ns, A = t.ns, t.assert
+    setup(t)
+    for _, f in ipairs({ ChatFrame1Tab, ChatFrame2Tab }) do f:Show() end
+    ns.StripAllChat()
+    ChatFrame2Tab.alerting = true
+    ns.UpdateChat(1)
+    A.near(ChatFrame2Tab._alpha, 1, 0.01, "alerting tab visible")
+    A.near(ChatFrame1Tab._alpha, 0, 0.01, "quiet tab hidden")
+    ChatFrame2Tab.alerting = false
+    ns.UpdateChat(1)
+    A.near(ChatFrame2Tab._alpha, 0, 0.01, "hidden once read")
+end)
+
+h.test("Restore gives the tabs their alpha back", function(t)
+    local ns, A = t.ns, t.assert
+    setup(t)
+    ChatFrame2Tab:Show(); ChatFrame2Tab._alpha = 0.4
+    ns.StripAllChat()
+    ns.UpdateChat(1)
+    QuietUICharDB.chat = false
     ns.RestoreChat()
-    for _, f in ipairs(tabs) do
-        A.eq(f._calls.SetAlpha or 0, 0, f:GetName() .. ": QuietUI called SetAlpha")
-        A.eq(f._alpha, 0.4, f:GetName() .. ": alpha changed")
-    end
-    -- Blizzard changing the alpha is not fought.
-    ChatFrame2Tab:SetAlpha(1)
-    FCF_SetTabPosition(ChatFrame2, 0)
-    A.eq(ChatFrame2Tab._alpha, 1, "tab alpha was held")
+    A.near(ChatFrame2Tab._alpha, 0.4, 0.01, "original alpha back")
+    ChatFrame2Tab:SetAlpha(0.7)
+    A.near(ChatFrame2Tab._alpha, 0.7, 0.01, "Blizzard alpha not held after restore")
 end)
 
 h.test("Modern chat off restores the original dock and tab points", function(t)
