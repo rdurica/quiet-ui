@@ -1894,6 +1894,28 @@ local function EaseEdit(edit, elapsed)
     end
 end
 
+-- Tabs show while the chat or the tab row is hovered, or while a tab flashes for new messages.
+local function TabAlerting(tab)
+    if tab.alerting then return true end
+    local glow = tab.glow
+    return glow and glow.IsShown and glow:IsShown() and true or false
+end
+
+local function FadeTabs(elapsed)
+    local hot = ns.MouseOver(GeneralDockManager)
+    for i = 1, ChatCount() do
+        local frame = _G["ChatFrame" .. i]
+        if frame and frame._quietHover then hot = true end
+    end
+    for i = 1, ChatCount() do
+        local tab = _G["ChatFrame" .. i .. "Tab"]
+        if tab and ns.Usable(tab) then
+            ns.NoteChat(tab)
+            ns.EaseAlpha(tab, hot or ns.MouseOver(tab) or TabAlerting(tab), elapsed)
+        end
+    end
+end
+
 function ns.UpdateChat(elapsed)
     if not ns.DB().enabled or not ns.ModernChat() then return end
     local now = GetTime()
@@ -1927,6 +1949,7 @@ function ns.UpdateChat(elapsed)
             end
         end
     end
+    FadeTabs(elapsed)
 end
 
 ------------------------------------------------------------------------------
@@ -2015,7 +2038,9 @@ end
 local function RestoreTabs()
     local list = { GeneralDockManager }
     for i = 1, ChatCount() do
-        list[#list + 1] = _G["ChatFrame" .. i .. "Tab"]
+        local tab = _G["ChatFrame" .. i .. "Tab"]
+        list[#list + 1] = tab
+        if tab and tab._quietAlpha ~= nil then ns.ReleaseAlpha(tab) end
         DropEditStrata(_G["ChatFrame" .. i .. "EditBox"])
     end
     for k = 1, #list do
