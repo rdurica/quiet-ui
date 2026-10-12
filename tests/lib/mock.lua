@@ -593,6 +593,8 @@ function M:build()
     G.FCF_SetWindowAlpha = function() end
     G.FCF_SetWindowColor = function() end
     G.FCF_DockUpdate = function() end
+    G.FCF_SetTabPosition = function() end
+    G.FCF_RestorePositionAndDimensions = function() end
     G.UpdateMicroButtons = function() end
     G.ChatFrame_OnHyperlinkShow = function(...) mock.hyperlinkShown = { ... } end
     G.SetItemRef = function(...) mock.itemRef = { ... } end
