@@ -1979,7 +1979,8 @@ local function PlaceTabs()
             local window = _G["ChatFrame" .. i]
             local tab = _G["ChatFrame" .. i .. "Tab"]
             -- A docked tab lives inside the dock, which moves instead.
-            local docked = window and type(window.isDocked) == "number" and window.isDocked > 0
+            local d = window and window.isDocked
+            local docked = d == true or (type(d) == "number" and d > 0)
             if window and tab and not docked and i ~= 1 then
                 MoveBelow(tab, window, _G["ChatFrame" .. i .. "EditBox"])
             end
@@ -1995,7 +1996,7 @@ local function RestoreTabs()
         list[#list + 1] = _G["ChatFrame" .. i .. "Tab"]
         DropEditStrata(_G["ChatFrame" .. i .. "EditBox"])
     end
-    for k = 1, #list + 1 do
+    for k = 1, #list do
         local frame = list[k]
         local saved = frame and frame._quietTabPoints
         if saved then
