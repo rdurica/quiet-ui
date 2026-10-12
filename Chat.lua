@@ -62,8 +62,21 @@ local chromeStripped = false
 local measureWide
 local copyBox
 
+-- Whisper tabs open temporary windows past NUM_CHAT_WINDOWS (ChatFrame11+), listed in
+-- CHAT_FRAMES. The highest one seen is kept, so RestoreChat still reaches a closed one.
+local temporaryMax = 0
+
+local function NoteTemporary()
+    if type(CHAT_FRAMES) ~= "table" then return end
+    for _, name in ipairs(CHAT_FRAMES) do
+        local n = type(name) == "string" and tonumber(name:match("^ChatFrame(%d+)$"))
+        if n and n > temporaryMax then temporaryMax = n end
+    end
+end
+
 local function ChatCount()
-    return NUM_CHAT_WINDOWS or 10
+    local n = NUM_CHAT_WINDOWS or 10
+    return temporaryMax > n and temporaryMax or n
 end
 
 local function StripTab(tab)
@@ -2128,6 +2141,7 @@ function ns.StripAllChat(force)
     stripping = true
     ns.MarkingChat = true
     if force then chromeStripped = false end
+    NoteTemporary()
     local ok, err = pcall(function()
         for i = 1, ChatCount() do
             local frame = _G["ChatFrame" .. i]
@@ -2150,7 +2164,7 @@ function ns.StripAllChat(force)
 end
 
 -- Blizzard rewrote one window's alpha or color; strip only that window.
--- Only windows UpdateChat and RestoreChat walk; a temporary window stays native.
+-- Only windows UpdateChat and RestoreChat walk.
 local function OwnChatFrame(frame)
     for i = 1, ChatCount() do
         if _G["ChatFrame" .. i] == frame then return true end
