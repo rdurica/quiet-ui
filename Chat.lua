@@ -1949,7 +1949,8 @@ local function DropEditStrata(edit)
     end
 end
 
-local function MoveBelow(tab, window, edit)
+-- wide: the frame takes its width from the window (the dock), so anchor both sides.
+local function MoveBelow(tab, window, edit, wide)
     if not ns.Usable(tab) or not ns.Usable(window) then return end
     SavePoints(tab)
     local editH = edit and ns.Usable(edit) and Num(edit:GetHeight()) or 0
@@ -1960,9 +1961,12 @@ local function MoveBelow(tab, window, edit)
     if bottom and bottom - editH - tabH < floor then
         local left = Num(window:GetLeft()) or 0
         tab:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, 0)
+        local right = wide and Num(window:GetRight())
+        if right then tab:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", right, 0) end
         if edit then RaiseAbove(edit, tab) end
     else
         tab:SetPoint("TOPLEFT", window, "BOTTOMLEFT", 0, -editH)
+        if wide then tab:SetPoint("TOPRIGHT", window, "BOTTOMRIGHT", 0, -editH) end
         DropEditStrata(edit)
     end
 end
@@ -1973,7 +1977,7 @@ local function PlaceTabs()
     local ok, err = pcall(function()
         local main = _G.ChatFrame1
         if main and GeneralDockManager then
-            MoveBelow(GeneralDockManager, main, _G.ChatFrame1EditBox)
+            MoveBelow(GeneralDockManager, main, _G.ChatFrame1EditBox, true)
         end
         for i = 1, ChatCount() do
             local window = _G["ChatFrame" .. i]
