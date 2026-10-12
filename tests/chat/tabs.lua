@@ -216,3 +216,24 @@ h.test("The moved dock keeps its width from both sides of the window", function(
     ns.StripAllChat()
     spansWindow(A, GeneralDockManager, UIParent, "clamped dock")
 end)
+
+-- The unfocused input is invisible but still shown; it must not take clicks meant for
+-- the tabs (a click there would open the last whisper).
+h.test("The unfocused input lets clicks through to the tabs", function(t)
+    local ns, A = t.ns, t.assert
+    setup(t)
+    local edit = ChatFrame1EditBox
+    edit:Show()
+    edit:EnableMouse(true)
+    ns.StripAllChat()
+    ns.SyncVisibleEdits()
+    A.falsy(edit:IsMouseEnabled(), "unfocused input takes the mouse")
+    edit:SetFocus()
+    ns.SyncVisibleEdits()
+    A.ok(edit:IsMouseEnabled(), "focused input must take the mouse")
+    edit:ClearFocus()
+    ns.SyncVisibleEdits()
+    A.falsy(edit:IsMouseEnabled(), "input still takes the mouse after losing focus")
+    ns.RestoreChat()
+    A.ok(edit:IsMouseEnabled(), "restore gives the input its mouse back")
+end)
