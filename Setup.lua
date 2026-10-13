@@ -567,8 +567,8 @@ local function NudgeNoticeSize(sign)
     Paint()
 end
 
-local function NudgeChatTabs(sign)
-    draft.chatTabs = sign > 0 and "top" or nil
+local function CycleChatTabs()
+    draft.chatTabs = draft.chatTabs ~= "top" and "top" or nil
     Paint()
 end
 
@@ -1415,8 +1415,9 @@ local function CreateSetup()
         NudgeFade(sign * 5)
     end)
     widget.fade:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -44)
-    widget.chatTabs = Stepper(chat, "Tabs", function(sign)
-        NudgeChatTabs(sign)
+    widget.fade.value:SetWidth(72)
+    widget.chatTabs = Stepper(chat, "Tabs", function()
+        CycleChatTabs()
     end)
     widget.chatTabs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -68)
     widget.chatTabs.value:SetWidth(72)
