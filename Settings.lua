@@ -108,6 +108,13 @@ function ns.QuestNoticeSize()
     return "default"
 end
 
+-- Missing means below the chat. Only "top" keeps Blizzard's tabs above it.
+function ns.ChatTabs()
+    local tabs = (ns.Settings and ns.Settings() or ns.CharDB()).chatTabs
+    if tabs == "top" then return "top" end
+    return "bottom"
+end
+
 -- Missing means on. Only an explicit false turns the modern chat off.
 function ns.ModernChat()
     return (ns.Settings and ns.Settings() or ns.CharDB()).chat ~= false
