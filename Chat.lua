@@ -2038,11 +2038,36 @@ local function MoveBelow(tab, window, edit, wide)
     end
 end
 
+local function RestoreTabPoints(list)
+    for k = 1, #list do
+        local frame = list[k]
+        local saved = frame and frame._quietTabPoints
+        if saved then
+            frame._quietTabPoints = nil
+            if ns.Usable(frame) then
+                frame:ClearAllPoints()
+                for _, p in ipairs(saved) do frame:SetPoint(unpack(p)) end
+            end
+        end
+    end
+end
+
 local function PlaceTabs()
     if placingTabs or not ns.DB().enabled or not ns.ModernChat() then return end
     placingTabs = true
     local ok, err = pcall(function()
+        local top = ns.ChatTabs() == "top"
         local main = _G.ChatFrame1
+        if top then
+            -- Blizzard's own points: put back what Bottom moved, then leave them alone.
+            local list = { GeneralDockManager }
+            for i = 1, ChatCount() do
+                list[#list + 1] = _G["ChatFrame" .. i .. "Tab"]
+                DropEditStrata(_G["ChatFrame" .. i .. "EditBox"])
+            end
+            RestoreTabPoints(list)
+            return
+        end
         if main and GeneralDockManager then
             MoveBelow(GeneralDockManager, main, _G.ChatFrame1EditBox, true)
         end
@@ -2067,17 +2092,7 @@ local function RestoreTabs()
         if tab and tab._quietAlpha ~= nil then ns.ReleaseAlpha(tab) end
         DropEditStrata(_G["ChatFrame" .. i .. "EditBox"])
     end
-    for k = 1, #list do
-        local frame = list[k]
-        local saved = frame and frame._quietTabPoints
-        if saved then
-            frame._quietTabPoints = nil
-            if ns.Usable(frame) then
-                frame:ClearAllPoints()
-                for _, p in ipairs(saved) do frame:SetPoint(unpack(p)) end
-            end
-        end
-    end
+    RestoreTabPoints(list)
 end
 
 function ns.RestoreChat()

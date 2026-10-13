@@ -209,6 +209,9 @@ local function Paint()
         PaintBox(frame.questNotice.box, draft.questNotice)
     end
     if frame.questMobs then PaintBox(frame.questMobs.box, draft.questMobs) end
+    if frame.chatTabs then
+        frame.chatTabs.value:SetText(draft.chatTabs == "top" and "Top" or "Bottom")
+    end
     if frame.questNoticeSize then
         local size = draft.questNoticeSize
         frame.questNoticeSize.value:SetText(size == "smaller" and "Smaller" or size == "larger" and "Larger" or "Default")
@@ -329,6 +332,7 @@ local function ReadDraft(source)
     draft.questMobs = source.questMobs ~= false
     local noticeSize = source.questNoticeSize
     draft.questNoticeSize = (noticeSize == "smaller" or noticeSize == "larger") and noticeSize or "default"
+    draft.chatTabs = source.chatTabs == "top" and "top" or nil
     local highlights = type(source.highlights) == "table" and source.highlights or {}
     draft.highlightHerb = highlights.herb == true
     draft.highlightOre = highlights.ore == true
@@ -431,6 +435,7 @@ local function DraftSettings()
     if draft.questNoticeSize == "smaller" or draft.questNoticeSize == "larger" then
         db.questNoticeSize = draft.questNoticeSize
     end
+    if draft.chatTabs == "top" then db.chatTabs = "top" end
     if draft.highlightHerb or draft.highlightOre or draft.highlightQuest then
         db.highlights = { herb = draft.highlightHerb or nil, ore = draft.highlightOre or nil,
             quest = draft.highlightQuest or nil }
@@ -559,6 +564,11 @@ local function NudgeNoticeSize(sign)
     if index < 1 then index = 1 end
     if index > #NOTICE_SIZES then index = #NOTICE_SIZES end
     draft.questNoticeSize = NOTICE_SIZES[index]
+    Paint()
+end
+
+local function NudgeChatTabs(sign)
+    draft.chatTabs = sign > 0 and "top" or nil
     Paint()
 end
 
@@ -777,7 +787,7 @@ local TABS = {
     { id = "bars", label = "Bars", height = 308 },
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
-    { id = "chat", label = "Misc.", height = 302 },
+    { id = "chat", label = "Misc.", height = 320 },
     { id = "info", label = "Info", height = 148 },
 }
 
@@ -1394,7 +1404,7 @@ local function CreateSetup()
 
     local chat = widget.pages[6]
     widget.chatHeader = Section(chat, "Chat",
-        "Modern chat replaces the chat chrome with fading message bubbles. Fade after controls how long new lines remain visible; 0 keeps them. Hover and scrolling reveal older messages. Turning Modern chat off restores the original chat.")
+        "Modern chat replaces the chat chrome with fading message bubbles. Fade after controls how long new lines remain visible; 0 keeps them. Hover and scrolling reveal older messages. The tabs sit below the chat by default; set Tabs to Top to keep them above it. Turning Modern chat off restores the original chat.")
     widget.chatHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, 0)
     widget.chat = Choice(chat, "Modern chat", function()
         draft.chat = not draft.chat
@@ -1405,24 +1415,29 @@ local function CreateSetup()
         NudgeFade(sign * 5)
     end)
     widget.fade:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -44)
+    widget.chatTabs = Stepper(chat, "Tabs", function(sign)
+        NudgeChatTabs(sign)
+    end)
+    widget.chatTabs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -68)
+    widget.chatTabs.value:SetWidth(72)
     widget.questHeader = Section(chat, "Quests",
         "Shows the quest you just accepted, changed, or completed at the top of the quest area for a few seconds. The rest of the tracker stays hidden, and WoW's center-screen quest text stays hidden while this is on.")
-    widget.questHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -98)
+    widget.questHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -122)
     widget.questNotice = Choice(chat, "Quest updates", function()
         draft.questNotice = not draft.questNotice
         Paint()
     end)
-    widget.questNotice:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -118)
+    widget.questNotice:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -142)
     widget.questNoticeSize = Stepper(chat, "Text size", function(sign)
         NudgeNoticeSize(sign)
     end)
-    widget.questNoticeSize:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -144)
+    widget.questNoticeSize:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -168)
     widget.questNoticeSize.value:SetWidth(72)
     widget.highlightHeader = Section(chat, "Highlights",
         "The object the game picks for the Interact key glows: herbs green, ore gold, interact objects white. Set that key in Key Bindings as Interact With Target. Interact objects includes anything with the gear icon, not just quest objects. QuietUI widens soft targeting, hides the highlighted icon and any icon you had turned off, and restores your settings when turned off.")
-    widget.highlightHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -178)
+    widget.highlightHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -202)
     widget.highlightNote = Body(chat, "Turns on soft targeting for the Interact key, so nearby NPCs show their names.")
-    widget.highlightNote:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -196)
+    widget.highlightNote:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -220)
     local highlightChoices = {
         { key = "highlightHerb", label = "Herbs" },
         { key = "highlightOre", label = "Ore" },
@@ -1434,17 +1449,17 @@ local function CreateSetup()
             Paint()
         end)
         button:SetWidth(120)
-        button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -214)
+        button:SetPoint("TOPLEFT", chat, "TOPLEFT", (i - 1) * 124, -238)
         widget[choice.key] = button
     end
     widget.questMobsHeader = Section(chat, "Quest mobs",
         "A gold exclamation mark shows left of the nameplate of mobs you need to kill for a quest, and a pouch for mobs that drop a quest item. Only mobs you can attack are marked, and the icon disappears once the objective is complete.")
-    widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -250)
+    widget.questMobsHeader:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -274)
     widget.questMobs = Choice(chat, "Quest mobs", function()
         draft.questMobs = not draft.questMobs
         Paint()
     end)
-    widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -270)
+    widget.questMobs:SetPoint("TOPLEFT", chat, "TOPLEFT", 0, -294)
 
     local info = widget.pages[7]
     widget.about = Section(info, "About")

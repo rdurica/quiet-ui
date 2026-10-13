@@ -2,7 +2,7 @@ local _, ns = ...
 
 local snapshotChar, snapshotPreset
 
-local KEYS = { "visible", "hoverOnly", "groupVisibility", "forceLayout", "player", "playerThresholdKind", "playerThresholdPercent", "requireLivingTarget", "groupAuras", "alwaysShowDebuffs", "questNotice", "questNoticeSize", "questMobs",
+local KEYS = { "visible", "hoverOnly", "groupVisibility", "forceLayout", "player", "playerThresholdKind", "playerThresholdPercent", "requireLivingTarget", "groupAuras", "alwaysShowDebuffs", "questNotice", "questNoticeSize", "chatTabs", "questMobs",
     "chat", "chatFade", "groups", "hostile", "friendly", "range", "autoHideParty", "highlights" }
 
 function ns.Copy(value)
