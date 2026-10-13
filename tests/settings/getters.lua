@@ -163,3 +163,17 @@ h.test("OnlyOnHover defaults on for xp only, unless xp is always visible", funct
     A.eq(ns.OnlyOnHover("xp"), false)
     A.eq(ns.OnlyOnHover("meter"), true)
 end)
+
+h.test("ChatTabs is top only for the literal top", function(t)
+    local ns, A = t.ns, t.assert
+    QuietUICharDB = {}
+    A.eq(ns.ChatTabs(), "bottom", "missing")
+    QuietUICharDB = { chatTabs = "bottom" }
+    A.eq(ns.ChatTabs(), "bottom", "bottom")
+    QuietUICharDB = { chatTabs = "top" }
+    A.eq(ns.ChatTabs(), "top", "top")
+    for _, v in ipairs({ "Top", "above", "", 1, true }) do
+        QuietUICharDB = { chatTabs = v }
+        A.eq(ns.ChatTabs(), "bottom", "unknown " .. tostring(v))
+    end
+end)
