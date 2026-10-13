@@ -50,8 +50,7 @@ local function setup(t)
     blizzardLayout(t)
 end
 
-
-local function top(ns)
+local function top()
     QuietUICharDB.chatTabs = "top"
 end
 
@@ -66,7 +65,7 @@ end)
 h.test("Top keeps Blizzard's points for the dock and undocked tabs", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    top(ns)
+    top()
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
     ns.StripAllChat()
     A.deep(snapshot(GeneralDockManager), dock0, "dock points")
@@ -76,7 +75,7 @@ end)
 h.test("Top does not undo Blizzard re-anchoring the tabs", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    top(ns)
+    top()
     ns.StripAllChat()
     ChatFrame2Tab:ClearAllPoints()
     ChatFrame2Tab:SetPoint("BOTTOMLEFT", ChatFrame2, "TOPLEFT", 40, 9)
@@ -94,7 +93,7 @@ end)
 h.test("Top: tabs hidden until hovered and a flashing tab stays visible", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    top(ns)
+    top()
     for _, f in ipairs({ ChatFrame1Tab, ChatFrame2Tab }) do f:Show(); f._alpha = 0.4 end
     GeneralDockManager:Show()
     ns.StripAllChat()
@@ -147,7 +146,7 @@ h.test("Switching Bottom to Top returns the tabs to Blizzard's points", function
     ns.StripAllChat()
     assertBelow(A, GeneralDockManager, ChatFrame1, "dock below")
     assertBelow(A, ChatFrame2Tab, ChatFrame2, "tab below")
-    top(ns)
+    top()
     ns.StripAllChat(true)
     A.deep(snapshot(GeneralDockManager), dock0, "dock back at Blizzard's points")
     A.deep(snapshot(ChatFrame2Tab), tab0, "tab back at Blizzard's points")
@@ -156,7 +155,7 @@ end)
 h.test("Switching Top to Bottom moves the tabs below and keeps Blizzard's points as originals", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    top(ns)
+    top()
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
     ns.StripAllChat()
     QuietUICharDB.chatTabs = nil
@@ -172,7 +171,7 @@ end)
 h.test("Top then Modern chat off restores points and tab alpha", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    top(ns)
+    top()
     ChatFrame2Tab:Show(); ChatFrame2Tab._alpha = 0.4
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
     ns.StripAllChat()
@@ -187,7 +186,7 @@ end)
 h.test("Top then disabling QuietUI restores points and tab alpha", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    top(ns)
+    top()
     ChatFrame2Tab:Show(); ChatFrame2Tab._alpha = 0.4
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
     ns.StripAllChat()
