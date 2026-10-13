@@ -22,7 +22,7 @@ end
 
 local function click(b) b._scripts.OnClick(b) end
 
-h.test("Tabs stepper shows Bottom by default and cycles Bottom and Top", function(t)
+h.test("Tabs stepper shows Bottom by default and both buttons cycle Bottom and Top", function(t)
     local ns, mock, A = t.ns, t.mock, t.assert
     t.boot()
     ns.ShowSetup()
@@ -31,11 +31,11 @@ h.test("Tabs stepper shows Bottom by default and cycles Bottom and Top", functio
     click(row.plus)
     A.eq(row.value._text, "Top", "plus")
     click(row.plus)
-    A.eq(row.value._text, "Top", "plus stops at Top")
+    A.eq(row.value._text, "Bottom", "plus cycles back to Bottom")
     click(row.minus)
-    A.eq(row.value._text, "Bottom", "minus")
+    A.eq(row.value._text, "Top", "minus cycles to Top")
     click(row.minus)
-    A.eq(row.value._text, "Bottom", "minus stops at Bottom")
+    A.eq(row.value._text, "Bottom", "minus cycles to Bottom")
 end)
 
 h.test("Saving Top stores chatTabs top and saving Bottom stores nothing", function(t)
