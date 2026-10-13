@@ -21,6 +21,7 @@ local BASELINE = {
     "CancelLayoutPreview",
     "CharDB",
     "ChatFade",
+    "ChatTabs",
     "CommitLayoutPreview",
     "ConsumeHud",
     "Copy",
