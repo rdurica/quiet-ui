@@ -71,6 +71,16 @@ Features\Modern\Modern.lua
 Features\Modern\Theme.lua
 Features\Modern\Skin.lua
 Features\Modern\Movable.lua
+Features\Modern\Areas\Bars.lua
+Features\Modern\Areas\Units.lua
+Features\Modern\Areas\ParchmentSkin.lua
+Features\Modern\Areas\Parchment.lua
+Features\Modern\Areas\Windows.lua
+Features\Modern\Areas\Map.lua
+Features\Modern\Areas\Minimap.lua
+Features\Modern\Areas\Tooltip.lua
+Features\Modern\Areas\Auras.lua
+Features\Modern\Areas\Status.lua
 Features\Modern\Feature.lua
 Setup\Draft.lua
 Setup\Paint.lua

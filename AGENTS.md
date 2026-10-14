@@ -25,15 +25,16 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 
 ## Touching the UI
 
-- Action bars only through alpha. Do not use `Hide()`, `Show()`, or state drivers on bars.
+- Action bars are faded only through alpha. Modernize may change textures, TexCoords, colours and its own child regions on action buttons and bar art. Do not use `Hide()`, `Show()`, or state drivers on bars.
 - No secure snippets. Do not touch `ChatFrame_OpenChat`.
 - `PlayerFrame` and `PetFrame` only through alpha, per `docs/features/player.md`. TargetFrame may only be faded through alpha for Require a living target. Party and raid frames may only be faded through alpha for the optional autohide rule in `docs/features/visible.md`. Do not hide the minimap, vehicle / extra action / zone ability, or the LFG eye (`QueueStatus`, `LFGEye`).
+- Modernize may change textures, TexCoords, colours and its own child regions on player, pet, target, target-of-target and focus frames, the minimap, tooltips, auras, status bars and the listed Blizzard windows. It may move character, spellbook, talent, quest log and map windows only out of combat. Unit-frame alpha remains owned by the fade rules; the minimap is never hidden or faded. Content art inside talent trees, spellbook pages and character models stays.
 - Blizzard overwrites alpha. Hold the wanted value with a `SetAlpha` hook and the `_quietApplying` flag so the hook does not loop.
 - Disabling must restore saved alpha and textures (`RestoreAll`). Give new behavior both `apply` and `restore` in its feature spec, so `ApplyAll` and `RestoreAll` cover it.
 
 ## Code
 
-- Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key. Do not add libraries.
+- Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key, plus `GetMinimapShape` only while the Modern minimap area is applied (restore its prior value on undo). Do not add libraries.
 - Folders, in load order. One responsibility per file, at most 400 lines (checked by `tests/core/structure.lua`, together with cross-file references and stray globals).
   - `Core/`: helpers every file uses (`DB`, `Print`, `Report`, `Run`, `Usable`, `IsSecret`, `Flat`, `Backdropped`), alpha hooks, fading, hover catchers, nameplate helpers, texture hiding, `RestoreAlpha`, world state (`ns.World`), the profiler, and the feature registry (`Feature.lua`).
   - `Settings/`: `ns.Settings`: `CharDB` store, the getters (`Pinned`, `PlayerStyle`, `GroupAuras`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`, and the rest), presets with personal snapshots, and migrations.

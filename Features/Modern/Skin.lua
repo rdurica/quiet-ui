@@ -45,6 +45,16 @@ local function Push(self, undo)
     self.entries[#self.entries + 1] = undo
 end
 
+-- Public escape hatch for a client API whose previous state is not exposed by
+-- a conventional GetX method.  `undo` is recorded once for this object/key.
+function Skin:Remember(obj, key, undo)
+    if ns.Usable(obj) and type(key) == "string" and type(undo) == "function" and First(self, obj, key) then
+        Push(self, undo)
+        return true
+    end
+    return false
+end
+
 function Modern.Skin(key)
     local skin = journals[key]
     if not skin then
@@ -115,6 +125,19 @@ local function Own(self, frame, name, create)
     return own[name]
 end
 
+function Skin:Own(frame, key, create)
+    if not ns.Usable(frame) or type(key) ~= "string" or type(create) ~= "function" then return end
+    local region = Own(self, frame, key, create)
+    self:Remember(frame, "own:" .. key, function()
+        if type(region) == "table" and type(region.Hide) == "function" then
+            region:Hide()
+        elseif type(region) == "table" then
+            for _, item in ipairs(region) do if ns.Usable(item) and type(item.Hide) == "function" then item:Hide() end end
+        end
+    end)
+    return region
+end
+
 local function Hideable(self, frame, name, regions)
     if First(self, frame, name) then
         Push(self, function()
@@ -123,31 +146,42 @@ local function Hideable(self, frame, name, regions)
     end
 end
 
-function Skin:Border(frame)
-    if not Ready("Border", frame, "CreateTexture") then return end
+function Skin:Border(frame, color, anchor)
+    -- A portrait is a texture and cannot create children.  Its border belongs
+    -- to the nearest frame but follows the texture's edges.
+    anchor = anchor or frame
+    local owner = frame
+    local texture = ns.Usable(owner) and type(owner.GetObjectType) == "function"
+        and owner:GetObjectType() == "Texture"
+    if texture or (not ns.Usable(owner) or type(owner.CreateTexture) ~= "function")
+        and ns.Usable(frame) and type(frame.GetParent) == "function" then
+        local ok, parent = pcall(frame.GetParent, frame)
+        owner = ok and parent or nil
+    end
+    if not Ready("Border", owner, "CreateTexture") or not ns.Usable(anchor) then return end
     local theme = Modern.Theme()
-    local edges = Own(self, frame, "border", function()
+    local edges = Own(self, owner, "border:" .. tostring(anchor), function()
         local list = {}
         for _, edge in ipairs(EDGES) do
-            local line = frame:CreateTexture(nil, "BORDER")
+            local line = owner:CreateTexture(nil, "BORDER")
             if edge == "TOP" or edge == "BOTTOM" then
                 line:SetHeight(1)
-                line:SetPoint(edge .. "LEFT", frame, edge .. "LEFT", 0, 0)
-                line:SetPoint(edge .. "RIGHT", frame, edge .. "RIGHT", 0, 0)
+                line:SetPoint(edge .. "LEFT", anchor, edge .. "LEFT", 0, 0)
+                line:SetPoint(edge .. "RIGHT", anchor, edge .. "RIGHT", 0, 0)
             else
                 line:SetWidth(1)
-                line:SetPoint("TOP" .. edge, frame, "TOP" .. edge, 0, 0)
-                line:SetPoint("BOTTOM" .. edge, frame, "BOTTOM" .. edge, 0, 0)
+                line:SetPoint("TOP" .. edge, anchor, "TOP" .. edge, 0, 0)
+                line:SetPoint("BOTTOM" .. edge, anchor, "BOTTOM" .. edge, 0, 0)
             end
             list[#list + 1] = line
         end
         return list
     end)
     for _, line in ipairs(edges) do
-        line:SetColorTexture(unpack(theme.border))
+        line:SetColorTexture(unpack(color or theme.border))
         line:Show()
     end
-    Hideable(self, frame, "border", edges)
+    Hideable(self, owner, "border:" .. tostring(anchor), edges)
 end
 
 -- Themed fill behind a frame whose own art is held hidden.

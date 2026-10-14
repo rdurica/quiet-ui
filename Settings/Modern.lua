@@ -56,3 +56,7 @@ function ns.Settings.SaveWindowPoint(key, point, relativePoint, x, y)
     if type(char.windowPoints) ~= "table" then char.windowPoints = {} end
     char.windowPoints[key] = { point, relativePoint, x, y }
 end
+
+function ns.Settings.ResetWindowPoints()
+    ns.Settings.CharDB().windowPoints = nil
+end

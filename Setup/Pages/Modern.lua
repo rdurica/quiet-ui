@@ -42,4 +42,14 @@ Setup.Pages.modern = function(widget, modern)
         widget.modernAreas[index] = { key = key, button = button }
         widget.modernOptions[#widget.modernOptions + 1] = button
     end
+    widget.modernResetPositions = Setup.Button(modern, "Reset positions", function()
+        ns.Modern.ResetPositions()
+    end)
+    if not widget.modernResetPositions.label then
+        widget.modernResetPositions.label = widget.modernResetPositions:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        widget.modernResetPositions.label:SetPoint("CENTER")
+        widget.modernResetPositions.label:SetText("Reset positions")
+    end
+    widget.modernResetPositions:SetPoint("TOPLEFT", modern, "TOPLEFT", 0, -154 - #widget.modernAreas * 22)
+    widget.modernOptions[#widget.modernOptions + 1] = widget.modernResetPositions
 end

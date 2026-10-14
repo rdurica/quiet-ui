@@ -11,6 +11,7 @@ ns.Feature{
         ADDON_LOADED = ns.Modern.AddonLoaded,
         PLAYER_REGEN_ENABLED = function() ns.Modern.PlaceWindows(true) end,
     },
+    always = { "PLAYER_REGEN_ENABLED" },
     hooks = {
         UpdateUIPanelPositions = function() ns.Modern.PlaceWindows(false) end,
     },
