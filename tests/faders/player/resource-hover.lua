@@ -15,8 +15,8 @@ h.test("Resource hover bypasses secret curves and restores both child and root a
     root.HealthBarsContainer = health
     UnitPowerPercent = function() error("Hover mode read power") end
     UnitHealthPercent = function() error("Hover mode read health") end
-    ns.FindFaders(false)
-    local update = ns.UpdateSmooth
+    ns.Faders.Find(false)
+    local update = ns.Faders.UpdateSmooth
     update(1)
     A.ok(root._alpha == 1 and health._alpha == 0 and power._alpha == 0)
     root.hot = true; update(0.01)

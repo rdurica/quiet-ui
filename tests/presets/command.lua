@@ -20,12 +20,12 @@ local function setup(t)
         ns.Settings.CharDB().previousLayout, ns.Settings.CharDB().presetLayoutManaged = nil, nil
         return true
     end
-    local cancel, refresh = ns.CancelLayoutPreview, ns.RefreshSetup
+    local cancel, refresh = ns.CancelLayoutPreview, ns.Setup.Refresh
     ns.CancelLayoutPreview = function(...)
         ctx.canceled = ctx.canceled + 1
         if cancel then return cancel(...) end
     end
-    ns.RefreshSetup = function(...)
+    ns.Setup.Refresh = function(...)
         ctx.refreshed = ctx.refreshed + 1
         if refresh then return refresh(...) end
     end

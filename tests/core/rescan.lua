@@ -1,11 +1,11 @@
 -- Rescans coalesce to one per frame; login and zoning greet and arm the layout correctly.
 local h = ...
 
--- Counts full rescans (the only caller of FindFaders(true)) without changing them.
+-- Counts full rescans (the only caller of Faders.Find(true)) without changing them.
 local function countRescans(ns)
     local state = { n = 0 }
-    local real = ns.FindFaders
-    ns.FindFaders = function(full, ...)
+    local real = ns.Faders.Find
+    ns.Faders.Find = function(full, ...)
         if full then state.n = state.n + 1 end
         return real(full, ...)
     end

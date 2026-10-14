@@ -109,12 +109,12 @@ function P.env(t, opts)
         QuietUICharDB.presetId = 1
         ns.Settings.Effective() -- establish the existing personal snapshot before testing transitions
     end
-    ns.FindFaders(false)
+    ns.Faders.Find(false)
     for i = #mock.printed, 1, -1 do mock.printed[i] = nil end
     s.reports = mock.printed
     function s.tick(elapsed)
         ns.NextFadeTick()
-        ns.UpdateSmooth(elapsed or 0.3)
+        ns.Faders.UpdateSmooth(elapsed or 0.3)
         assert(s.allowReports or #s.reports == 0, "Unexpected addon error: " .. table.concat(s.reports, "; "))
     end
     function s.portrait(expected, msg)

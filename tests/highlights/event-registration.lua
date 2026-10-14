@@ -18,7 +18,7 @@ end
 
 h.test("RegisterEvent failing for PLAYER_SOFT_INTERACT_CHANGED keeps the other events", function(t)
     local forwarded = 0
-    t.ns.HighlightsEvent = function(name) if name == "NAME_PLATE_UNIT_ADDED" then forwarded = forwarded + 1 end end
+    t.ns.Highlights.Event = function(name) if name == "NAME_PLATE_UNIT_ADDED" then forwarded = forwarded + 1 end end
     for _, name in ipairs(OTHER) do
         t.assert.ok(t.mock:eventFrame(name), "Missing registered " .. name)
     end

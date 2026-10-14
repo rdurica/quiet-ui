@@ -17,27 +17,27 @@ h.test("Range ignores always-visible groups, keeps forced suppression and detach
     local mark
     local create = CreateFrame
     CreateFrame = function(...) mark = create(...); return mark end
-    ns.UpdateRange(0.1)
+    ns.Faders.UpdateRange(0.1)
     A.ok(mark and mark._shown and mark._parent == health and mark._alpha == 1,
         "Always-visible bars must not block the range indicator")
     local reads = distanceReads
     ns.World.ShowAll = function() return true end
-    ns.UpdateRange(0.3)
+    ns.Faders.UpdateRange(0.3)
     A.ok(not mark._shown and distanceReads == reads, "Forced visibility must hide range without reading distance")
     ns.World.ShowAll = function() return false end
-    ns.UpdateRange(0.1)
+    ns.Faders.UpdateRange(0.1)
     A.ok(mark._shown, "Range did not return after forced visibility ended")
     ns.Glancing = function() return true end
     reads = distanceReads
-    ns.UpdateRange(0.3)
+    ns.Faders.UpdateRange(0.3)
     A.ok(not mark._shown and distanceReads == reads, "Glance must hide range without reading distance")
     ns.Glancing = function() return false end
-    ns.UpdateRange(0.1)
+    ns.Faders.UpdateRange(0.1)
     A.ok(mark._shown, "Range did not return after Glance ended")
     ns.Settings.Range = function() end
-    ns.UpdateRange(0.3)
+    ns.Faders.UpdateRange(0.3)
     A.ok(not mark._shown and mark._parent == UIParent, "Invisible gradient stayed on nameplate")
     local before = mock.calls.GetNamePlateForUnit
-    for _ = 1, 60 do ns.UpdateRange(1 / 60) end
+    for _ = 1, 60 do ns.Faders.UpdateRange(1 / 60) end
     A.eq(mock.calls.GetNamePlateForUnit, before, "Hidden gradient still scanned nameplate")
 end)

@@ -60,7 +60,7 @@ local function scenarioChat(t, scenario)
     -- History the client already holds when the addon binds the window.
     chat:AddMessage(scenario == "secret" and SECRET or TEXT)
     if scenario == "scroll" then chat:AddMessage("newer line") end
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     if scenario == "scroll" then chat:ScrollUp() end
     if scenario == "hover" then
         local found = 0
@@ -79,18 +79,18 @@ for _, scenario in ipairs({ "history", "scroll", "hover", "resize", "secret", "s
     h.test("Chat verifies wrapped history and resized bubbles before going idle: " .. scenario, function(t)
         local ns, A = t.ns, t.assert
         local chat, stats = scenarioChat(t, scenario)
-        ns.UpdateChat(1 / 60)
+        ns.Chat.Update(1 / 60)
         local bubble = bubbles(chat)[1]
         A.ok(bubble, scenario .. ": no bubble was laid out")
         if scenario == "resize" then
             A.ok(bubble:GetHeight() > 0, "resize: single row was laid out")
             chat:SetSize(118, 200)
             chat:GetScript("OnSizeChanged")(chat)
-            ns.UpdateChat(1 / 60)
+            ns.Chat.Update(1 / 60)
         end
-        ns.UpdateChat(1 / 60)
+        ns.Chat.Update(1 / 60)
         if scenario == "secret" then
-            ns.UpdateChat(1 / 60)
+            ns.Chat.Update(1 / 60)
         end
         A.ok(bubble:GetHeight() >= 52, scenario .. ": last row remains clipped " .. bubble:GetHeight() .. " w" .. bubble:GetWidth())
         if scenario == "secret" then
@@ -98,7 +98,7 @@ for _, scenario in ipairs({ "history", "scroll", "hover", "resize", "secret", "s
         end
         -- Settled: further frames neither wake the layout nor measure the text again.
         local reads, widths = stats.reads, stats.widthReads
-        for _ = 1, (scenario == "spacing") and 600 or 3 do ns.UpdateChat(1 / 60) end
+        for _ = 1, (scenario == "spacing") and 600 or 3 do ns.Chat.Update(1 / 60) end
         A.eq(stats.reads, reads, scenario .. ": idle chat remeasured text")
         A.eq(stats.widthReads, widths, scenario .. ": settled chat keeps waking")
     end)

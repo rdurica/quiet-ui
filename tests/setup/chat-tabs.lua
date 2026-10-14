@@ -25,7 +25,7 @@ local function click(b) b._scripts.OnClick(b) end
 h.test("Tabs stepper shows Bottom by default and both buttons cycle Bottom and Top", function(t)
     local ns, mock, A = t.ns, t.mock, t.assert
     t.boot()
-    ns.ShowSetup()
+    ns.Setup.Show()
     local row = stepper(mock)
     A.eq(row.value._text, "Bottom", "default")
     click(row.plus)
@@ -41,7 +41,7 @@ end)
 h.test("Saving Top stores chatTabs top and saving Bottom stores nothing", function(t)
     local ns, mock, A = t.ns, t.mock, t.assert
     t.boot()
-    ns.ShowSetup()
+    ns.Setup.Show()
     local row = stepper(mock)
     click(row.plus)
     A.eq(QuietUICharDB.chatTabs, nil, "draft is not saved yet")
@@ -58,6 +58,6 @@ h.test("Tabs stepper shows a saved Top", function(t)
     local ns, mock, A = t.ns, t.mock, t.assert
     t.boot()
     QuietUICharDB.chatTabs = "top"
-    ns.ShowSetup()
+    ns.Setup.Show()
     A.eq(stepper(mock).value._text, "Top")
 end)

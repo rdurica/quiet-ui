@@ -7,9 +7,9 @@ h.test("Party alpha tree stays unread while autohide is off", function(t)
     CreateFrame("Frame", nil, party)
     local function walks() return (party._calls.GetChildren or 0) + (party._calls.GetRegions or 0) end
     local before = walks()
-    t.ns.FindFaders(false)
+    t.ns.Faders.Find(false)
     A.eq(walks() - before, 0, "Autohide off still walked party frames")
     QuietUICharDB.autoHideParty = true
-    t.ns.FindFaders(false)
+    t.ns.Faders.Find(false)
     A.ok(walks() - before > 0, "Autohide on did not collect party alphas")
 end)

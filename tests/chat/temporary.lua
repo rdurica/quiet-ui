@@ -27,10 +27,10 @@ end
 h.test("A temporary whisper window gets Modern chat", function(t)
     local ns, A = t.ns, t.assert
     setup()
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     openWhisper()
-    ns.SyncVisibleEdits()
-    ns.UpdateChat(1)
+    ns.Chat.SyncVisibleEdits()
+    ns.Chat.Update(1)
     A.near(ChatFrame11Tab._alpha, 0, 0.01, "whisper tab hidden like the others")
     A.falsy(ChatFrame11EditBox:IsMouseEnabled(), "whisper input lets clicks through")
 end)
@@ -38,23 +38,23 @@ end)
 h.test("A whisper tab with a new message stays visible", function(t)
     local ns, A = t.ns, t.assert
     setup()
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     openWhisper()
     ChatFrame11Tab.alerting = true
-    ns.UpdateChat(1)
+    ns.Chat.Update(1)
     A.near(ChatFrame11Tab._alpha, 1, 0.01, "alerting whisper tab visible")
 end)
 
 h.test("Restore reaches a temporary window, even after it closed", function(t)
     local ns, A = t.ns, t.assert
     setup()
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     openWhisper()
-    ns.SyncVisibleEdits()
-    ns.UpdateChat(1)
+    ns.Chat.SyncVisibleEdits()
+    ns.Chat.Update(1)
     CHAT_FRAMES[#CHAT_FRAMES] = nil -- Blizzard drops a closed temporary window from the list
     QuietUICharDB.chat = false
-    ns.RestoreChat()
+    ns.Chat.Restore()
     A.near(ChatFrame11Tab._alpha, 0.6, 0.01, "whisper tab alpha back")
     A.ok(ChatFrame11EditBox:IsMouseEnabled(), "whisper input mouse back")
 end)

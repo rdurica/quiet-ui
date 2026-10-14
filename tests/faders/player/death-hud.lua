@@ -16,7 +16,7 @@ for _, trigger in ipairs({ "quiet", "InCombat", "InForcedInstance", "InGroup", "
         ChatFrame1:AddMessage("Existing message")
         ChatFrame1EditBox:SetFocus()
         QuietUICharDB.autoHideParty = true
-        ns.RefreshChrome()
+        ns.Menu.RefreshChrome()
         local bag
         for _, f in ipairs(t.mock.frames) do
             if f._scripts.OnDragStart then bag = f end
@@ -28,10 +28,10 @@ for _, trigger in ipairs({ "quiet", "InCombat", "InForcedInstance", "InGroup", "
         ns.World.RefreshWorld()
         local function hudTick()
             s.tick()
-            ns.UpdateBars(ns.World.ShowAll(), 0.3, true)
-            ns.UpdateFaders(0.3)
-            ns.UpdateMenuButton(0.3)
-            ns.UpdateChat(0.3)
+            ns.Bars.Update(ns.World.ShowAll(), 0.3, true)
+            ns.Faders.Update(0.3)
+            ns.Menu.UpdateButton(0.3)
+            ns.Chat.Update(0.3)
         end
         hudTick()
         local tracked = { TargetFrame, MainActionBar, StatusTrackingBarManager, EssentialCooldownViewer,

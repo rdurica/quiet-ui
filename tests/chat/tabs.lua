@@ -66,21 +66,21 @@ end
 h.test("Docked tabs sit below ChatFrame1 under the input strip", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     assertBelow(A, GeneralDockManager, ChatFrame1, "GeneralDockManager")
 end)
 
 h.test("An undocked window's tab sits below that window under its input strip", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     assertBelow(A, ChatFrame2Tab, ChatFrame2, "ChatFrame2Tab")
 end)
 
 h.test("Blizzard re-anchoring an undocked tab above is undone", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     local function blizzardAbove()
         ChatFrame2Tab:ClearAllPoints()
         ChatFrame2Tab:SetPoint("BOTTOMLEFT", ChatFrame2, "TOPLEFT", 0, 3)
@@ -102,7 +102,7 @@ h.test("Tabs below the screen bottom clamp to it and the focused input draws ove
     QuietUIDB = { enabled = true }
     QuietUICharDB = {}
     blizzardLayout(t, 10) -- 10 - strip - tab height is under UIParent's bottom (0)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     for _, pair in ipairs({ { GeneralDockManager, ChatFrame1EditBox }, { ChatFrame2Tab, ChatFrame2EditBox } }) do
         local tab, edit = pair[1], pair[2]
         local p, relPoint = pointTo(tab, UIParent)
@@ -120,22 +120,22 @@ h.test("Tabs are hidden until hovered", function(t)
     setup(t)
     for _, f in ipairs({ ChatFrame1Tab, ChatFrame2Tab }) do f:Show(); f._alpha = 0.4 end
     GeneralDockManager:Show()
-    ns.StripAllChat()
-    ns.UpdateChat(1)
+    ns.Chat.StripAll()
+    ns.Chat.Update(1)
     A.near(ChatFrame1Tab._alpha, 0, 0.01, "docked tab hidden")
     A.near(ChatFrame2Tab._alpha, 0, 0.01, "undocked tab hidden")
     -- Blizzard's own fade does not bring it back.
     ChatFrame1Tab:SetAlpha(0.4)
     A.near(ChatFrame1Tab._alpha, 0, 0.01, "Blizzard alpha held off")
     GeneralDockManager:SetMouseOver(true)
-    ns.UpdateChat(0.01)
+    ns.Chat.Update(0.01)
     A.near(ChatFrame1Tab._alpha, 1, 0.01, "dock hover shows the tabs")
     A.near(ChatFrame2Tab._alpha, 1, 0.01, "dock hover shows every tab")
     GeneralDockManager:SetMouseOver(false)
-    ns.UpdateChat(1)
+    ns.Chat.Update(1)
     A.near(ChatFrame1Tab._alpha, 0, 0.01, "hidden again after hover")
     ChatFrame2Tab:SetMouseOver(true)
-    ns.UpdateChat(0.01)
+    ns.Chat.Update(0.01)
     A.near(ChatFrame2Tab._alpha, 1, 0.01, "tab hover shows it")
 end)
 
@@ -143,13 +143,13 @@ h.test("A tab with new messages stays visible", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
     for _, f in ipairs({ ChatFrame1Tab, ChatFrame2Tab }) do f:Show() end
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     ChatFrame2Tab.alerting = true
-    ns.UpdateChat(1)
+    ns.Chat.Update(1)
     A.near(ChatFrame2Tab._alpha, 1, 0.01, "alerting tab visible")
     A.near(ChatFrame1Tab._alpha, 0, 0.01, "quiet tab hidden")
     ChatFrame2Tab.alerting = false
-    ns.UpdateChat(1)
+    ns.Chat.Update(1)
     A.near(ChatFrame2Tab._alpha, 0, 0.01, "hidden once read")
 end)
 
@@ -157,10 +157,10 @@ h.test("Restore gives the tabs their alpha back", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
     ChatFrame2Tab:Show(); ChatFrame2Tab._alpha = 0.4
-    ns.StripAllChat()
-    ns.UpdateChat(1)
+    ns.Chat.StripAll()
+    ns.Chat.Update(1)
     QuietUICharDB.chat = false
-    ns.RestoreChat()
+    ns.Chat.Restore()
     A.near(ChatFrame2Tab._alpha, 0.4, 0.01, "original alpha back")
     ChatFrame2Tab:SetAlpha(0.7)
     A.near(ChatFrame2Tab._alpha, 0.7, 0.01, "Blizzard alpha not held after restore")
@@ -170,10 +170,10 @@ h.test("Modern chat off restores the original dock and tab points", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     assertBelow(A, ChatFrame2Tab, ChatFrame2, "moved")
     QuietUICharDB.chat = false
-    ns.RestoreChat()
+    ns.Chat.Restore()
     A.deep(snapshot(GeneralDockManager), dock0, "dock points")
     A.deep(snapshot(ChatFrame2Tab), tab0, "tab points")
     -- With Modern chat off a Blizzard re-anchor is left alone.
@@ -186,7 +186,7 @@ h.test("Disabling QuietUI restores the original dock and tab points", function(t
     local ns, A = t.ns, t.assert
     setup(t)
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     assertBelow(A, GeneralDockManager, ChatFrame1, "moved")
     QuietUIDB.enabled = false
     ns.ApplyAll() -- disabled: ApplyAll falls through to RestoreAll
@@ -201,10 +201,10 @@ h.test("Re-enabling after a restore moves tabs below again and keeps Blizzard's 
     for _ = 1, 2 do
         QuietUIDB.enabled = true
         QuietUICharDB.chat = nil
-        ns.StripAllChat(true)
+        ns.Chat.StripAll(true)
         assertBelow(A, GeneralDockManager, ChatFrame1, "dock")
         assertBelow(A, ChatFrame2Tab, ChatFrame2, "tab")
-        ns.RestoreChat()
+        ns.Chat.Restore()
         A.deep(snapshot(GeneralDockManager), dock0, "dock originals after cycle")
         A.deep(snapshot(ChatFrame2Tab), tab0, "tab originals after cycle")
     end
@@ -215,10 +215,10 @@ h.test("Missing Blizzard tab functions and tabs do not break placement", functio
     setup(t)
     FCF_SetTabPosition, FCF_RestorePositionAndDimensions, FCF_DockUpdate = nil, nil, nil
     ChatFrame3Tab = nil
-    A.noThrow(function() ns.StripAllChat(true) end)
+    A.noThrow(function() ns.Chat.StripAll(true) end)
     assertBelow(A, GeneralDockManager, ChatFrame1, "dock")
     assertBelow(A, ChatFrame2Tab, ChatFrame2, "tab")
-    A.noThrow(function() ns.RestoreChat() end)
+    A.noThrow(function() ns.Chat.Restore() end)
     t.mock:drain()
     A.notPrinted(t.mock, "error (shown once)")
 end)
@@ -240,14 +240,14 @@ h.test("The moved dock keeps its width from both sides of the window", function(
     setup(t)
     ChatFrame1.GetLeft = function() return 20 end
     ChatFrame1.GetRight = function() return 320 end
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     assertBelow(A, GeneralDockManager, ChatFrame1, "dock")
     spansWindow(A, GeneralDockManager, ChatFrame1, "dock below")
-    ns.RestoreChat()
+    ns.Chat.Restore()
     blizzardLayout(t, 10)
     ChatFrame1.GetLeft = function() return 20 end
     ChatFrame1.GetRight = function() return 320 end
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     spansWindow(A, GeneralDockManager, UIParent, "clamped dock")
 end)
 
@@ -259,16 +259,16 @@ h.test("The unfocused input lets clicks through to the tabs", function(t)
     local edit = ChatFrame1EditBox
     edit:Show()
     edit:EnableMouse(true)
-    ns.StripAllChat()
-    ns.SyncVisibleEdits()
+    ns.Chat.StripAll()
+    ns.Chat.SyncVisibleEdits()
     A.falsy(edit:IsMouseEnabled(), "unfocused input takes the mouse")
     edit:SetFocus()
-    ns.SyncVisibleEdits()
+    ns.Chat.SyncVisibleEdits()
     A.ok(edit:IsMouseEnabled(), "focused input must take the mouse")
     edit:ClearFocus()
-    ns.SyncVisibleEdits()
+    ns.Chat.SyncVisibleEdits()
     A.falsy(edit:IsMouseEnabled(), "input still takes the mouse after losing focus")
-    ns.RestoreChat()
+    ns.Chat.Restore()
     A.ok(edit:IsMouseEnabled(), "restore gives the input its mouse back")
 end)
 

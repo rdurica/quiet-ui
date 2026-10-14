@@ -7,7 +7,7 @@ local unwrap = P.unwrap
 local function setup(t)
     local ns = t.ns
     local s = P.env(t, { plain = true })
-    local function tick() ns.UpdateSmooth(1) end
+    local function tick() ns.Faders.UpdateSmooth(1) end
     local function check(expected)
         tick()
         local A = t.assert
@@ -129,9 +129,9 @@ h.test("Leaving forced visibility fades the portrait instead of snapping", funct
     s.HasTarget = true
     tick(); A.eq(unwrap(PlayerFrame._alpha), 1)
     s.HasTarget = false
-    t.ns.UpdateSmooth(0.15)
+    t.ns.Faders.UpdateSmooth(0.15)
     A.ok(unwrap(PlayerFrame._alpha) > 0 and unwrap(PlayerFrame._alpha) < 1, "Leaving forced visibility must fade")
-    t.ns.UpdateSmooth(0.15)
+    t.ns.Faders.UpdateSmooth(0.15)
     A.eq(unwrap(PlayerFrame._alpha), 0)
 end)
 
@@ -142,7 +142,7 @@ h.test("A missing health API is reported without substituting power", function(t
     local reported
     ns.Report = function(name) reported = name end
     UnitHealthPercent = nil
-    ns.UpdateSmooth(1)
+    ns.Faders.UpdateSmooth(1)
     A.eq(reported, "player health", "Missing health API must be reported without substituting power")
 end)
 
@@ -162,22 +162,22 @@ h.test("Reused curves keep exact fade weights and reveal fresh low health and po
     local ns = t.ns
     local s = setup(t)
     local resourceHealth, resourcePower = PersonalResourceDisplayFrame.HealthBarsContainer, s.resourcePower
-    ns.FindFaders(false)
+    ns.Faders.Find(false)
     for _ = 1, 2 do
         s.health, s.power = 1, 1
         s.InCombat = true
-        ns.UpdateSmooth(1)
+        ns.Faders.UpdateSmooth(1)
         s.InCombat = false
         local total = 0
         for _, elapsed in ipairs({ 0.017, 0.083, 0.071, 0.129 }) do
             total = total + elapsed
-            ns.UpdateSmooth(elapsed)
+            ns.Faders.UpdateSmooth(elapsed)
             local expected = math.max(0, 1 - total / 0.3)
             A.near(unwrap(resourceHealth._alpha), expected, 1e-9, "Health fade must retain exact weights")
             A.near(unwrap(resourcePower._alpha), expected, 1e-9, "Power fade must retain exact weights")
         end
         s.health, s.power = 0.2, 0.2
-        ns.UpdateSmooth(0.017)
+        ns.Faders.UpdateSmooth(0.017)
         A.ok(unwrap(resourceHealth._alpha) == 1 and unwrap(resourcePower._alpha) == 1,
             "Reused curves must still reveal fresh low health and power immediately")
     end

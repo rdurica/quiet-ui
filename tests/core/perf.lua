@@ -84,9 +84,9 @@ h.test("Smooth breakdown rows, total, inactive timer and completion", function(t
         mock.profile = mock.profile + 0.5
         return 0, "MANA"
     end
-    ns.UpdateParty = function() mock.profile = mock.profile + 3 end
+    ns.Faders.UpdateParty = function() mock.profile = mock.profile + 3 end
     -- Keep unrelated frame discovery and regular faders idle.
-    ns.FindFaders, ns.UpdateFaders, ns.UpdateRange = function() end, function() end, function() end
+    ns.Faders.Find, ns.Faders.Update, ns.Faders.UpdateRange = function() end, function() end, function() end
     mock.now = mock.now + 30
     update(0.1)
     A.eq(timerReads, 0, "Inactive profiling must not read the CPU timer")

@@ -17,7 +17,7 @@ local function fixture(t)
         groups = { ["1"] = 2 }, hostile = { ["1"] = true }, friendly = { ["2"] = true },
         range = { yards = "spell", kind = "friendly", spell = "Heal" } })
     ns.Settings.ActivatePreset(id)
-    ns.ShowSetup()
+    ns.Setup.Show()
     return t.mock:findByName("QuietUISetup"), id
 end
 
@@ -44,7 +44,7 @@ h.test("group modes: hover/always exclusion, cancel, save into preset, membershi
     click(ui.visibilityRows[2].hover)
     A.ok(not first.hostile:IsEnabled() and not first.friendly:IsEnabled())
     A.ok(ui.visibilityRows[2].hover.box._checked and not ui.visibilityRows[2].always.box._checked)
-    ui:Hide(); ns.ShowSetup()
+    ui:Hide(); ns.Setup.Show()
     A.ok(ui.visibilityRows[2].always.box._checked, "Cancel saved a hover mode")
     click(ui.visibilityRows[2].hover); click(ui.save)
     A.eq(ns.Settings.Presets()[id].settings.groupVisibility[2], "hover")
@@ -85,7 +85,7 @@ h.test("every group is reachable, regrouping clamps scroll, Reset leaves shared 
     end
     A.ok(ui.groupScroll:GetVerticalScroll() == 0 and ui.visibilityRows[1]:IsShown()
         and not ui.visibilityRows[2]:IsShown())
-    ui:Hide(); ns.ShowSetup()
+    ui:Hide(); ns.Setup.Show()
     click(ui.reset)
     A.ok(not QuietUICharDB.groupVisibility and not QuietUICharDB.hoverOnly and ns.Settings.OnlyOnHover("xp"))
     A.eq(ns.Settings.Presets()[id].settings.groupVisibility[2], "hover", "Reset changed shared modes")

@@ -26,14 +26,26 @@ local function spied(t, opts)
     opts = opts or {}
     local env = { calls = {} }
     local function spy(name)
-        t.ns[name] = function(...)
+        -- ForgetRangePlate lives in ns.Faders; the other entry points are on ns.
+        local owner, key = t.ns, name
+        if name == "ForgetRangePlate" then owner = t.ns.Faders end
+        if name == "HighlightsEvent" then owner, key = t.ns.Highlights, "Event" end
+        if name == "ApplyQuestMobs" then owner, key = t.ns.QuestMobs, "Apply" end
+        if name == "RestoreQuestMobs" then owner, key = t.ns.QuestMobs, "Restore" end
+        if name == "QuestMobsEvent" then owner, key = t.ns.QuestMobs, "Event" end
+        if name == "QuestNoticeEvent" then owner, key = t.ns.QuestNotice, "Event" end
+        owner[key] = function(...)
             env.calls[name] = env.calls[name] or {}
             env.calls[name][#env.calls[name] + 1] = { n = select("#", ...), ... }
         end
     end
     for _, name in ipairs({ "HighlightsEvent", "QuestNoticeEvent", "ForgetRangePlate" }) do spy(name) end
     for _, name in ipairs({ "ApplyQuestMobs", "RestoreQuestMobs", "QuestMobsEvent" }) do
-        if opts.noQuestMobs then t.ns[name] = nil else spy(name) end
+        if opts.noQuestMobs then
+            t.ns.QuestMobs[name == "ApplyQuestMobs" and "Apply" or name == "RestoreQuestMobs" and "Restore" or "Event"] = nil
+        else
+            spy(name)
+        end
     end
     function env.count(name) return #(env.calls[name] or {}) end
     -- Calls of spyName made for event `name` after the first `from` calls.
@@ -55,7 +67,7 @@ local function noErrors(t) t.assert.notPrinted(t.mock, "error") end
 h.test("boot applies quest mobs without runtime errors", function(t)
     local env = spied(t)
     t.boot()
-    t.assert.ok(env.count("ApplyQuestMobs") > 0, "Boot (ApplyAll) must call ns.ApplyQuestMobs")
+    t.assert.ok(env.count("ApplyQuestMobs") > 0, "Boot (ApplyAll) must call ns.QuestMobs.Apply")
 end)
 
 h.test("Save path ns.ApplyAll calls ApplyQuestMobs", function(t)
@@ -63,7 +75,7 @@ h.test("Save path ns.ApplyAll calls ApplyQuestMobs", function(t)
     t.boot()
     local n = env.count("ApplyQuestMobs")
     t.ns.ApplyAll()
-    t.assert.ok(env.count("ApplyQuestMobs") > n, "ns.ApplyAll must call ns.ApplyQuestMobs")
+    t.assert.ok(env.count("ApplyQuestMobs") > n, "ns.ApplyAll must call ns.QuestMobs.Apply")
 end)
 
 h.test("quest mob events are registered, including UNIT_QUEST_LOG_CHANGED", function(t)
@@ -80,7 +92,7 @@ h.test("enabled runtime forwards each quest mob event once with original argumen
         local n = env.count("QuestMobsEvent")
         env.dispatch(name, table.unpack(ARGS[name]))
         local got = env.forwards(name, n)
-        A.eq(#got, 1, "Forwards of " .. name .. " to ns.QuestMobsEvent")
+        A.eq(#got, 1, "Forwards of " .. name .. " to ns.QuestMobs.Event")
         local want = ARGS[name]
         A.eq(got[1].n, #want + 1, name .. ": argument count")
         for i, v in ipairs(want) do A.eq(got[1][i + 1], v, name .. ": argument " .. i) end
@@ -124,7 +136,7 @@ h.test("/quiet off calls RestoreQuestMobs", function(t)
     t.boot()
     local n = env.count("RestoreQuestMobs")
     t.mock.slash.QUIETUI("off")
-    t.assert.ok(env.count("RestoreQuestMobs") > n, "/quiet off (RestoreAll) must call ns.RestoreQuestMobs")
+    t.assert.ok(env.count("RestoreQuestMobs") > n, "/quiet off (RestoreAll) must call ns.QuestMobs.Restore")
 end)
 
 h.test("disabled runtime forwards no plate or quest log events", function(t)
@@ -146,7 +158,7 @@ h.test("/quiet on calls ApplyQuestMobs", function(t)
     t.mock.slash.QUIETUI("off")
     local n = env.count("ApplyQuestMobs")
     t.mock.slash.QUIETUI("on")
-    t.assert.ok(env.count("ApplyQuestMobs") > n, "/quiet on must call ns.ApplyQuestMobs")
+    t.assert.ok(env.count("ApplyQuestMobs") > n, "/quiet on must call ns.QuestMobs.Apply")
     noErrors(t)
 end)
 
@@ -164,7 +176,7 @@ h.test("Boot while disabled reaches RestoreQuestMobs and not ApplyQuestMobs", fu
     local env = spied(t)
     QuietUIDB.enabled = false
     t.boot()
-    t.assert.ok(env.count("RestoreQuestMobs") > 0, "Boot while disabled must call ns.RestoreQuestMobs (ApplyAll -> RestoreAll)")
+    t.assert.ok(env.count("RestoreQuestMobs") > 0, "Boot while disabled must call ns.QuestMobs.Restore (ApplyAll -> RestoreAll)")
     t.assert.eq(env.count("ApplyQuestMobs"), 0, "Boot while disabled must not apply quest mobs")
     noErrors(t)
 end)
@@ -174,7 +186,7 @@ h.test("A throwing QuestMobsEvent keeps the other handlers and reports once unde
     local env = spied(t)
     t.boot()
     local thrown = 0
-    t.ns.QuestMobsEvent = function() thrown = thrown + 1; error("quest mobs exploded") end
+    t.ns.QuestMobs.Event = function() thrown = thrown + 1; error("quest mobs exploded") end
     local before = {}
     for _, key in ipairs({ "ForgetRangePlate", "HighlightsEvent", "QuestNoticeEvent" }) do before[key] = env.count(key) end
     env.dispatch("NAME_PLATE_UNIT_REMOVED", "nameplate4")

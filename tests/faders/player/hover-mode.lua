@@ -12,10 +12,10 @@ h.test("Visible hover mode suppresses combat, grace, XP rewards and grouped aura
     ns.World.InGroup = function() return true end
     ns.World.InForcedInstance = function() return true end
     ns.Hit = function(obj) return obj.hot == true end
-    ns.FindFaders(false)
-    ns.MarkCombatEnd(); ns.MarkQuestXP(100)
+    ns.Faders.Find(false)
+    ns.Faders.MarkCombatEnd(); ns.Faders.MarkQuestXP(100)
     local function tick()
-        ns.NextFadeTick(); ns.UpdateFaders(1); ns.UpdateSmooth(1)
+        ns.NextFadeTick(); ns.Faders.Update(1); ns.Faders.UpdateSmooth(1)
     end
     tick()
     local all = { MainStatusTrackingBarContainer, EssentialCooldownViewer, DamageMeter, BuffFrame, DebuffFrame }
@@ -42,6 +42,6 @@ h.test("Visible hover mode suppresses combat, grace, XP rewards and grouped aura
     A.ok(box, "No hover catcher was placed over the meter")
     A.ok(box._parent == UIParent and box._shown, "Hover catcher followed faded parent")
     box.hot = true; tick(); A.eq(DamageMeter._alpha, 1, "Container gap catcher did not reveal meter")
-    ns.HideHoverCatchers(); A.shown(box, false)
+    ns.Faders.HideHoverCatchers(); A.shown(box, false)
     ns.RestoreAlpha(); A.eq(DamageMeter._alpha, 1)
 end)

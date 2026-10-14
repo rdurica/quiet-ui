@@ -50,10 +50,10 @@ local function fixture(t, width)
     chat:SetSize(width, 200)
     function chat:GetFont() return "test", state.size, state.flags end
     chat:AddMessage(TEXT)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     local function tick()
         mock.now = mock.now + 1 / 60
-        ns.UpdateChat(1 / 60)
+        ns.Chat.Update(1 / 60)
     end
     local function changed()
         chat:GetScript("OnSizeChanged")(chat)
@@ -176,7 +176,7 @@ h.test("A layout reads the fade setting once and timed lines fade, expire and re
     A.ok(bubble:GetAlpha() > 0 and bubble:GetAlpha() < 1, "Scheduled fade must animate: " .. bubble:GetAlpha())
     for _ = 1, 40 do tick() end
     A.falsy(bubble:IsShown(), "Expired lines must leave the bottom view")
-    ns.RestoreChat()
+    ns.Chat.Restore()
     tick(); tick()
     A.ok(catcherOf(mock):IsShown(), "Restore and reapply must refresh the catcher immediately")
 end)

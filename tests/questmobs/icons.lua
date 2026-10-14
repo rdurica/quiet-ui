@@ -12,7 +12,7 @@ local function test(name, fn, opts)
             O("0/10 Kobold Vermin slain") }
         f.WOLF = { { type = 2, leftText = "Timber Wolf" }, Q(LOOT_Q, "Wolves Across the Border"),
             O("4/8 Tough Wolf Meat") }
-        function f.event(name, ...) t.ns.QuestMobsEvent(name, ...) end
+        function f.event(name, ...) t.ns.QuestMobs.Event(name, ...) end
         function f.add(token, spec, o)
             local plate = w.addPlate(token, spec, o)
             f.event("NAME_PLATE_UNIT_ADDED", token)
@@ -28,7 +28,7 @@ local function test(name, fn, opts)
         function f.ready()
             w.objectives[KILL_Q] = { { text = "Kobold Vermin slain: 0/10", type = "monster", finished = false } }
             w.objectives[LOOT_Q] = { { text = "Tough Wolf Meat: 4/8", type = "item", finished = false } }
-            t.ns.ApplyQuestMobs()
+            t.ns.QuestMobs.Apply()
         end
         fn(t, w, f)
         w.check(opts and opts.output)

@@ -20,7 +20,7 @@ h.test("Always show debuffs defaults on and survives saves, presets and reset", 
     local ns, mock, A = t.ns, t.mock, t.assert
     t.boot()
     A.ok(ns.Settings.AlwaysShowDebuffs(), "Missing setting must default on")
-    ns.ShowSetup()
+    ns.Setup.Show()
     local choice = button(mock, "Always show debuffs")
     A.eq(choice.box._checked, true, "The window must show the default as checked")
     click(choice)
@@ -32,12 +32,12 @@ h.test("Always show debuffs defaults on and survives saves, presets and reset", 
     A.ok(not ns.Settings.AlwaysShowDebuffs(), "Preset did not retain opt-out")
     ns.Settings.DeletePreset(id)
     A.ok(not ns.Settings.AlwaysShowDebuffs(), "Deleting preset lost personal snapshot")
-    ns.RefreshSetup()
+    ns.Setup.Refresh()
     click(button(mock, "Reset default"))
     A.ok(ns.Settings.AlwaysShowDebuffs() and QuietUICharDB.alwaysShowDebuffs == nil,
         "Reset must restore default without storing an explicit true")
     QuietUICharDB.alwaysShowDebuffs = false
-    ns.RefreshSetup()
+    ns.Setup.Refresh()
     A.eq(button(mock, "Always show debuffs").box._checked, false, "The window must show the saved opt-out")
     click(button(mock, "Always show debuffs"))
     click(button(mock, "Save"))

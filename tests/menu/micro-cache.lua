@@ -29,13 +29,13 @@ end
 h.test("Hover ticks between two RefreshChrome calls do not rebuild the micro list", function(t)
     local A, ns = t.assert, t.ns
     withMicroGlobals(t, function(served, state)
-        ns.RefreshChrome()
+        ns.Menu.RefreshChrome()
         for _, b in pairs(served) do b:SetMouseOver(true) end
-        ns.UpdateMenuButton(0.016)
+        ns.Menu.UpdateButton(0.016)
         state.reads = 0
-        for _ = 1, 60 do ns.UpdateMenuButton(0.016) end
+        for _ = 1, 60 do ns.Menu.UpdateButton(0.016) end
         A.eq(state.reads, 0, "micro global reads during 60 hover ticks")
-        ns.RefreshChrome()
+        ns.Menu.RefreshChrome()
         A.alpha(served.CharacterMicroButton, 1, "hover keeps the first micro button shown")
         A.alpha(served.HelpMicroButton, 1, "hover keeps the last micro button shown")
     end)
@@ -44,20 +44,20 @@ end)
 h.test("A micro button added before UpdateMicroButtons joins the cache and the fade", function(t)
     local A, ns = t.assert, t.ns
     withMicroGlobals(t, function(served)
-        ns.RefreshChrome()
+        ns.Menu.RefreshChrome()
         ns.NextFadeTick()
-        ns.UpdateMenuButton(0.016)
+        ns.Menu.UpdateButton(0.016)
         local added = CreateFrame("Button", "HousingMicroButton", UIParent)
         served.HousingMicroButton = added
         -- QuietUI hooks UpdateMicroButtons to rebuild the cache.
         UpdateMicroButtons()
         added:SetAlpha(1)
         ns.NextFadeTick()
-        ns.UpdateMenuButton(0.5)
+        ns.Menu.UpdateButton(0.5)
         A.alpha(added, 0, "new micro button fades with the menu")
         for _, b in pairs(served) do b:SetMouseOver(true) end
         ns.NextFadeTick()
-        ns.UpdateMenuButton(0.016)
+        ns.Menu.UpdateButton(0.016)
         A.alpha(added, 1, "new micro button shows on hover with the menu")
     end)
 end)
