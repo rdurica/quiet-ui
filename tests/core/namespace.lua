@@ -76,6 +76,7 @@ local BASELINE = {
     "Remember",
     "Report",
     "RequestRescan",
+    "RestoreAll",
     "ResetMenu",
     "RestoreAlpha",
     "RestoreChat",
