@@ -4,7 +4,7 @@
 -- ("review"), or of a test name. No filter runs everything. A filter that matches
 -- nothing prints a message and exits 1. Exit code is 1 when any test fails.
 --
--- NEW TESTS live in tests/<area>/**.lua (any subdirectory except tests/lib). The file is
+-- NEW TESTS live in tests/<area>/**.lua (any subdirectory except tests/lib and tests/measure, whose scripts run directly with --measure). The file is
 -- a chunk that receives the harness as `...` and declares its tests:
 --
 --     local h = ...
@@ -24,6 +24,12 @@
 --                     discard startup output; errors if startup reported one
 --     t.loaded        list of files the loader loaded, in order
 --     t.tocFiles()    the .toc file lines read independently;  t.fileExists(name)
+--     t.readFile(name)  text of an addon file (static checks only);  t.luaFiles(dirs)  the .lua
+--                     files under top-level folders, e.g. {"Core", "Features"}
+--     h.test(name, fn, { beforeLoad = function(mock) ... end })   optional 3rd argument: beforeLoad runs
+--                     after the mock is installed and BEFORE the addon loads, so a test can set
+--                     e.g. mock.badEvents (events register at load time) before they are registered.
+--     h.lib(name)     (file level) loads the test helper tests/lib/<name>.lua
 -- New tests must not call loadfile/dofile and must not name production files; only the
 -- loader (tests/lib/addon.lua) reads QuietUI.toc.
 --
@@ -112,18 +118,20 @@ local function restoreG(snap)
 end
 
 local areaFiles = lines("find " .. shq(testsDir) .. " -mindepth 2 -name '*.lua' -not -path "
-    .. shq(testsDir .. "/lib/*"))
+    .. shq(testsDir .. "/lib/*") .. " -not -path " .. shq(testsDir .. "/measure/*"))
 
 local function runCase(case)
     local snap = snapshotG()
     local ok, err = pcall(function()
         local mock = mockLib.new()
         mock:install()
+        if case.opts and case.opts.beforeLoad then case.opts.beforeLoad(mock) end
         local ns, list = addon.load()
         local t = {
             ns = ns, mock = mock, assert = assertLib, loaded = list,
             tocFiles = function() return addon.tocFiles() end,
             fileExists = addon.fileExists,
+            readFile = addon.readFile, luaFiles = addon.luaFiles,
             boot = function(strict) return addon.boot(mock, strict) end,
         }
         case.fn(t)
@@ -137,8 +145,12 @@ for _, path in ipairs(areaFiles) do
     local id = rel:gsub("%.lua$", "")
     local cases = {}
     local h = {
-        test = function(name, fn)
-            cases[#cases + 1] = { name = name, fn = fn }
+        test = function(name, fn, opts)
+            cases[#cases + 1] = { name = name, fn = fn, opts = opts }
+        end,
+        -- Loads a helper module from tests/lib/<name>.lua (test code, never production files).
+        lib = function(name)
+            return assert(loadfile(testsDir .. "/lib/" .. name .. ".lua"))()
         end,
     }
     local chunk, err = loadfile(path)
