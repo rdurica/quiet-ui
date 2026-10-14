@@ -3,7 +3,9 @@ local _, ns = ...
 -- Feature registry. A feature registers one spec; QuietUI.lua walks the registry for
 -- apply, restore and the per-frame phases, and the registry owns the event frame.
 --
---   ns.Feature{ name, enabled, apply, restore, events, always, fade, frame, tick, rescan, hooks }
+--   ns.Feature{ name, enabled, apply, restore, events, always, required, fade, frame, tick, rescan, hooks }
+--   early: events delivered before boot and while off (QuietUI's own boot events).
+--   required: events whose failed RegisterEvent is reported once as "<name> events".
 
 local Registry = { booted = false }
 ns.Registry = Registry
@@ -14,7 +16,7 @@ local handlers = {}  -- event -> { { feature =, fn = }, ... } in registration or
 local frame
 
 local FUNCTIONS = { "enabled", "apply", "restore", "fade", "frame", "tick", "rescan" }
-local KNOWN = { name = true, events = true, always = true, hooks = true }
+local KNOWN = { name = true, events = true, always = true, hooks = true, required = true, early = true }
 for _, key in ipairs(FUNCTIONS) do KNOWN[key] = true end
 
 -- Returns an error text for a bad spec, or nil.
@@ -39,18 +41,23 @@ local function Problem(spec)
             end
         end
     end
-    if spec.always ~= nil then
-        if type(spec.always) ~= "table" then return "always must be a list of event names" end
-        for _, event in ipairs(spec.always) do
-            if type(event) ~= "string" then return "always must be a list of event names" end
+    for _, key in ipairs({ "always", "required", "early" }) do
+        local list = spec[key]
+        if list ~= nil then
+            if type(list) ~= "table" then return key .. " must be a list of event names" end
+            for _, event in ipairs(list) do
+                if type(event) ~= "string" then return key .. " must be a list of event names" end
+            end
         end
     end
 end
 
 local function Allowed(entry, event)
+    local feature = entry.feature
+    if feature.earlySet[event] then return true end
     if not Registry.booted then return false end
     if ns.DB().enabled then return true end
-    return entry.feature.alwaysSet[event] == true
+    return feature.alwaysSet[event] == true
 end
 
 local function OnEvent(_, event, ...)
@@ -59,9 +66,19 @@ local function OnEvent(_, event, ...)
     for i = 1, #list do
         local entry = list[i]
         if Allowed(entry, event) and Registry.On(entry.feature) then
-            ns.Profiler.Run(entry.feature.name .. "." .. event, entry.fn, ...)
+            -- One label per feature, so a failing feature reports once whatever event it was.
+            ns.Profiler.Run(entry.feature.name, entry.fn, ...)
         end
     end
+end
+
+-- The one frame of the addon: events here, OnUpdate set by QuietUI.lua.
+function Registry.Frame()
+    if not frame then
+        frame = CreateFrame("Frame")
+        frame:SetScript("OnEvent", OnEvent)
+    end
+    return frame
 end
 
 local function Listen(feature, event, fn)
@@ -69,11 +86,11 @@ local function Listen(feature, event, fn)
     if not list then
         list = {}
         handlers[event] = list
-        frame = frame or CreateFrame("Frame")
-        frame:SetScript("OnEvent", OnEvent)
+        Registry.Frame()
         -- An unknown event throws on this client, so each one is registered alone.
         local ok, err = pcall(frame.RegisterEvent, frame, event)
-        if not ok then ns.Report(feature.name .. " events", err) end
+        -- Only events a feature cannot work without are reported; the rest fail silently.
+        if not ok and feature.requiredSet[event] then ns.Report(feature.name .. " events", err) end
     end
     list[#list + 1] = { feature = feature, fn = fn }
 end
@@ -102,8 +119,10 @@ function ns.Feature(spec)
         ns.Report("feature " .. (type(spec) == "table" and type(spec.name) == "string" and spec.name or "spec"), err)
         return
     end
-    local feature = { name = spec.name, spec = spec, alwaysSet = {}, hooked = {} }
+    local feature = { name = spec.name, spec = spec, alwaysSet = {}, earlySet = {}, requiredSet = {}, hooked = {} }
     for _, event in ipairs(spec.always or {}) do feature.alwaysSet[event] = true end
+    for _, event in ipairs(spec.early or {}) do feature.earlySet[event] = true end
+    for _, event in ipairs(spec.required or {}) do feature.requiredSet[event] = true end
     features[#features + 1] = feature
     byName[spec.name] = feature
     -- Sorted so registration of events does not depend on pairs order.

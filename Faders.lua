@@ -1487,3 +1487,47 @@ function ns.UpdateFaders(elapsed)
     local questHot = questCatcher and ns.Hit(questCatcher)
     ns.Run("quest tracker", UpdateGroup, questFrames, ns.Settings.VisibilityShow("quests", false, questHot), elapsed)
 end
+
+ns.Feature({
+    name = "faders",
+    apply = function()
+        ns.FindFaders(false)
+        ns.UpdateParty(0)
+    end,
+    restore = function()
+        ns.HideHoverCatchers()
+        ns.UpdateParty(0)
+        ns.HideQuestCatcher()
+        ns.HideRangeMark()
+        -- Target and action bar events stop while off.
+        ns.ForgetRangeSlot()
+        ns.ForgetRangePlate()
+        ns.RestorePlayerFader()
+    end,
+    fade = function(elapsed) ns.UpdateFaders(elapsed) end,
+    frame = function(elapsed)
+        -- Range changes while you walk, with no focus or cursor change, so it cannot wait for a rescan.
+        ns.Profiler.Run("range", ns.UpdateRange, elapsed)
+        ns.Profiler.Run("smooth", ns.UpdateSmooth, elapsed, ns.Profiler.Active() and ns.Profiler.Smooth or nil)
+    end,
+    rescan = function(deep) ns.FindFaders(deep and true or false) end,
+    events = {
+        PLAYER_REGEN_DISABLED = function()
+            ns.UpdateParty(0)
+            ns.Registry.Fade(0)
+        end,
+        PLAYER_REGEN_ENABLED = function()
+            ns.MarkCombatEnd()
+            ns.Registry.Fade(0)
+        end,
+        GROUP_ROSTER_UPDATE = function()
+            ns.ScanParty()
+            ns.UpdateParty(0)
+        end,
+        PLAYER_TARGET_CHANGED = function() ns.ForgetRangePlate() end,
+        NAME_PLATE_UNIT_REMOVED = function() ns.ForgetRangePlate() end,
+        ACTIONBAR_SLOT_CHANGED = function() ns.ForgetRangeSlot() end,
+        SPELLS_CHANGED = function() ns.ForgetRangeSlot() end,
+        QUEST_TURNED_IN = function(_, xp) ns.MarkQuestXP(xp) end,
+    },
+})

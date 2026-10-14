@@ -530,3 +530,22 @@ function ns.UpdateQuestNotice(elapsed)
     end
     Draw(current.age <= 5 and 1 or math.max(0, 1 - (current.age - 5) / 0.3))
 end
+
+local function Forward(event)
+    return function(...)
+        if type(ns.QuestNoticeEvent) == "function" then ns.QuestNoticeEvent(event, ...) end
+    end
+end
+
+ns.Feature({
+    name = "quest notice",
+    apply = function() if type(ns.ApplyQuestNotice) == "function" then ns.ApplyQuestNotice() end end,
+    restore = function() if type(ns.RestoreQuestNotice) == "function" then ns.RestoreQuestNotice() end end,
+    frame = function(elapsed) if type(ns.UpdateQuestNotice) == "function" then ns.UpdateQuestNotice(elapsed) end end,
+    events = {
+        PLAYER_ENTERING_WORLD = Forward("PLAYER_ENTERING_WORLD"),
+        QUEST_ACCEPTED = Forward("QUEST_ACCEPTED"),
+        QUEST_LOG_UPDATE = Forward("QUEST_LOG_UPDATE"),
+        QUEST_WATCH_UPDATE = Forward("QUEST_WATCH_UPDATE"),
+    },
+})

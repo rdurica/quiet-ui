@@ -706,3 +706,20 @@ function ns.UpdateBars(showAll, elapsed, rescan)
     end
     ReleaseUnwatched()
 end
+
+ns.Feature({
+    name = "bars",
+    apply = function() ns.ForgetBarButtons() end,
+    restore = function() ns.HideBarCatchers() end,
+    -- The idle pass (no focus change, nothing hot) skips bars.
+    fade = function(elapsed, rescan, showAll, idle)
+        if not idle then ns.UpdateBars(showAll, elapsed, rescan) end
+    end,
+    rescan = function(deep)
+        ns.ScanSwing()
+        if not deep and ns.BarChildrenChanged() then ns.ForgetBarButtons() end
+    end,
+    events = {
+        EDIT_MODE_LAYOUTS_UPDATED = function() ns.ForgetBarButtons() end,
+    },
+})

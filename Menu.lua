@@ -463,3 +463,24 @@ function ns.ResetMenu()
         SetBagInput(frame, true)
     end)
 end
+
+ns.Feature({
+    name = "menu",
+    apply = function()
+        ns.RefreshChrome()
+        ns.UpdateBagSlots()
+    end,
+    restore = function() ns.ResetMenu() end,
+    fade = function(elapsed) ns.UpdateMenuButton(elapsed) end,
+    tick = function() ns.UpdateBagSlots() end,
+    rescan = function(deep)
+        if not deep then ns.RefreshChrome() end
+    end,
+    events = {
+        PLAYER_REGEN_ENABLED = function() ns.RefreshChrome() end,
+    },
+    hooks = {
+        -- Hooked arguments are not ours to forward.
+        UpdateMicroButtons = function() ns.RefreshChrome() end,
+    },
+})
