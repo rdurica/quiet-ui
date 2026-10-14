@@ -15,7 +15,7 @@ local TABS = {
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
     { id = "chat", label = "Misc.", height = 320 },
-    { id = "modern", label = "Modern", height = 350 },
+    { id = "modern", label = "Modern", height = 320 },
     { id = "info", label = "Info", height = 148 },
 }
 
