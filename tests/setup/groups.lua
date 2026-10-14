@@ -1,4 +1,4 @@
--- Compact seven-tab setup: Groups tab, visibility modes, membership, scrolling and reset.
+-- Compact eight-tab setup: Groups tab, visibility modes, membership, scrolling and reset.
 local h = ...
 
 local function click(b) b._scripts.OnClick(b) end
@@ -21,11 +21,11 @@ local function fixture(t)
     return t.mock:findByName("QuietUISetup"), id
 end
 
-h.test("setup is compact with seven tabs; group visibility lives on Groups and Bars is not on Visible", function(t)
+h.test("setup is compact with eight tabs; group visibility lives on Groups and Bars is not on Visible", function(t)
     local ns, A = t.ns, t.assert
     local ui = fixture(t)
     A.ok(ui:GetWidth() >= 592 and ui:GetWidth() <= 636 and ui:GetHeight() <= 474, "Setup is not compact")
-    A.ok(#ui.tabs == 7 and ui.pages[4].id == "groups", "Groups tab is missing")
+    A.ok(#ui.tabs == 8 and ui.pages[4].id == "groups", "Groups tab is missing")
     A.ok(ui.visibilityHeader:GetParent() == ui.pages[4] and ui.groupRows[1]:GetParent() == ui.pages[3],
         "Group visibility did not move out of Bars")
     A.ok(ui.presetSelector:GetWidth() == ui.pages[1]:GetWidth() and ui.layoutSelector:GetWidth() == ui.pages[1]:GetWidth(),

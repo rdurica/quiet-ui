@@ -176,7 +176,7 @@ h.test("Quest updates sits on Misc. below chat with a description", function(t)
     A.eq(ui.tabs[6].label:GetText(), "Misc.", "Sixth tab is Misc.")
     A.ok(choice:GetParent() == page and choice.label:GetText() == "Quest updates", "Choice belongs on Misc.")
     A.ok(choice.box._checked, "Default choice must be checked")
-    A.eq(#ui.tabs, 7, "Adding Quest updates must retain seven tabs")
+    A.eq(#ui.tabs, 8, "Adding Quest updates must retain eight tabs")
     local height = ui:GetHeight()
     A.ok(height <= 474, "Quest updates must fit the existing compact setup height")
     local fade, header = ui.fade, ui.questHeader

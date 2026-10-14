@@ -99,7 +99,7 @@ h.test("Misc. shows Highlights below Quests with three unchecked choices on one 
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     local page = ui.pages[6]
-    A.ok(ui.tabs[6].label._text == "Misc." and #ui.tabs == 7, "Misc. stays the sixth of seven tabs")
+    A.ok(ui.tabs[6].label._text == "Misc." and #ui.tabs == 8, "Misc. stays the sixth of eight tabs")
     local section = header(ui)
     local _, sectionY = offset(section, page)
     local _, sizeY = offset(ui.questNoticeSize, page)

@@ -209,6 +209,22 @@ function Frame:GetTexture() return self._texture end
 function Frame:SetColorTexture(...) self._color = { ... } end
 function Frame:SetVertexColor(...) self._vertex = { ... } end
 function Frame:SetTexCoord(...) self._texCoord = { ... } end
+function Frame:GetTexCoord()
+    local c = self._texCoord or { 0, 1, 0, 1 }
+    return unpack(c)
+end
+function Frame:GetVertexColor()
+    local c = self._vertex or { 1, 1, 1, 1 }
+    return unpack(c)
+end
+-- Dragging: StartMoving / StopMovingOrSizing keep a flag; a test moves the frame between the two
+-- with ClearAllPoints + SetPoint, as the client would. SetMovable / RegisterForDrag only record.
+function Frame:SetMovable(v) self._movable = v and true or false end
+function Frame:IsMovable() return self._movable == true end
+function Frame:RegisterForDrag(...) self._dragButtons = { ... } end
+function Frame:StartMoving() self._moving = true end
+function Frame:StopMovingOrSizing() self._moving = false end
+function Frame:IsMoving() return self._moving == true end
 function Frame:SetBlendMode(v) self._blend = v end
 function Frame:SetText(v) self._text = v == nil and "" or v end
 function Frame:GetText() return self._text end
