@@ -19,7 +19,7 @@ end
 h.test("a missing required classic title reader reports exactly once", function(t)
     local s = env(t, { classic = true })
     GetQuestLogTitle = nil
-    t.ns.RestoreQuestNotice(); t.ns.ApplyQuestNotice()
+    t.ns.QuestNotice.Restore(); t.ns.QuestNotice.Apply()
     s.event("QUEST_LOG_UPDATE"); s.pump(12); s.silent()
     s.event("QUEST_LOG_UPDATE"); s.pump(12); s.silent()
     t.assert.eq(s.reports(), 1, "Missing required title reader must report once")

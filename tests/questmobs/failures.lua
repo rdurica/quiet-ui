@@ -12,7 +12,7 @@ local function test(name, fn, opts)
             O("0/10 Kobold Vermin slain") }
         f.WOLF = { { type = 2, leftText = "Timber Wolf" }, Q(LOOT_Q, "Wolves Across the Border"),
             O("4/8 Tough Wolf Meat") }
-        function f.event(name, ...) t.ns.QuestMobsEvent(name, ...) end
+        function f.event(name, ...) t.ns.QuestMobs.Event(name, ...) end
         function f.add(token, spec, o)
             local plate = w.addPlate(token, spec, o)
             f.event("NAME_PLATE_UNIT_ADDED", token)
@@ -28,7 +28,7 @@ local function test(name, fn, opts)
         function f.ready()
             w.objectives[KILL_Q] = { { text = "Kobold Vermin slain: 0/10", type = "monster", finished = false } }
             w.objectives[LOOT_Q] = { { text = "Tough Wolf Meat: 4/8", type = "item", finished = false } }
-            t.ns.ApplyQuestMobs()
+            t.ns.QuestMobs.Apply()
         end
         fn(t, w, f)
         w.check(opts and opts.output)
@@ -46,7 +46,7 @@ test("Missing UnitIsRelatedToActiveQuest: no icon, no crash, one report", functi
     local b = f.add("nameplate2", { lines = f.WOLF })
     f.event("QUEST_LOG_UPDATE")
     f.nextFrame()
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.A.ok(f.kind(a) == nil and f.kind(b) == nil, "An icon was shown without UnitIsRelatedToActiveQuest")
     f.A.eq(w.reports(), 1, "Expected exactly one report: " .. table.concat(t.mock.printed, " | "))
 end, OUTPUT)
@@ -93,7 +93,7 @@ local function brokenIcons(t, w, f, mode)
         return frame
     end
     for i = 1, 3 do f.event("NAME_PLATE_UNIT_ADDED", "nameplate" .. i) end
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.event("QUEST_LOG_UPDATE")
     f.nextFrame()
     for i = 1, 3 do f.A.eq(f.kind(plates[i]), nil, "An icon was shown on nameplate" .. i) end
@@ -127,7 +127,7 @@ test("Forbidden plate is skipped without calling its methods", function(t, w, f)
     f.event("NAME_PLATE_UNIT_ADDED", "nameplate1")
     f.event("QUEST_LOG_UPDATE")
     f.nextFrame()
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.event("NAME_PLATE_UNIT_REMOVED", "nameplate1")
     f.A.eq(calls, 0, "A forbidden plate had method calls")
     f.A.ok(w.nothingShown(), "Something was shown on a forbidden plate")
@@ -149,7 +149,7 @@ test("Missing C_Timer: quest log events do not error", function(t, w, f)
     t.mock.units.nameplate1.related = false
     f.event("QUEST_LOG_UPDATE")
     f.event("UNIT_QUEST_LOG_CHANGED", "player")
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.A.eq(f.kind(plate), nil, "ApplyQuestMobs did not re-evaluate without C_Timer")
 end)
 
@@ -171,7 +171,7 @@ test("Plates are never moved, faded, shown or hidden through a full cycle", func
     t.mock.units.nameplate1 = { exists = true, attackable = true, related = true, lines = f.WOLF }
     f.event("NAME_PLATE_UNIT_ADDED", "nameplate1")
     QuietUIDB.enabled = false
-    t.ns.RestoreQuestMobs()
+    t.ns.QuestMobs.Restore()
     f.A.ok(plate._alpha == 1 and plate._shown, "The plate changed state")
     f.A.ok(#plate._points == 0 and #plate.UnitFrame._points == 0 and #plate.bar._points == 0, "A plate frame was moved")
     -- Plate mutations, OnUpdate scripts and GameTooltip use are asserted after every case.

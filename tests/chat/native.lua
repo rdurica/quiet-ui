@@ -27,7 +27,7 @@ h.test("Native chat stays visible after addon or Modern chat is disabled", funct
     QuietUIDB = { enabled = true }
     QuietUICharDB = {}
     local chat, font = nativeChat(t)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     local wheel = chat:GetScript("OnMouseWheel")
     wheel(chat, 1)
     A.eq(chat.scrolled, 1, "Active chat wheel must work")
@@ -48,7 +48,7 @@ h.test("Native chat stays visible after addon or Modern chat is disabled", funct
     A.alpha(font, 1, "AddMessage hid native text with addon off")
     -- History was still collected while disabled: the three lines show up once re-enabled.
     QuietUIDB.enabled = true
-    ns.UpdateChat(1 / 60)
+    ns.Chat.Update(1 / 60)
     A.eq(#bubbles(chat), 3, "History must still be collected while disabled")
 end)
 
@@ -61,7 +61,7 @@ h.test("Native chat traversal reads each region and child list once", function(t
         chat:CreateFontString(nil, "ARTWORK")
         CreateFrame("Frame", nil, chat)
     end
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     chat._calls.GetRegions, chat._calls.GetChildren = 0, 0
     chat:AddMessage("hello")
     A.eq(chat._calls.GetRegions or 0, 1, "Region list reads")

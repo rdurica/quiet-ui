@@ -45,9 +45,9 @@ end)
 
 h.test("acceptance before the first world-entry scan announces the new quest only", function(t)
     local s = env(t)
-    t.ns.QuestNoticeEvent("PLAYER_ENTERING_WORLD", false, false)
+    t.ns.QuestNotice.Event("PLAYER_ENTERING_WORLD", false, false)
     s.log[2] = s.quest(2)
-    t.ns.QuestNoticeEvent("QUEST_ACCEPTED", 2)
+    t.ns.QuestNotice.Event("QUEST_ACCEPTED", 2)
     s.tick(0)
     s.has("Quest 2"); s.has("Wolves 0/8")
     t.assert.falsy(s.text():find("Quest 1", 1, true), "Existing baseline quests must remain silent")
@@ -55,9 +55,9 @@ end)
 
 h.test("modern stable objective text detects numeric progress and displays the count", function(t)
     local s = env(t)
-    t.ns.RestoreQuestNotice()
+    t.ns.QuestNotice.Restore()
     s.log[1].objectives[1] = { text = "Wolves slain", finished = false, type = "monster", numFulfilled = 0, numRequired = 8 }
-    t.ns.ApplyQuestNotice(); s.pump(); s.silent()
+    t.ns.QuestNotice.Apply(); s.pump(); s.silent()
     s.log[1].objectives[1].numFulfilled = 3
     s.event("QUEST_LOG_UPDATE")
     s.has("Quest 1"); s.has("Wolves slain"); s.has("3/8")
@@ -72,7 +72,7 @@ h.test("classic nil unfinished completion is valid without IsQuestComplete", fun
         if q then return q.title, 10, 0, false, false, q.complete and 1 or nil, 1, q.id end
     end
     IsQuestComplete = nil
-    t.ns.RestoreQuestNotice(); t.ns.ApplyQuestNotice(); s.pump(); s.silent()
+    t.ns.QuestNotice.Restore(); t.ns.QuestNotice.Apply(); s.pump(); s.silent()
     s.change(3)
     s.has("Quest 1"); s.has("Wolves 3/8")
 end)
@@ -131,7 +131,7 @@ end)
 h.test("a classic index reorder is silent", function(t)
     local s = env(t, { classic = true })
     s.log[2] = s.quest(2)
-    t.ns.RestoreQuestNotice(); t.ns.ApplyQuestNotice(); s.pump()
+    t.ns.QuestNotice.Restore(); t.ns.QuestNotice.Apply(); s.pump()
     s.log[1], s.log[2] = s.log[2], s.log[1]
     s.event("QUEST_LOG_UPDATE"); s.silent()
 end)

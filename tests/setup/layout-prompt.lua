@@ -52,7 +52,7 @@ for _, mode in ipairs(modes) do
         other:SetFrameLevel(700)
         raisedContent:SetFrameLevel(other.level + 100)
         otherLevel, cardLevel, descendantLevel = other.level, card.level, raisedContent.level
-        ns.ShowSetup()
+        ns.Setup.Show()
         local ui = QuietUISetup
         -- Prompt must not mutate layouts/hash simply by appearing or hiding.
         ns.EnsureLayout()

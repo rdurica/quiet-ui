@@ -21,13 +21,13 @@ h.test("target death invalidates cached bars without pointer movement", function
     ns.World.RefreshWorld()
     ns.World.ConsumeHud()
     ns.NextFadeTick()
-    ns.UpdateBars(false, 1, true)
+    ns.Bars.Update(false, 1, true)
     A.alpha(bar, 1, 'Living friendly target did not show its bar')
     dead = true
     ns.World.RefreshWorld()
     A.ok(ns.World.ConsumeHud(), 'Target death did not invalidate cached bar visibility')
     ns.NextFadeTick()
-    ns.UpdateBars(false, 1, true)
+    ns.Bars.Update(false, 1, true)
     A.alpha(bar, 0, 'Dead friendly target kept its bar visible')
 end)
 
@@ -36,8 +36,8 @@ h.test("show-all transitions recalculate bars even with a stationary pointer", f
     boot(t)
     local ns, mock = t.ns, t.mock
     local scans = 0
-    local update = ns.UpdateBars
-    ns.UpdateBars = function(showAll, dt, rescan, ...)
+    local update = ns.Bars.Update
+    ns.Bars.Update = function(showAll, dt, rescan, ...)
         if rescan then scans = scans + 1 end
         return update(showAll, dt, rescan, ...)
     end
@@ -102,7 +102,7 @@ h.test("group visibility overrides automatic triggers and keeps hover exceptions
     UnitIsDeadOrGhost = function() return false end
     ns.World.RefreshWorld()
     local function tick(showAll)
-        ns.NextFadeTick(); ns.UpdateBars(showAll, 1, true)
+        ns.NextFadeTick(); ns.Bars.Update(showAll, 1, true)
     end
     tick(true)
     A.ok(main._alpha == 0 and left._alpha == 0 and swing._alpha == 0,
@@ -166,7 +166,7 @@ h.test("bar ancestry cache preserves nesting, reparenting, replacement and disab
     end
     local function tick()
         ns.NextFadeTick()
-        ns.UpdateBars(false, 1, true)
+        ns.Bars.Update(false, 1, true)
     end
     tick()
     parentReads = 0
@@ -182,7 +182,7 @@ h.test("bar ancestry cache preserves nesting, reparenting, replacement and disab
     A.alpha(main, 0, 'Unnested bar retained cached hosting status')
     local old = left
     MultiBarBottomLeft = CreateFrame('Frame', 'MultiBarBottomLeft', UIParent)
-    ns.ForgetBarButtons(); tick()
+    ns.Bars.ForgetButtons(); tick()
     A.alpha(MultiBarBottomLeft, 0, 'Replacement bar was not discovered')
     ns.RestoreAlpha()
     A.ok(main._alpha == 1 and MultiBarBottomLeft._alpha == 1 and old._alpha == 1,

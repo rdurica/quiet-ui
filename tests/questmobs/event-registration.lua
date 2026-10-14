@@ -7,7 +7,7 @@ h.test("RegisterEvent failing for UNIT_QUEST_LOG_CHANGED keeps loading and the o
         t.assert.ok(t.mock:eventFrame(name), "Missing registered " .. name)
     end
     local forwarded = 0
-    t.ns.QuestMobsEvent = function(name) if name == "QUEST_LOG_UPDATE" then forwarded = forwarded + 1 end end
+    t.ns.QuestMobs.Event = function(name) if name == "QUEST_LOG_UPDATE" then forwarded = forwarded + 1 end end
     t.boot()
     t.mock:fire("QUEST_LOG_UPDATE")
     t.assert.eq(forwarded, 1, "Other events must still forward")

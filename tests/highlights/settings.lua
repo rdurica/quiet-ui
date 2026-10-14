@@ -96,7 +96,7 @@ end)
 h.test("Misc. shows Highlights below Quests with three unchecked choices on one row", function(t)
     local A = t.assert
     local ns = fixture(t)
-    ns.ShowSetup()
+    ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     local page = ui.pages[6]
     A.ok(ui.tabs[6].label._text == "Misc." and #ui.tabs == 7, "Misc. stays the sixth of seven tabs")
@@ -123,7 +123,7 @@ end)
 h.test("Highlights info text is English and explains Interact and soft targeting", function(t)
     local A = t.assert
     local ns = fixture(t)
-    ns.ShowSetup()
+    ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     local all = tooltip(t, header(ui).help) .. "\n" .. table.concat(texts(ui.pages[6]), "\n")
     A.ok(all:find("Interact With Target", 1, true), "Info must name the Interact With Target binding")
@@ -136,7 +136,7 @@ end)
 h.test("Misc. content fits and setup keeps one height on every tab", function(t)
     local A = t.assert
     local ns = fixture(t)
-    ns.ShowSetup()
+    ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     local page = ui.pages[6]
     for _, key in ipairs({ "herb", "ore", "quest" }) do
@@ -158,7 +158,7 @@ end)
 h.test("Toggling is a draft, Save stores only true keys and applies", function(t)
     local A = t.assert
     local ns, applied = fixture(t)
-    ns.ShowSetup()
+    ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     click(choice(ui, "ore"))
     A.ok(checked(ui, "ore") and not checked(ui, "herb") and not checked(ui, "quest"), "Click paints only Ore")
@@ -182,11 +182,11 @@ h.test("X and Escape discard unsaved highlight changes", function(t)
     local A = t.assert
     local ns, applied = fixture(t)
     QuietUICharDB.highlights = { herb = true }
-    ns.ShowSetup()
+    ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     A.ok(checked(ui, "herb") and not checked(ui, "ore"), "Setup paints stored highlights")
     click(choice(ui, "herb")); click(choice(ui, "ore"))
-    ui:Hide(); ns.ShowSetup()
+    ui:Hide(); ns.Setup.Show()
     A.ok(checked(ui, "herb") and not checked(ui, "ore") and not checked(ui, "quest"), "Closing must discard drafts")
     stored(t, QuietUICharDB.highlights, { herb = true }, "Closing must keep stored highlights")
     A.eq(#applied, 0, "Closing must not apply")
@@ -199,7 +199,7 @@ h.test("Reset default clears highlights and leaves the shared preset unchanged",
     local A = t.assert
     local ns, applied = fixture(t)
     local id = ns.Settings.SavePreset(nil, "Gather", ns.CurrentLayoutRef(), { highlights = { ore = true, quest = true } })
-    ns.Settings.ActivatePreset(id); ns.ShowSetup()
+    ns.Settings.ActivatePreset(id); ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     A.ok(checked(ui, "ore") and checked(ui, "quest"), "Preset highlights must paint")
     click(ui.reset)
@@ -231,7 +231,7 @@ h.test("Presets copy, share and snapshot highlights", function(t)
     ns.Settings.Presets()[id].settings.highlights = { quest = true }
     QuietUICharDB.highlights = nil
     expect(t, false, false, true, "Accessor must read the active preset, not the snapshot")
-    ns.ShowSetup()
+    ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     click(choice(ui, "ore")); click(ui.save)
     stored(t, ns.Settings.Presets()[id].settings.highlights, { ore = true, quest = true }, "Save must update the active preset")

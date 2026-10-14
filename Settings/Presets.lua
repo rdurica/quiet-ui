@@ -160,6 +160,6 @@ function ns.Settings.PresetCommand(name)
     ns.Settings.ActivatePreset(selected)
     if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
     if ns.ApplyAll then ns.ApplyAll() end
-    if ns.RefreshSetup then ns.RefreshSetup() end
+    if ns.Setup then ns.Setup.Refresh() end
     ns.Print('Preset "' .. ns.Settings.Presets()[selected].name .. '" selected.')
 end

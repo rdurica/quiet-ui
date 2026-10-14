@@ -5,14 +5,14 @@ local Q = {}
 ------------------------------------------------------------------------------
 -- Quest notice fixture: `local s = Q.fixture(t.mock, t.ns [, opts])`, inside a test
 -- (mock installed, addon loaded). It resets the quest tracker globals, gives the tracker a size and a
--- fake quest log, then calls ns.ApplyQuestNotice() and lets the first scans settle.
+-- fake quest log, then calls ns.QuestNotice.Apply() and lets the first scans settle.
 --   opts.classic     read the log through the classic globals (C_QuestLog = nil)
 --   opts.disabled    start with Quest updates off (QuietUICharDB.questNotice = false)
 --   opts.unguarded   do not make the Blizzard tracker error when touched
 --   opts.bodyFont    define GameFontHighlightSmall (the notice body font) at size 12
 -- s.log (quests: s.quest(id, count)), s.tracker, s.reads (log counter reads),
--- s.tick(dt) / s.pump(seconds) / s.event(name, ...) drive ns.UpdateQuestNotice and
--- ns.QuestNoticeEvent. s.frame() is the notice frame, s.text() the text it shows now
+-- s.tick(dt) / s.pump(seconds) / s.event(name, ...) drive ns.QuestNotice.Update and
+-- ns.QuestNotice.Event. s.frame() is the notice frame, s.text() the text it shows now
 -- ("" while hidden or faded out), s.has(text) / s.silent() assert on it,
 -- s.reports() counts the "quest notice" errors printed. Geometry of mock frames comes from
 -- their _left/_top/_h/_scale fields and anchors: s.left/top/bottom/scale(frame).
@@ -122,9 +122,9 @@ function Q.fixture(mock, ns, opts)
     end
     if opts.bodyFont then G.GameFontHighlightSmall = s.font("Fonts/default.ttf", 12) end
 
-    function s.tick(dt) ns.UpdateQuestNotice(dt or 0.05) end
+    function s.tick(dt) ns.QuestNotice.Update(dt or 0.05) end
     function s.pump(seconds) for _ = 1, math.ceil((seconds or 0.5) / 0.05) do s.tick(0.05) end end
-    function s.event(name, ...) ns.QuestNoticeEvent(name, ...); s.pump() end
+    function s.event(name, ...) ns.QuestNotice.Event(name, ...); s.pump() end
     function s.change(count)
         s.log[1].objectives[1].text = "Wolves " .. count .. "/8"
         s.event("QUEST_LOG_UPDATE")
@@ -223,7 +223,7 @@ function Q.fixture(mock, ns, opts)
     end
 
     if opts.disabled then QuietUICharDB.questNotice = false end
-    ns.ApplyQuestNotice()
+    ns.QuestNotice.Apply()
     s.pump()
     return s
 end

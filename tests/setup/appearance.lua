@@ -48,7 +48,7 @@ for _, mode in ipairs(modes) do
         local function actionStyle(button)
             return mode.nativeButtons == false and darkControl(button) or nativeAction(button)
         end
-        ns.ShowSetup()
+        ns.Setup.Show()
         local ui = QuietUISetup
         expect(opaque(ui), 'setup has its own opaque dark background independent of SetBackdrop')
         expect(fillBounds(ui, opaque(ui)), 'setup fill stays behind chrome and within window bounds')
@@ -134,7 +134,7 @@ for _, mode in ipairs(modes) do
         ui:Hide(); other:SetFrameLevel(ui.level + 200)
         raisedContent:SetFrameLevel(other.level + 100)
         otherLevel, cardLevel, descendantLevel = other.level, card.level, raisedContent.level
-        ns.ShowSetup()
+        ns.Setup.Show()
         expect(ui.level > other.level, 'reopening raises over later sibling dialogs')
         expect(aboveForeign(ui), 'reopening brings the whole setup fill above later foreign descendant escalation')
         expect(preservedForeign(), 'reopening preserves foreign descendant state')
@@ -149,7 +149,7 @@ for _, mode in ipairs(modes) do
         expect(ns.Settings.ActivePreset() ~= nil, 'cancel deletion preserves preset')
         click(ui.deletePreset); click(dialog.yes)
         expect(not ns.Settings.ActivePreset(), 'confirmed deletion remains immediate')
-        ui.chat.scripts.OnClick(); ui:Hide(); ns.ShowSetup()
+        ui.chat.scripts.OnClick(); ui:Hide(); ns.Setup.Show()
         expect(QuietUICharDB.chat == nil, 'closing discards changed draft')
         local escape = false
         for _, name in ipairs(UISpecialFrames) do if name == 'QuietUISetup' then escape = true end end

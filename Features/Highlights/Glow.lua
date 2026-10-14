@@ -1,16 +1,14 @@
 local _, ns = ...
 
+local Highlights = ns.Highlights
+local S = Highlights.state
+
 local GLOW = "Interface\\AddOns\\QuietUI\\Media\\glow.tga"
 local GLINT = "Interface\\AddOns\\QuietUI\\Media\\glint.tga"
 local SPARK = "Interface\\AddOns\\QuietUI\\Media\\spark.tga"
 -- The soft-target icon floats above the object; the plate gives no world position,
 -- so the glow drops by a fixed offset measured in game.
 local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = -115 }
-local CVARS = { "SoftTargetInteract", "SoftTargetInteractRange", "SoftTargetNameplateInteract",
-    "SoftTargetIconGameObject", "SoftTargetInteractArc", "SoftTargetIconInteract" }
-local WANT = { SoftTargetInteract = "3", SoftTargetInteractRange = "15", SoftTargetNameplateInteract = "1",
-    SoftTargetIconGameObject = "1", SoftTargetInteractArc = "2", SoftTargetIconInteract = "1" }
-local BLOCKED = { party = true, raid = true, pvp = true, arena = true }
 local GLOW_STRENGTH = { herb = 0.72, ore = 0.8, quest = 0.64 }
 local COLORS = {
     herb = { 0.30, 0.74, 0.40 },
@@ -30,103 +28,8 @@ local SPARKS = 11
 
 local root, textures, loops = nil, {}, {}
 local glowTextures = {}
-local targetGUID, anchorToken, hiddenIcon
+local anchorToken, hiddenIcon
 local recheckToken = 0
-local fighting, stopped = false, false
-
-local function Secret(value)
-    return ns.IsSecret and ns.IsSecret(value)
-end
-
-local function InCombat()
-    if fighting then return true end
-    local ok, combat = pcall(InCombatLockdown)
-    return ok and combat == true
-end
-
-local function InBlockedInstance()
-    if type(IsInInstance) ~= "function" then return false end
-    local ok, _, kind = pcall(IsInInstance)
-    return ok and not Secret(kind) and BLOCKED[kind] == true
-end
-
-local function Flags()
-    local flags = type(ns.Settings.Highlights) == "function" and ns.Settings.Highlights()
-    return type(flags) == "table" and flags or {}
-end
-
-local function Active()
-    if stopped then return false end
-    local db = ns.DB and ns.DB()
-    if not (db and db.enabled) then return false end
-    local flags = Flags()
-    if not (flags.herb or flags.ore or flags.quest) then return false end
-    return not InBlockedInstance()
-end
-
--- CVars -------------------------------------------------------------------------------
-
-local function CVarApi()
-    if type(C_CVar) == "table" and type(C_CVar.GetCVar) == "function" and type(C_CVar.SetCVar) == "function" then
-        return C_CVar
-    end
-    ns.Report("highlights", "Console variables are not available on this client.")
-end
-
-local function ReadCVar(api, name)
-    local ok, value = pcall(api.GetCVar, name)
-    if ok and value ~= nil and not Secret(value) then return tostring(value) end
-end
-
-local function WriteCVar(api, name, value)
-    if ReadCVar(api, name) == value then return true end
-    local ok, err = pcall(api.SetCVar, name, value)
-    if not ok then ns.Report("highlights", err) end
-    return ok
-end
-
--- Only a game object needs its nameplate and icon for the glow. Our SoftTargetInteract 3 also
--- picks NPCs, which would get a friendly plate or a name and icon the player never asked for.
-local function Wanted(name, originals)
-    if type(targetGUID) == "string" and targetGUID:find("^GameObject") then return WANT[name] end
-    if name == "SoftTargetNameplateInteract" then return tostring(originals[name]) end
-    if name == "SoftTargetIconInteract" then
-        -- Keep the player's icon only if they already used soft interact themselves.
-        if tostring(originals.SoftTargetInteract) == "0" then return "0" end
-        return tostring(originals[name])
-    end
-    return WANT[name]
-end
-
--- CVars change only out of combat; REGEN_ENABLED calls this again with the current state.
-local function SyncCVars()
-    if InCombat() then return end
-    local api = CVarApi()
-    if not api then return end
-    local db = QuietUIDB
-    if type(db) ~= "table" then return end
-    if Active() then
-        if type(db.highlightCVars) ~= "table" then
-            local saved = {}
-            for _, name in ipairs(CVARS) do saved[name] = ReadCVar(api, name) end
-            if next(saved) == nil then return end
-            db.highlightCVars = saved
-        end
-        -- Only CVars whose original could be read are changed.
-        for _, name in ipairs(CVARS) do
-            -- Older snapshots may predate a newly managed CVar.
-            if db.highlightCVars[name] == nil then db.highlightCVars[name] = ReadCVar(api, name) end
-            if db.highlightCVars[name] ~= nil then WriteCVar(api, name, Wanted(name, db.highlightCVars)) end
-        end
-    elseif type(db.highlightCVars) == "table" then
-        local restored = true
-        for _, name in ipairs(CVARS) do
-            local value = db.highlightCVars[name]
-            if value ~= nil and not WriteCVar(api, name, tostring(value)) then restored = false end
-        end
-        if restored then db.highlightCVars = nil end
-    end
-end
 
 -- Glow --------------------------------------------------------------------------------
 
@@ -269,7 +172,7 @@ local function ShowOn(plate, soft, token, kind)
     ns.Plates.Try(root, "ClearAllPoints")
     ns.Plates.Try(root, "SetPoint", ANCHOR.point, soft, ANCHOR.relative, ANCHOR.x, ANCHOR.y)
     local level = ns.Plates.Try(soft, "GetFrameLevel")
-    if type(level) == "number" and not Secret(level) then
+    if type(level) == "number" and not Highlights.Secret(level) then
         ns.Plates.Try(root, "SetFrameLevel", math.max(0, level - 1))
     end
     for _, tex in ipairs(textures) do ns.Plates.Try(tex, "SetVertexColor", color[1], color[2], color[3]) end
@@ -278,7 +181,7 @@ local function ShowOn(plate, soft, token, kind)
         ns.Plates.Try(tex, "SetVertexColor", color[1] * strength, color[2] * strength, color[3] * strength)
     end
     ns.Plates.Try(root, "SetAlpha", 1)
-    -- Play again only after HideNow stopped the loops, so re-checks do not restart the pulse.
+    -- Play again only after HideNow S.stopped the loops, so re-checks do not restart the pulse.
     local wasShown = ns.Plates.Try(root, "IsShown")
     root:Show()
     if not wasShown then
@@ -292,7 +195,7 @@ end
 local function SameGUID(token, guid)
     if type(token) ~= "string" or type(UnitGUID) ~= "function" then return false end
     local ok, value = pcall(UnitGUID, token)
-    return ok and not Secret(value) and value ~= nil and value == guid
+    return ok and not Highlights.Secret(value) and value ~= nil and value == guid
 end
 
 local function PlateApi()
@@ -317,16 +220,16 @@ local function IconTexture(soft)
     local icon = soft.Icon
     if type(icon) ~= "table" then return end
     local texture = ns.Plates.Try(icon, "GetTexture")
-    if Secret(texture) or type(texture) ~= "string" or texture == "" then
+    if Highlights.Secret(texture) or type(texture) ~= "string" or texture == "" then
         texture = ns.Plates.Try(icon, "GetAtlas")
     end
-    if Secret(texture) or type(texture) ~= "string" or texture == "" then return end
+    if Highlights.Secret(texture) or type(texture) ~= "string" or texture == "" then return end
     return texture:lower()
 end
 
 local function Category(texture)
     if not texture then return end
-    local flags = Flags()
+    local flags = Highlights.Flags()
     for _, kind in ipairs(ORDER) do
         if flags[kind] then
             for _, pattern in ipairs(PATTERNS[kind]) do
@@ -346,8 +249,8 @@ end
 
 -- Reads the icon of plate (or the scanned target plate) and shows or hides the glow.
 local function Evaluate(plate, token)
-    if not Active() or not targetGUID then return HideNow() end
-    if not plate then plate, token = FindPlate(targetGUID) end
+    if not Highlights.Active() or not S.targetGUID then return HideNow() end
+    if not plate then plate, token = FindPlate(S.targetGUID) end
     if not ns.Usable(plate) then return HideNow() end
     local unitFrame = plate.UnitFrame
     local soft = type(unitFrame) == "table" and unitFrame.SoftTargetFrame
@@ -358,7 +261,7 @@ local function Evaluate(plate, token)
     local kind = Category(IconTexture(soft))
     if not kind then
         -- An unchecked category keeps the player's original choice of no icon.
-        if not OwnIcon(targetGUID) then return HideNow() end
+        if not OwnIcon(S.targetGUID) then return HideNow() end
         HideGlow()
         HideIcon(soft.Icon)
         anchorToken = token
@@ -374,7 +277,7 @@ local function ReadTarget(newGUID)
         local ok, value = pcall(UnitGUID, "softinteract")
         if ok then guid = value end
     end
-    if Secret(guid) or type(guid) ~= "string" or guid == "" then return end
+    if Highlights.Secret(guid) or type(guid) ~= "string" or guid == "" then return end
     return guid
 end
 
@@ -382,7 +285,7 @@ end
 -- A newer event or a restore invalidates the older check.
 local function Recheck()
     recheckToken = recheckToken + 1
-    if not targetGUID then return end
+    if not S.targetGUID then return end
     if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
     local token = recheckToken
     pcall(C_Timer.After, 0, function()
@@ -391,9 +294,9 @@ local function Recheck()
 end
 
 local function PlateAdded(token)
-    if not targetGUID or not Active() then return end
+    if not S.targetGUID or not Highlights.Active() then return end
     local api = PlateApi()
-    if not SameGUID(token, targetGUID) then return end
+    if not SameGUID(token, S.targetGUID) then return end
     local get = api and api.GetNamePlateForUnit or GetNamePlateForUnit
     if type(get) ~= "function" then return end
     local ok, plate = pcall(get, token)
@@ -405,27 +308,27 @@ end
 
 -- Public ------------------------------------------------------------------------------
 
-function ns.ApplyHighlights()
-    stopped = false
+function Highlights.Apply()
+    S.stopped = false
     -- No events arrive while off, so the remembered target may be stale.
-    if Active() then targetGUID = ReadTarget() end
-    SyncCVars()
+    if Highlights.Active() then S.targetGUID = ReadTarget() end
+    Highlights.SyncCVars()
     Evaluate()
 end
 
-function ns.RestoreHighlights()
-    stopped = true
-    targetGUID = nil
+function Highlights.Restore()
+    S.stopped = true
+    S.targetGUID = nil
     recheckToken = recheckToken + 1
     HideNow()
-    SyncCVars()
+    Highlights.SyncCVars()
 end
 
-function ns.HighlightsEvent(event, ...)
+function Highlights.Event(event, ...)
     if event == "PLAYER_SOFT_INTERACT_CHANGED" then
         local _, newGUID = ...
-        targetGUID = ReadTarget(newGUID)
-        SyncCVars()
+        S.targetGUID = ReadTarget(newGUID)
+        Highlights.SyncCVars()
         Evaluate()
         Recheck()
     elseif event == "NAME_PLATE_UNIT_ADDED" then
@@ -434,13 +337,13 @@ function ns.HighlightsEvent(event, ...)
         local token = ...
         if anchorToken and token == anchorToken then HideNow() end
     elseif event == "PLAYER_REGEN_DISABLED" then
-        fighting = true
+        S.fighting = true
     elseif event == "PLAYER_REGEN_ENABLED" then
-        fighting = false
-        SyncCVars()
+        S.fighting = false
+        Highlights.SyncCVars()
         Evaluate()
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
-        SyncCVars()
+        Highlights.SyncCVars()
         Evaluate()
     end
 end
@@ -450,14 +353,14 @@ local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN
 local events = {}
 for _, event in ipairs(EVENTS) do
     events[event] = function(...)
-        if type(ns.HighlightsEvent) == "function" then ns.HighlightsEvent(event, ...) end
+        if type(Highlights.Event) == "function" then Highlights.Event(event, ...) end
     end
 end
 
 ns.Feature({
     name = "highlights",
-    apply = function() if type(ns.ApplyHighlights) == "function" then ns.ApplyHighlights() end end,
-    restore = function() if type(ns.RestoreHighlights) == "function" then ns.RestoreHighlights() end end,
+    apply = function() if type(Highlights.Apply) == "function" then Highlights.Apply() end end,
+    restore = function() if type(Highlights.Restore) == "function" then Highlights.Restore() end end,
     events = events,
     -- A CVar restore deferred by combat must finish after /quiet off.
     always = { "PLAYER_REGEN_ENABLED" },

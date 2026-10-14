@@ -53,12 +53,12 @@ local function buttonChat(t)
     end
     local chat = ChatFrame1
     chat:SetSize(1000, 200)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     local parts = {}
     for _, kind in ipairs(PLAIN) do parts[#parts + 1] = link(kind) end
     for _, kind in ipairs(TIPPED) do parts[#parts + 1] = link(kind) end
     chat:AddMessage(table.concat(parts, " "))
-    ns.UpdateChat(1 / 60)
+    ns.Chat.Update(1 / 60)
     return chat, linkButtons(bubbles(chat)[1])
 end
 
@@ -110,9 +110,9 @@ h.test("Chat uses rendered hyperlinks without covering wrapped text with buttons
         return frame
     end
     chat:SetSize(300, 200)
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     chat:AddMessage("wrapped " .. link("item") .. " links")
-    ns.UpdateChat(1 / 60)
+    ns.Chat.Update(1 / 60)
     local bubble = bubbles(chat)[1]
     A.ok(bubble.hyperlinks, "Rendered hyperlink hit testing was not enabled")
     A.eq(#linkButtons(bubble), 0, "Manual hit rectangles still cover rendered text")
@@ -133,7 +133,7 @@ h.test("Chat uses rendered hyperlinks without covering wrapped text with buttons
 
     -- A secret message gets its own bubble: no hit testing, so no tooltip and no click.
     chat:AddMessage(SECRET)
-    ns.UpdateChat(1 / 60)
+    ns.Chat.Update(1 / 60)
     local all = bubbles(chat)
     A.eq(#all, 2, "secret line has its own bubble")
     local secret = all[2]
@@ -144,9 +144,9 @@ h.test("Chat uses rendered hyperlinks without covering wrapped text with buttons
 
     -- Released bubbles are reused; the reused one gets hit testing back.
     chat:Clear()
-    ns.UpdateChat(1 / 60)
+    ns.Chat.Update(1 / 60)
     chat:AddMessage("reused bubble")
-    ns.UpdateChat(1 / 60)
+    ns.Chat.Update(1 / 60)
     local reused
     for _, b in ipairs(bubbles(chat)) do
         if b:IsShown() then reused = b end

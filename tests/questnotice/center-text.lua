@@ -12,7 +12,7 @@ h.test("center quest text is dropped only while notices are on", function(t)
             return function(_, _, messageType, message) shown[#shown + 1] = messageType .. ":" .. tostring(message) end
         end,
     }
-    t.ns.ApplyQuestNotice()
+    t.ns.QuestNotice.Apply()
     local proxy
     for _, f in ipairs(t.mock.frames) do
         if f._events.UI_INFO_MESSAGE and f._scripts.OnEvent then proxy = f end
@@ -34,7 +34,7 @@ h.test("center quest text is dropped only while notices are on", function(t)
     QuietUICharDB.questNotice = false
     send("UI_INFO_MESSAGE", 305, "Wolves slain: 2/8")
     t.assert.ok(saw(305), "Notices off must restore center quest text")
-    t.ns.RestoreQuestNotice()
+    t.ns.QuestNotice.Restore()
     t.assert.ok(registered.UI_INFO_MESSAGE and registered.UI_ERROR_MESSAGE,
         "Disable must return events to the error frame")
     t.assert.ok(not proxy._events.UI_INFO_MESSAGE, "Disable must stop the filter")

@@ -12,8 +12,8 @@ end
 local function booted(t)
     Q.fixture(t.mock, t.ns)
     local calls = {
-        apply = spy(t.ns, "ApplyQuestNotice"), restore = spy(t.ns, "RestoreQuestNotice"),
-        event = spy(t.ns, "QuestNoticeEvent"), tick = spy(t.ns, "UpdateQuestNotice"),
+        apply = spy(t.ns.QuestNotice, "Apply"), restore = spy(t.ns.QuestNotice, "Restore"),
+        event = spy(t.ns.QuestNotice, "Event"), tick = spy(t.ns.QuestNotice, "Update"),
     }
     t.boot()
     return calls

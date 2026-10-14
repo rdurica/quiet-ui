@@ -46,7 +46,7 @@ function chat:GetFont() return "test", 14, "" end
 local function tick(elapsed)
     elapsed = elapsed or 1 / 60
     mock.now = mock.now + elapsed
-    ns.UpdateChat(elapsed)
+    ns.Chat.Update(elapsed)
 end
 
 local function bubbles()
@@ -75,7 +75,7 @@ local function watchRebuilds()
 end
 
 for i = 1, 8 do chat:AddMessage("Line " .. i) end
-ns.StripAllChat()
+ns.Chat.StripAll()
 tick()
 chat:AddMessage("Incoming message")
 tick()

@@ -170,8 +170,8 @@ end
 -- Boot and its delayed retries: the same scan, outside the rescan phase.
 local function BootScan()
     ns.World.RefreshWorld()
-    ns.FindFaders(true)
-    ns.ScanSwing()
+    ns.Faders.Find(true)
+    ns.Bars.ScanSwing()
     ApplyAll()
 end
 
@@ -234,7 +234,7 @@ local function Boot()
     end
     BootScan()
     EnsureGlanceBinding()
-    ns.EnsureMinimap()
+    ns.Setup.EnsureMinimap()
     if first and ns.DB().enabled then
         settleArmed = true
         ArmLayoutSettle()
@@ -242,7 +242,7 @@ local function Boot()
     if first and C_Timer and C_Timer.After then
         C_Timer.After(0.5, function()
             ApplyAll()
-            ns.EnsureMinimap()
+            ns.Setup.EnsureMinimap()
         end)
         C_Timer.After(2, BootScan)
     end
@@ -417,7 +417,7 @@ SlashCmdList["QUIETUI"] = function(msg)
         return
     end
     if msg == "setup" then
-        ns.ShowSetup()
+        ns.Setup.Show()
         return
     end
     if msg == "glance" then

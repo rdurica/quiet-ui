@@ -55,9 +55,9 @@ function H.world(t, opts)
         w.flags = copy(flags)
         QuietUICharDB.highlights = next(w.flags) and w.flags or nil
     end
-    function w.apply() ns.ApplyHighlights() end
-    function w.restore() ns.RestoreHighlights() end
-    function w.event(name, ...) ns.HighlightsEvent(name, ...) end
+    function w.apply() ns.Highlights.Apply() end
+    function w.restore() ns.Highlights.Restore() end
+    function w.event(name, ...) ns.Highlights.Event(name, ...) end
     function w.combat(on) mock.state.combat = on end
     function w.instance(kind)
         mock.state.instance, mock.state.instanceType = kind ~= "none", kind

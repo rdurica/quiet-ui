@@ -12,7 +12,7 @@ local function test(name, fn, opts)
             O("0/10 Kobold Vermin slain") }
         f.WOLF = { { type = 2, leftText = "Timber Wolf" }, Q(LOOT_Q, "Wolves Across the Border"),
             O("4/8 Tough Wolf Meat") }
-        function f.event(name, ...) t.ns.QuestMobsEvent(name, ...) end
+        function f.event(name, ...) t.ns.QuestMobs.Event(name, ...) end
         function f.add(token, spec, o)
             local plate = w.addPlate(token, spec, o)
             f.event("NAME_PLATE_UNIT_ADDED", token)
@@ -28,7 +28,7 @@ local function test(name, fn, opts)
         function f.ready()
             w.objectives[KILL_Q] = { { text = "Kobold Vermin slain: 0/10", type = "monster", finished = false } }
             w.objectives[LOOT_Q] = { { text = "Tough Wolf Meat: 4/8", type = "item", finished = false } }
-            t.ns.ApplyQuestMobs()
+            t.ns.QuestMobs.Apply()
         end
         fn(t, w, f)
         w.check(opts and opts.output)
@@ -102,7 +102,7 @@ test("RestoreQuestMobs hides every icon at once and returns them to UIParent", f
     for _, o in ipairs(w.roots(b)) do roots[#roots + 1] = o end
     f.A.ok(#roots >= 2, "Precondition: two icons attached")
     QuietUIDB.enabled = false
-    t.ns.RestoreQuestMobs()
+    t.ns.QuestMobs.Restore()
     f.A.ok(w.nothingShown(), "An icon is still visible after RestoreQuestMobs")
     for _, o in ipairs(roots) do
         f.A.eq(o._parent, UIParent, "A restored icon was not returned to UIParent")
@@ -118,7 +118,7 @@ test("A recalculation pending at restore time stays without effect", function(t,
     f.add("nameplate1", { lines = f.KOBOLD })
     f.event("QUEST_LOG_UPDATE")
     QuietUIDB.enabled = false
-    t.ns.RestoreQuestMobs()
+    t.ns.QuestMobs.Restore()
     f.nextFrame()
     f.A.ok(w.nothingShown(), "The pending recalculation showed an icon after restore")
 end)
@@ -127,12 +127,12 @@ test("Re-enabling after RestoreQuestMobs evaluates the plates again", function(t
     f.ready()
     local a = f.add("nameplate1", { lines = f.KOBOLD })
     QuietUIDB.enabled = false
-    t.ns.RestoreQuestMobs()
+    t.ns.QuestMobs.Restore()
     -- While off the quest state changed and another mob appeared.
     local b = w.addPlate("nameplate2", { lines = f.WOLF })
     t.mock.units.nameplate1.related = false
     QuietUIDB.enabled = true
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.A.eq(f.kind(a), nil, "A stale icon came back after re-enable")
     f.A.eq(f.kind(b), "loot", "Re-enable did not evaluate the visible plates")
 end)
@@ -142,12 +142,12 @@ test("Unchecking Quest mobs and applying hides all icons at once; checking again
     local a = f.add("nameplate1", { lines = f.KOBOLD })
     local b = f.add("nameplate2", { lines = f.WOLF })
     QuietUICharDB.questMobs = false
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.A.ok(w.nothingShown(), "Icons stayed after Quest mobs was unchecked")
     f.event("QUEST_LOG_UPDATE")
     f.nextFrame()
     f.A.ok(w.nothingShown(), "Icons came back while Quest mobs is unchecked")
     QuietUICharDB.questMobs = nil
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.A.ok(f.kind(a) == "kill" and f.kind(b) == "loot", "Checking Quest mobs again did not show the icons")
 end)

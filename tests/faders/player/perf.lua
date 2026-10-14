@@ -32,7 +32,7 @@ local function setup(t)
     end
     function s.frame(parent) return CreateFrame("Frame", nil, parent or UIParent) end
     s.countParents(PetFrame)
-    function s.step() ns.UpdateSmooth(1 / 60) end
+    function s.step() ns.Faders.UpdateSmooth(1 / 60) end
     return s
 end
 
@@ -93,7 +93,7 @@ h.test("Reparenting the pet under the portrait isolates it and death leaves it v
     s.life = "dead"
     s.step()
     A.ok(unwrap(PlayerFrame._alpha) < 1 and PetFrame._alpha == 1, "Player death must leave the isolated pet visible")
-    t.ns.RestorePlayerFader()
+    t.ns.Faders.RestorePlayer()
     t.ns.RestoreAlpha()
     A.falsy(PetFrame:IsIgnoringParentAlpha(), "Disable must restore original alpha inheritance")
     s.life = "alive"
@@ -108,7 +108,7 @@ h.test("Changing player style takes effect on the next frame", function(t)
     s.InCombat = true
     s.step()
     s.style = "resource"
-    t.ns.UpdateSmooth(0.3)
+    t.ns.Faders.UpdateSmooth(0.3)
     A.ok(unwrap(PlayerFrame._alpha) == 0 and unwrap(PetFrame._alpha) == 0,
         "Changing player style must take effect on the next frame")
     s.style = "classic"

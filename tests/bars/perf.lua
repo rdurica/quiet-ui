@@ -73,11 +73,11 @@ h.test("Swing scan skips debug names on named frames and keeps a found timer", f
     end
     t.mock.now = 50
     local before = uiWalks(t)
-    t.ns.ScanSwing()
+    t.ns.Bars.ScanSwing()
     A.eq(debugs, 1, "Anonymous swing frame was not identified")
     A.eq(namedAsked, 0, "Named frames must not ask for a debug name")
     A.eq(uiWalks(t) - before, 1, "The first scan did not walk UIParent")
-    t.ns.ScanSwing()
+    t.ns.Bars.ScanSwing()
     A.ok(uiWalks(t) - before == 1 and debugs == 1, "A live swing timer was scanned again inside 10s")
 end)
 
@@ -85,11 +85,11 @@ h.test("No swing timer waits 10s before the next UIParent walk", function(t)
     local A = t.assert
     t.mock.now = 100
     local before = uiWalks(t)
-    t.ns.ScanSwing()
+    t.ns.Bars.ScanSwing()
     t.mock.now = 101
-    t.ns.ScanSwing()
+    t.ns.Bars.ScanSwing()
     A.eq(uiWalks(t) - before, 1, "UIParent was walked again inside 10s without a swing timer")
     t.mock.now = 111
-    t.ns.ScanSwing()
+    t.ns.Bars.ScanSwing()
     A.eq(uiWalks(t) - before, 2, "The 10s fallback walk did not run")
 end)

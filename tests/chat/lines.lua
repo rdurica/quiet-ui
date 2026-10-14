@@ -33,7 +33,7 @@ local function bound(t)
     local chat = ChatFrame1
     local container = CreateFrame("Frame", nil, chat)
     local first = container:CreateFontString()
-    t.ns.StripAllChat()
+    t.ns.Chat.StripAll()
     return chat, container, first
 end
 
@@ -71,7 +71,7 @@ end)
 local function shown(t, text)
     local chat = bound(t)
     chat:AddMessage(text)
-    t.ns.UpdateChat(1 / 60)
+    t.ns.Chat.Update(1 / 60)
     return shownTexts(chat)
 end
 
@@ -100,7 +100,7 @@ h.test("Capacity keeps the newest 128 lines in order", function(t)
     -- Scrolled to the oldest retained row, line 1 has been dropped and line 2 is first.
     for _, offset in ipairs({ 0, 1, 50, 127, 300 }) do
         chat.scrollOffset, chat._quietDirty = offset, true
-        t.ns.UpdateChat(1 / 60)
+        t.ns.Chat.Update(1 / 60)
         local want = "line " .. (129 - math.min(offset, 127))
         local texts = shownTexts(chat)
         A.ok(has(texts, want), "Offset " .. offset .. " should show " .. want .. ": " .. table.concat(texts, " / "))

@@ -4,13 +4,13 @@ local h = ...
 -- Counts HideTextures per chat window and Mute of the shared chrome, passing both through.
 local function watchStripping(ns)
     local w = { stripped = {}, chrome = 0 }
-    local hide, mute = ns.HideTextures, ns.Mute
+    local hide, mute = ns.HideTextures, ns.Bars.Mute
     ns.HideTextures = function(target, ...)
         local name = type(target) == "table" and target.GetName and target:GetName()
         if name and name:find("^ChatFrame%d+$") then w.stripped[name] = (w.stripped[name] or 0) + 1 end
         return hide(target, ...)
     end
-    ns.Mute = function(target, ...)
+    ns.Bars.Mute = function(target, ...)
         if target == ChatFrameMenuButton then w.chrome = w.chrome + 1 end
         return mute(target, ...)
     end
@@ -45,7 +45,7 @@ h.test("FCF_SetWindowColor ignores windows outside ChatCount", function(t)
     ChatFrame11 = whisper
     reset(w)
     FCF_SetWindowColor(whisper, 0, 0, 0)
-    A.eq(w.stripped.ChatFrame11, nil, "a window RestoreChat cannot reach was stripped")
+    A.eq(w.stripped.ChatFrame11, nil, "a window Chat.Restore cannot reach was stripped")
 end)
 
 h.test("FCF_DockUpdate strips only windows not yet stripped", function(t)

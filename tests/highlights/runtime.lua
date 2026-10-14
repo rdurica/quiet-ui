@@ -18,12 +18,13 @@ local function setup(t, opts)
     opts = opts or {}
     local ns = t.ns
     local env = { ns = ns, calls = {}, mock = t.mock }
+    local short = { ApplyHighlights = "Apply", RestoreHighlights = "Restore", HighlightsEvent = "Event" }
     for _, key in ipairs({ "ApplyHighlights", "RestoreHighlights", "HighlightsEvent" }) do
-        local original = ns[key]
+        local original = ns.Highlights[short[key]]
         if opts.without then
-            ns[key] = nil
+            ns.Highlights[short[key]] = nil
         else
-            ns[key] = function(...)
+            ns.Highlights[short[key]] = function(...)
                 env.calls[key] = env.calls[key] or {}
                 env.calls[key][#env.calls[key] + 1] = { n = select("#", ...), ... }
                 return original(...)
@@ -173,9 +174,9 @@ end)
 
 h.test("The highlights module is loaded before the runtime boots", function(t)
     local A = t.assert
-    A.type(t.ns.ApplyHighlights, "function")
-    A.type(t.ns.RestoreHighlights, "function")
-    A.type(t.ns.HighlightsEvent, "function")
+    A.type(t.ns.Highlights.Apply, "function")
+    A.type(t.ns.Highlights.Restore, "function")
+    A.type(t.ns.Highlights.Event, "function")
     local env = setup(t)
     t.boot()
     A.ok(env.count("ApplyHighlights") > 0, "boot did not reach the highlights module")

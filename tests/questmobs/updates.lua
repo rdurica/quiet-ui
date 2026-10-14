@@ -12,7 +12,7 @@ local function test(name, fn, opts)
             O("0/10 Kobold Vermin slain") }
         f.WOLF = { { type = 2, leftText = "Timber Wolf" }, Q(LOOT_Q, "Wolves Across the Border"),
             O("4/8 Tough Wolf Meat") }
-        function f.event(name, ...) t.ns.QuestMobsEvent(name, ...) end
+        function f.event(name, ...) t.ns.QuestMobs.Event(name, ...) end
         function f.add(token, spec, o)
             local plate = w.addPlate(token, spec, o)
             f.event("NAME_PLATE_UNIT_ADDED", token)
@@ -28,7 +28,7 @@ local function test(name, fn, opts)
         function f.ready()
             w.objectives[KILL_Q] = { { text = "Kobold Vermin slain: 0/10", type = "monster", finished = false } }
             w.objectives[LOOT_Q] = { { text = "Tough Wolf Meat: 4/8", type = "item", finished = false } }
-            t.ns.ApplyQuestMobs()
+            t.ns.QuestMobs.Apply()
         end
         fn(t, w, f)
         w.check(opts and opts.output)
@@ -125,7 +125,7 @@ test("ApplyQuestMobs evaluates plates already on screen", function(t, w, f)
     w.objectives[LOOT_Q] = { { text = "Tough Wolf Meat: 4/8", type = "item", finished = false } }
     local a = w.addPlate("nameplate1", { lines = f.KOBOLD })
     local b = w.addPlate("nameplate2", { lines = f.WOLF })
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.A.ok(f.kind(a) == "kill" and f.kind(b) == "loot", "ApplyQuestMobs did not evaluate visible plates")
 end)
 
@@ -152,7 +152,7 @@ for _, kind in ipairs({ "party", "raid", "pvp", "arena" }) do
         f.event("ZONE_CHANGED_NEW_AREA")
         f.nextFrame()
         local b = f.add("nameplate2", { lines = f.WOLF })
-        t.ns.ApplyQuestMobs()
+        t.ns.QuestMobs.Apply()
         f.A.eq(f.kind(a), "kill", "The icon disappeared in a " .. kind .. " instance")
         f.A.eq(f.kind(b), "loot", "No icon in a " .. kind .. " instance")
     end)
@@ -165,7 +165,7 @@ test("Glance, Edit Mode and ShowAll do not change the icons", function(t, w, f)
     t.ns.Glancing = function() return true end
     t.ns.World.InEditMode = function() return true end
     t.ns.World.ShowAll = function() return true end
-    t.ns.ApplyQuestMobs()
+    t.ns.QuestMobs.Apply()
     f.event("QUEST_LOG_UPDATE")
     f.nextFrame()
     local c = f.add("nameplate3", { lines = f.WOLF })

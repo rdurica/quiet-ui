@@ -22,7 +22,7 @@ local function setup(t)
     ctx.scans = function() return container._calls.GetChildren or 0 end
     ctx.reset = function() container._calls.GetChildren = 0 end
     ctx.ticks = function(count)
-        for _ = 1, count do ns.FindFaders(false) end
+        for _ = 1, count do ns.Faders.Find(false) end
     end
     ctx.fire = function(event)
         mock:fire(event)
@@ -33,7 +33,7 @@ end
 
 h.test("Ten idle 1 s ticks skip the full party scan", function(t)
     local c = setup(t)
-    c.ns.FindFaders(true)
+    c.ns.Faders.Find(true)
     c.reset()
     c.ticks(10)
     t.assert.eq(c.scans(), 0, "Unchanged party containers were fully scanned")
@@ -41,7 +41,7 @@ end)
 
 h.test("A new raid container child triggers exactly one full scan", function(t)
     local c = setup(t)
-    c.ns.FindFaders(true)
+    c.ns.Faders.Find(true)
     c.ticks(1)
     local added = CreateFrame("Frame", nil, c.container)
     function added:IsIgnoringParentAlpha() return true end
@@ -51,14 +51,14 @@ h.test("A new raid container child triggers exactly one full scan", function(t)
     c.ticks(1)
     t.assert.eq(c.scans(), 1, "The settled signature scanned again")
     c.grouped = true
-    c.ns.UpdateParty(0.3)
+    c.ns.Faders.UpdateParty(0.3)
     c.grouped = false
     t.assert.eq(added._alpha, 0, "The new independent child was not collected by the scan")
 end)
 
 h.test("GROUP_ROSTER_UPDATE scans only while autohide is on", function(t)
     local c = setup(t)
-    c.ns.FindFaders(true)
+    c.ns.Faders.Find(true)
     c.ticks(1)
     c.reset()
     c.fire("GROUP_ROSTER_UPDATE")
@@ -71,7 +71,7 @@ end)
 
 h.test("Turning autohide on scans at the next tick without a signature change", function(t)
     local c = setup(t)
-    c.ns.FindFaders(true)
+    c.ns.Faders.Find(true)
     c.ticks(2)
     QuietUICharDB.autoHideParty = false
     c.ticks(1)

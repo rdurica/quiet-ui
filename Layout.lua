@@ -177,7 +177,7 @@ function ns.ValidatePresetInterface()
     if style ~= CurrentStyle() then
         ns.Settings.ActivatePreset(nil)
         if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
-        if ns.RefreshSetup then ns.RefreshSetup() end
+        if ns.Setup then ns.Setup.Refresh() end
         ns.Print('Preset "' .. preset.name .. '" uses a layout for another interface mode. '
             .. 'Using personal settings instead.')
     end
@@ -417,25 +417,6 @@ local CHROME = {
     flat = { width = 380, side = 16, titleY = -14, textY = -40, buttonY = 16, height = 132 },
 }
 
-local function PortraitChrome(widget)
-    return widget.SetTitle or widget.TitleText or widget.TitleContainer
-        or widget.PortraitContainer or widget.portrait
-end
-
-local function ApplyTitle(widget, text)
-    if widget.SetTitle then
-        local ok = pcall(widget.SetTitle, widget, text)
-        if ok then return end
-    end
-    local title = widget.TitleText
-    if not title and widget.TitleContainer then
-        title = widget.TitleContainer.TitleText
-    end
-    if title and title.SetText then
-        title:SetText(text)
-    end
-end
-
 local function PortraitRegion(widget)
     if widget.PortraitContainer and widget.PortraitContainer.portrait then
         return widget.PortraitContainer.portrait
@@ -489,10 +470,10 @@ end
 local function CreatePrompt()
     local ok, frame = pcall(CreateFrame, "Frame", nil, UIParent, "PortraitFrameTemplate")
     local kind = "flat"
-    if ok and frame and PortraitChrome(frame) then
+    if ok and frame and ns.PortraitChrome(frame) then
         kind = "portrait"
         frame._quietGear = true
-        ApplyTitle(frame, "QuietUI")
+        ns.ApplyTitle(frame, "QuietUI")
         ApplyGearPortrait(frame)
         HideClose(frame)
     else
@@ -518,7 +499,7 @@ local function CreatePrompt()
     frame.text:SetPoint("TOP", 0, metrics.textY)
     frame.text:SetWidth(metrics.width - metrics.side * 2)
     frame.text:SetJustifyH("CENTER")
-    frame.yes = ns.DialogButton(frame, "Add", function()
+    frame.yes = ns.Setup.Button(frame, "Add", function()
         frame:Hide()
         if InCombatLockdown() then
             ns.Print("layout can not change in combat, /reload after combat to try again")
@@ -531,7 +512,7 @@ local function CreatePrompt()
             ns.Report("layout", err)
         end
     end)
-    frame.no = ns.DialogButton(frame, "Not now", function()
+    frame.no = ns.Setup.Button(frame, "Not now", function()
         frame:Hide()
         MarkAnswered()
     end)

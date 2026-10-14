@@ -16,14 +16,14 @@ h.test("Enabling again runs a full party scan without a signature change", funct
     local container = CompactRaidFrameContainer
     for _ = 1, 5 do CreateFrame("Frame", nil, container) end
     local function scans() return container._calls.GetChildren or 0 end
-    ns.FindFaders(true)
-    ns.FindFaders(false)
+    ns.Faders.Find(true)
+    ns.Faders.Find(false)
     QuietUIDB.enabled = false
-    ns.UpdateParty(0)
+    ns.Faders.UpdateParty(0)
     QuietUIDB.enabled = true
     container._calls.GetChildren = 0
-    ns.FindFaders(false)
+    ns.Faders.Find(false)
     t.assert.eq(scans(), 1, "Re-enable ran full party scans")
-    ns.FindFaders(false)
+    ns.Faders.Find(false)
     t.assert.eq(scans(), 1, "Re-enabled autohide kept scanning")
 end)

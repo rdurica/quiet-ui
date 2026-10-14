@@ -128,7 +128,7 @@ h.test("Resource child bars fade independently, skip stable writes and restore",
     local health = CreateFrame("Frame", nil, PersonalResourceDisplayFrame)
     local powerBar = CreateFrame("Frame", nil, PersonalResourceDisplayFrame)
     PersonalResourceDisplayFrame.HealthBarsContainer = health
-    ns.FindFaders(false)
+    ns.Faders.Find(false)
     s.token, s.kind = "RAGE", 1
     for _ = 1, 20 do s.tick() end
     A.ok(same(health._alpha, s.healthValue) and powerBar._alpha == 0,
@@ -155,7 +155,7 @@ h.test("A failing power sample is reported once and never reuses the old secret"
     s.tick()
     UnitPowerType = function() error("Unavailable power type") end
     s.allowReports = true
-    t.ns.UpdateSmooth(1 / 60)
+    t.ns.Faders.UpdateSmooth(1 / 60)
     A.ok(t.mock.printed[1] and t.mock.printed[1]:find("player power", 1, true),
         "Failed sampling must be reported without breaking the update")
     A.falsy(PlayerFrame._quietSecret, "Failed power sampling must not reuse the previous secret result")

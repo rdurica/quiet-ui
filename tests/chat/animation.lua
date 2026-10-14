@@ -67,11 +67,11 @@ local function setup(t, fade, lines, bornAt)
     end
     local read = ns.Settings.ChatFade
     ns.Settings.ChatFade = function() state.fadeReads = state.fadeReads + 1; return read() end
-    ns.StripAllChat()
+    ns.Chat.StripAll()
     local function tick(elapsed)
         elapsed = elapsed or 1 / 60
         mock.now = mock.now + elapsed
-        ns.UpdateChat(elapsed)
+        ns.Chat.Update(elapsed)
     end
     return chat, state, tick
 end
@@ -234,7 +234,7 @@ h.test("Hidden chat stops animating and reopened or restored chat shows its stac
     chat:Show()
     tick()
     A.ok(row(chat, "Another incoming message"), "Reopened chat must rebuild its active message stack")
-    t.ns.RestoreChat()
+    t.ns.Chat.Restore()
     tick()
     A.ok(row(chat, "Another incoming message"), "Restore/reapply must not animate stale released bubbles")
 end)

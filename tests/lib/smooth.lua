@@ -57,8 +57,8 @@ function S.build(t, h)
     -- A resource bar without child bars: the container itself takes the power alpha.
     PersonalResourceDisplayFrame.HealthBarsContainer = nil
     PersonalResourceDisplayFrame._children = {}
-    ns.FindFaders(false)
-    function s.tick() ns.UpdateSmooth(1 / 60) end
+    ns.Faders.Find(false)
+    function s.tick() ns.Faders.UpdateSmooth(1 / 60) end
     function s.reset()
         for k in pairs(c) do c[k] = 0 end
         for _, f in ipairs({ PlayerFrame, PetFrame, BuffFrame, PersonalResourceDisplayFrame }) do

@@ -33,10 +33,10 @@ local function setup(t)
     ns.World.InCombat = function() return s.combat == true end
     ns.World.InForcedInstance = function() return s.instance == true end
     ns.Hit = function() return false end
-    ns.FindFaders(false)
+    ns.Faders.Find(false)
     function s.writes() return mock.calls.SetAlpha or 0 end
     function s.reset() s.reads, s.indicatorChecks, s.base = 0, 0, s.writes() end
-    function s.update(elapsed) ns.UpdateParty(elapsed) end
+    function s.update(elapsed) ns.Faders.UpdateParty(elapsed) end
     s.reset()
     return s
 end

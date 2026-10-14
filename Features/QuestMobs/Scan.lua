@@ -1,99 +1,9 @@
 local _, ns = ...
 
--- A small icon left of an attackable quest mob's nameplate: an exclamation mark for a mob
--- to kill, a pouch for a mob that drops a quest item. Events only, no per-frame update.
-local ICONS = {
-    kill = "Interface\\AddOns\\QuietUI\\Media\\quest-kill.tga",
-    loot = "Interface\\AddOns\\QuietUI\\Media\\quest-loot.tga",
-}
--- The pouch reads smaller than the exclamation at the same size, so its texture overhangs the frame.
-local SCALE = { kill = 1, loot = 1.12 }
+local QuestMobs = ns.QuestMobs
+local S = QuestMobs.state
+
 local LINE_TITLE, LINE_OBJECTIVE = 17, 8
-local GAP, MIN_SIZE, MAX_SIZE = 6, 14, 24
-
-local pool = {}
-local icons = {} -- unit token -> icon frame on its plate
-local pending, generation = false, 0
-local stopped = false
-local broken = false -- frames cannot be destroyed, so stop creating after a failure
-
-local function True(value)
-    return not ns.IsSecret(value) and value == true
-end
-
-local function Active()
-    if stopped then return false end
-    local db = ns.DB and ns.DB()
-    if not (db and db.enabled) then return false end
-    -- The setting accessor lives in Setup.lua; missing means on.
-    if type(ns.Settings.QuestMobs) == "function" then return ns.Settings.QuestMobs() ~= false end
-    return true
-end
-
--- Icons -------------------------------------------------------------------------------
-
-local function Acquire()
-    local icon = table.remove(pool)
-    if icon then return icon end
-    if broken or type(CreateFrame) ~= "function" then return end
-    local ok, frame = pcall(CreateFrame, "Frame", nil, UIParent)
-    if not ok or type(frame) ~= "table" then
-        broken = true
-        ns.Report("quest mobs frame", frame)
-        return
-    end
-    ns.Plates.Try(frame, "EnableMouse", false)
-    local tex = ns.Plates.Try(frame, "CreateTexture", nil, "ARTWORK")
-    if type(tex) ~= "table" then
-        broken = true
-        frame:Hide()
-        ns.Report("quest mobs texture", "Textures are not available on this client.")
-        return
-    end
-    ns.Plates.Try(tex, "SetPoint", "CENTER", frame, "CENTER")
-    frame.icon = tex
-    frame:Hide()
-    return frame
-end
-
-local function Release(token)
-    local icon = icons[token]
-    if not icon then return end
-    icons[token] = nil
-    icon:Hide()
-    ns.Plates.Try(icon, "ClearAllPoints")
-    ns.Plates.Try(icon, "SetParent", UIParent)
-    pool[#pool + 1] = icon
-end
-
-local function ReleaseAll()
-    for token in pairs(icons) do Release(token) end
-end
-
-local function Show(token, plate, kind)
-    local icon = icons[token]
-    if not icon then
-        icon = Acquire()
-        if not icon then return end
-        icons[token] = icon
-    end
-    local unitFrame = plate.UnitFrame
-    local bar = type(unitFrame) == "table" and (unitFrame.healthBar or unitFrame.HealthBar)
-    local anchor = type(bar) == "table" and bar or unitFrame
-    if type(anchor) ~= "table" or not ns.Usable(anchor) then anchor = plate end
-    local height = ns.Plates.Try(anchor, "GetHeight")
-    local size = MIN_SIZE
-    if type(height) == "number" and not ns.IsSecret(height) and height > 0 then
-        size = math.min(MAX_SIZE, math.max(MIN_SIZE, height))
-    end
-    ns.Plates.Try(icon, "SetParent", plate)
-    ns.Plates.Try(icon, "ClearAllPoints")
-    ns.Plates.Try(icon, "SetPoint", "RIGHT", anchor, "LEFT", -GAP, 0)
-    ns.Plates.Try(icon, "SetSize", size, size)
-    ns.Plates.Try(icon.icon, "SetSize", size * SCALE[kind], size * SCALE[kind])
-    ns.Plates.Try(icon.icon, "SetTexture", ICONS[kind])
-    icon:Show()
-end
 
 -- Quest data --------------------------------------------------------------------------
 
@@ -118,7 +28,7 @@ local function Objectives(questID, cache)
         list = {}
         for _, o in ipairs(raw) do
             if type(o) == "table" and type(o.text) == "string" and not ns.IsSecret(o.text) then
-                list[#list + 1] = { text = Normalize(o.text), kind = not ns.IsSecret(o.type) and o.type or nil, finished = True(o.finished) }
+                list[#list + 1] = { text = Normalize(o.text), kind = not ns.IsSecret(o.type) and o.type or nil, finished = QuestMobs.True(o.finished) }
             end
         end
     end
@@ -167,14 +77,14 @@ end
 local function Kind(token, cache)
     if type(UnitCanAttack) ~= "function" then return end
     local ok, attack = pcall(UnitCanAttack, "player", token)
-    if not ok or not True(attack) then return end
+    if not ok or not QuestMobs.True(attack) then return end
     local isRelated = type(C_QuestLog) == "table" and C_QuestLog.UnitIsRelatedToActiveQuest
     if type(isRelated) ~= "function" then
         ns.Report("quest mobs relations", "Quest relations are not available on this client.")
         return
     end
     local okRelated, related = pcall(isRelated, token)
-    if not okRelated or not True(related) then return end
+    if not okRelated or not QuestMobs.True(related) then return end
     return KindFromTooltip(token, cache)
 end
 
@@ -182,13 +92,13 @@ end
 
 local function Evaluate(token, plate, cache)
     local kind = Kind(token, cache)
-    if kind then Show(token, plate, kind) else Release(token) end
+    if kind then QuestMobs.Show(token, plate, kind) else QuestMobs.Release(token) end
 end
 
 local function PlateAdded(token)
     if type(token) ~= "string" then return end
-    Release(token)
-    if not Active() then return end
+    QuestMobs.Release(token)
+    if not QuestMobs.Active() then return end
     local api = type(C_NamePlate) == "table" and C_NamePlate.GetNamePlateForUnit or GetNamePlateForUnit
     if type(api) ~= "function" then
         ns.Report("quest mobs nameplates", "Nameplates are not available on this client.")
@@ -199,11 +109,11 @@ local function PlateAdded(token)
 end
 
 local function Recalculate()
-    if not Active() then return ReleaseAll() end
+    if not QuestMobs.Active() then return QuestMobs.ReleaseAll() end
     local api = type(C_NamePlate) == "table" and C_NamePlate.GetNamePlates
     if type(api) ~= "function" then
         ns.Report("quest mobs nameplates", "Nameplates are not available on this client.")
-        return ReleaseAll()
+        return QuestMobs.ReleaseAll()
     end
     local ok, plates = pcall(api)
     local seen, cache = {}, {}
@@ -218,49 +128,49 @@ local function Recalculate()
             end
         end
     end
-    for token in pairs(icons) do
-        if not seen[token] then Release(token) end
+    for token in pairs(S.icons) do
+        if not seen[token] then QuestMobs.Release(token) end
     end
 end
 
 -- Quest log events often come in bursts; fold them into one recalculation next frame.
 local function Schedule()
-    if pending then return end
+    if S.pending then return end
     if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return Recalculate() end
-    pending = true
-    local token = generation
+    S.pending = true
+    local token = S.generation
     local ok = pcall(C_Timer.After, 0, function()
-        if token ~= generation then return end
-        pending = false
+        if token ~= S.generation then return end
+        S.pending = false
         Recalculate()
     end)
     if not ok then
-        pending = false
+        S.pending = false
         Recalculate()
     end
 end
 
 -- Public ------------------------------------------------------------------------------
 
-function ns.ApplyQuestMobs()
-    stopped = false
-    generation = generation + 1
-    pending = false
+function QuestMobs.Apply()
+    S.stopped = false
+    S.generation = S.generation + 1
+    S.pending = false
     Recalculate()
 end
 
-function ns.RestoreQuestMobs()
-    stopped = true
-    generation = generation + 1
-    pending = false
-    ReleaseAll()
+function QuestMobs.Restore()
+    S.stopped = true
+    S.generation = S.generation + 1
+    S.pending = false
+    QuestMobs.ReleaseAll()
 end
 
-function ns.QuestMobsEvent(event, ...)
+function QuestMobs.Event(event, ...)
     if event == "NAME_PLATE_UNIT_ADDED" then
         PlateAdded((...))
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
-        Release((...))
+        QuestMobs.Release((...))
     elseif event == "QUEST_LOG_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
         Schedule()
     elseif event == "UNIT_QUEST_LOG_CHANGED" then
@@ -273,13 +183,13 @@ local EVENTS = { "PLAYER_ENTERING_WORLD", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_U
 local events = {}
 for _, event in ipairs(EVENTS) do
     events[event] = function(...)
-        if type(ns.QuestMobsEvent) == "function" then ns.QuestMobsEvent(event, ...) end
+        if type(QuestMobs.Event) == "function" then QuestMobs.Event(event, ...) end
     end
 end
 
 ns.Feature({
     name = "quest mobs",
-    apply = function() if type(ns.ApplyQuestMobs) == "function" then ns.ApplyQuestMobs() end end,
-    restore = function() if type(ns.RestoreQuestMobs) == "function" then ns.RestoreQuestMobs() end end,
+    apply = function() if type(QuestMobs.Apply) == "function" then QuestMobs.Apply() end end,
+    restore = function() if type(QuestMobs.Restore) == "function" then QuestMobs.Restore() end end,
     events = events,
 })

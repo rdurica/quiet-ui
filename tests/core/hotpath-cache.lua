@@ -21,8 +21,8 @@ h.test("Quest catcher keeps strata and level writes out of a stable tracker", fu
     local A, ns = t.assert, t.ns
     local made = countLayoutWrites()
     t.boot()
-    ns.FindFaders(false)
-    for _ = 1, 60 do ns.UpdateFaders(0.016) end
+    ns.Faders.Find(false)
+    for _ = 1, 60 do ns.Faders.Update(0.016) end
     local catcher
     for _, entry in ipairs(made) do
         local point = entry.frame._points[1]
@@ -34,7 +34,7 @@ h.test("Quest catcher keeps strata and level writes out of a stable tracker", fu
     A.ok(catcher.level <= 1, "stable tracker repeated SetFrameLevel: " .. catcher.level)
     local level = catcher.level
     ObjectiveTrackerFrame:SetFrameLevel(9)
-    ns.UpdateFaders(0.016)
+    ns.Faders.Update(0.016)
     A.eq(catcher.level, level + 1, "changed tracker level reaches the catcher once")
     A.eq(catcher.frame:GetFrameLevel(), 8, "catcher sits one level under the tracker")
 end)
@@ -45,7 +45,7 @@ local function bars(t)
     MultiBarBottomLeft:SetParent(MainMenuBar)
     return function()
         t.ns.NextFadeTick()
-        t.ns.UpdateBars(false, 1, true)
+        t.ns.Bars.Update(false, 1, true)
     end
 end
 
@@ -63,7 +63,7 @@ h.test("Stable bars skip the owner ancestry pass after the first Collect", funct
         return realPairs(tbl)
     end
     local ok, err = pcall(function()
-        ns.ForgetBarButtons()
+        ns.Bars.ForgetButtons()
         tick()
         A.ok(ownerWalks > 0, "the spy must see the first Collect pass")
         ownerWalks = 0
@@ -77,18 +77,18 @@ end)
 h.test("ForgetBarButtons recomputes hosting; a bar nested in MainMenuBar still fades alone", function(t)
     local A, ns = t.assert, t.ns
     local tick = bars(t)
-    ns.ForgetBarButtons()
+    ns.Bars.ForgetButtons()
     tick()
     A.alpha(MainMenuBar, 1, "hosting MainMenuBar stays opaque")
     A.alpha(MultiBarBottomLeft, 0, "nested bar fades")
     A.alpha(MultiBarRight, 0, "standalone bar fades")
     -- Raw reparent bypasses the SetParent hook; only ForgetBarButtons may refresh the maps.
     MultiBarBottomLeft._parent = UIParent
-    ns.ForgetBarButtons()
+    ns.Bars.ForgetButtons()
     tick()
     A.alpha(MainMenuBar, 0, "MainMenuBar kept stale hosting after ForgetBarButtons")
     MultiBarBottomLeft._parent = MainMenuBar
-    ns.ForgetBarButtons()
+    ns.Bars.ForgetButtons()
     MultiBarBottomLeft:SetAlpha(1)
     MultiBarBottomLeft._quietAlpha = nil
     tick()
