@@ -33,8 +33,6 @@
 -- loader (tests/lib/addon.lua) reads QuietUI.toc.
 --
 -- Scripts in tests/measure/ are not run here; run them directly (e.g. lua tests/measure/performance.lua --measure).
--- A leftover runner below still executes any tests/*.lua other than run.lua as a legacy
--- subprocess (exit code 0 and no output line starting with FAIL); none exist now.
 
 local print, tostring, ipairs, pairs, pcall = print, tostring, ipairs, pairs, pcall
 local realIO, realOS = io, os
@@ -50,7 +48,6 @@ end
 
 local script = arg and arg[0] or "tests/run.lua"
 local testsDir = script:match("^(.*)/[^/]*$") or "."
-local luaBin = (arg and arg[-1]) or "lua"
 local root = capture("cd " .. shq(testsDir .. "/..") .. " && pwd"):gsub("%s+$", "")
 if root == "" then root = testsDir .. "/.." end
 testsDir = root .. "/tests"
@@ -169,33 +166,6 @@ for _, path in ipairs(areaFiles) do
                 record(ok, full, e)
             end
         end
-    end
-end
-
-------------------------------------------------------------------------------
--- Legacy scripts
-------------------------------------------------------------------------------
-local legacy = lines("find " .. shq(testsDir) .. " -maxdepth 1 -name '*.lua' -not -name 'run.lua'")
-for _, path in ipairs(legacy) do
-    local name = path:match("([^/]*)$")
-    if matches((name:gsub("%.lua$", "")), name) then
-        matched = matched + 1
-        local cmd = "cd " .. shq(root) .. " && " .. shq(luaBin) .. " " .. shq(path) .. " " .. shq(root)
-            .. " 2>&1; echo \"__EXIT:$?\""
-        local out = capture(cmd)
-        local code = tonumber(out:match("__EXIT:(%d+)%s*$"))
-        out = out:gsub("__EXIT:%d+%s*$", "")
-        local bad = {}
-        for line in out:gmatch("[^\r\n]+") do
-            if line:find("^FAIL") then bad[#bad + 1] = line end
-        end
-        local ok = code == 0 and #bad == 0
-        local detail
-        if not ok then
-            if #bad > 0 then detail = table.concat(bad, "\n")
-            else detail = "exit code " .. tostring(code) .. "\n" .. out:sub(-1500) end
-        end
-        record(ok, "legacy/" .. name, detail)
     end
 end
 
