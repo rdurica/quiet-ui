@@ -29,35 +29,28 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 - No secure snippets. Do not touch `ChatFrame_OpenChat`.
 - `PlayerFrame` and `PetFrame` only through alpha, per `docs/features/player.md`. TargetFrame may only be faded through alpha for Require a living target. Party and raid frames may only be faded through alpha for the optional autohide rule in `docs/features/visible.md`. Do not hide the minimap, vehicle / extra action / zone ability, or the LFG eye (`QueueStatus`, `LFGEye`).
 - Blizzard overwrites alpha. Hold the wanted value with a `SetAlpha` hook and the `_quietApplying` flag so the hook does not loop.
-- Disabling must restore saved alpha and textures (`RestoreAll`). Wire new behavior into both `ApplyAll` and `RestoreAll`.
+- Disabling must restore saved alpha and textures (`RestoreAll`). Give new behavior both `apply` and `restore` in its feature spec, so `ApplyAll` and `RestoreAll` cover it.
 
 ## Code
 
 - Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key. Do not add libraries.
-  - `Core.lua`: `DB`, `Print`, `Report`, `Run`, `Flat`, `Backdropped`, alpha hooks, fading, texture hiding, restore.
-  - `Presets.lua`: shared preset CRUD, effective settings, and personal snapshots.
-  - `Settings.lua`: `CharDB` and the settings getters (`Pinned`, `PlayerStyle`, `GroupAuras`, `AlwaysShowDebuffs`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`, and the rest).
-  - `Frames.lua`: bar / bag / spared classification, `Mute`.
-  - `Bars.lua`: action bars, `ShowAll`, and `BarTarget`.
-  - `Faders.lua`: XP bar, cooldown manager, damage meter, player frame, pet frame, quest tracker, buffs, and the range gradient.
-  - `QuestNotice.lua`: temporary quest snapshots, acceptance/progress/completion notices, and their bounded queue.
-  - `Highlights.lua`: soft-interact glow for herbs, ore, and interact objects, and the soft-target CVars it sets and restores.
-  - `QuestMobs.lua`: the quest icon left of an attackable quest mob's nameplate.
-  - `Menu.lua`: the bag button and the micro menu fade.
-  - `Chat.lua`: chat chrome, line bubbles, and the input box.
-  - `LayoutString.lua`: only the Edit Mode export string. Update it by pasting a new export.
-  - `Layout.lua`: asks to add or update the `QuietUI` Edit Mode layout from that string.
-  - `Setup.lua`: the `/quiet setup` window.
-  - `QuietUI.lua`: `ApplyAll`, `RestoreAll`, events, `OnUpdate`, `/quiet`.
-- Call other files through `ns` at run time, not through locals captured at load, so load order only matters for `QuietUI.lua` being last.
+- Folders, in load order. One responsibility per file, at most 400 lines (checked by `tests/core/structure.lua`, together with cross-file references and stray globals).
+  - `Core/`: helpers every file uses (`DB`, `Print`, `Report`, `Run`, `Usable`, `IsSecret`, `Flat`, `Backdropped`), alpha hooks, fading, hover catchers, nameplate helpers, texture hiding, `RestoreAlpha`, world state (`ns.World`), the profiler, and the feature registry (`Feature.lua`).
+  - `Settings/`: `ns.Settings`: `CharDB` store, the getters (`Pinned`, `PlayerStyle`, `GroupAuras`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`, and the rest), presets with personal snapshots, and migrations.
+  - `Features/<Feature>/`: one folder per feature, one table on `ns` (`ns.Bars`, `ns.Faders`, `ns.Chat`, `ns.Menu`, `ns.QuestNotice`, `ns.Highlights`, `ns.QuestMobs`, `ns.Glance`). Bars: action bars, ownership, `ShowAll`, `BarTarget`. Faders: XP bar, cooldown manager, damage meter, player / pet / party frames, quest tracker, buffs, range gradient. Chat: chrome, line bubbles, input box. Menu: bag button and micro menu fade. QuestNotice: quest snapshots, notices and their bounded queue. Highlights: soft-interact glow and the soft-target CVars it sets and restores. QuestMobs: the quest icon left of an attackable quest mob's nameplate. Glance: the Glance key.
+  - `Setup/`: `ns.Setup`, the `/quiet setup` window: window, widgets, draft, paint, minimap button, and one file per tab in `Pages/`.
+  - `Layout/`: `ns.Layout`, the `QuietUI` Edit Mode layout: layouts, preview, prompt, settle. `String.lua` holds only the Edit Mode export string; update it by pasting a new export.
+  - `QuietUI.lua`: last file. Boot, `ApplyAll`, `RestoreAll`, `OnUpdate` scheduler, `/quiet`. It walks the registry and names no feature.
+- Namespaces: each feature owns one table on `ns` holding its public functions and the ones shared between its own files. A file may capture a feature table in a local (`local Chat = ns.Chat`), never a function of another file; call through the table at run time. State shared inside a feature lives on its private `<Feature>.state`; other features never read it. A helper used by one file stays `local`. Core helpers stay on `ns`.
+- Feature registry (`Core/Feature.lua`): `ns.Feature{ name, enabled, apply, restore, events, always, fade, frame, tick, rescan, hooks }`. `ApplyAll` calls `apply` in registration order, `RestoreAll` calls `restore` in reverse, `OnUpdate` calls `fade`, `frame`, `tick` and `rescan`, and the registry owns the event frame. A failing callback is reported once and the others continue.
+- A new feature is a folder under `Features/` that calls `ns.Feature` in its last file, plus `.toc` lines, a `docs/features/` section and `tests/<area>/`.
 - Comments in English, short, only where the reason is not visible from the code.
 
 ## Tests
 
-- `lua tests/run.lua [filter]` runs every test; the filter matches area or script names. Exit code 0 means all passed.
+- `lua tests/run.lua [filter]` runs every test; the filter matches area or file names. Exit code 0 means all passed. It includes the structure check (`tests/core/structure.lua`).
 - New tests go in `tests/<area>/` and use only the public `ns.*`, never internals or production file names.
-- A legacy script in `tests/*.lua` is converted to an area test when its area changes.
-- `--measure` is a direct script run, for example `lua tests/performance.lua . --measure`.
+- `tests/measure/` holds direct scripts, not run by `run.lua`, for example `lua tests/measure/performance.lua --measure`.
 
 ## Agent skills
 

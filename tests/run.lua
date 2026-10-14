@@ -1,7 +1,6 @@
 -- Test runner:  lua tests/run.lua [filter]      (works from any cwd; Lua 5.1-compatible syntax)
 --
--- filter: substring of "area/file" (e.g. "core/loader"), of a legacy script name
--- ("review"), or of a test name. No filter runs everything. A filter that matches
+-- filter: substring of "area/file" (e.g. "core/loader") or of a test name. No filter runs everything. A filter that matches
 -- nothing prints a message and exits 1. Exit code is 1 when any test fails.
 --
 -- NEW TESTS live in tests/<area>/**.lua (any subdirectory except tests/lib and tests/measure, whose scripts run directly with --measure). The file is
@@ -33,9 +32,9 @@
 -- New tests must not call loadfile/dofile and must not name production files; only the
 -- loader (tests/lib/addon.lua) reads QuietUI.toc.
 --
--- LEGACY scripts tests/*.lua (except run.lua) run as `lua <script> <root>` subprocesses
--- with cwd at the addon root. Pass = exit code 0 and no output line starting with FAIL.
--- Legacy performance.lua / chat-animation.lua run in assertion mode (no --measure).
+-- Scripts in tests/measure/ are not run here; run them directly (e.g. lua tests/measure/performance.lua --measure).
+-- A leftover runner below still executes any tests/*.lua other than run.lua as a legacy
+-- subprocess (exit code 0 and no output line starting with FAIL); none exist now.
 
 local print, tostring, ipairs, pairs, pcall = print, tostring, ipairs, pairs, pcall
 local realIO, realOS = io, os
