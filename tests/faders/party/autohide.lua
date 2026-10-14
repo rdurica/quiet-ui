@@ -56,14 +56,15 @@ h.test("Party autohide keeps combat, instance and explicit reveal priorities", f
         "Hover over a hidden block must reveal all members immediately")
     catchers[1].hot = false
     for _, trigger in ipairs({ "InCombat", "InForcedInstance", "Glancing", "InEditMode" }) do
-        local owner = trigger == "Glancing" and ns or ns.World
+        local owner = trigger == "Glancing" and ns.Glance or ns.World
+        local field = trigger == "Glancing" and "Active" or trigger
         ns.Faders.UpdateParty(1)
         A.eq(PartyFrame._alpha, 0)
-        owner[trigger] = function() return true end
+        owner[field] = function() return true end
         ns.Faders.UpdateParty(0)
         A.ok(PartyFrame._alpha == 1 and CompactPartyFrameContainer._alpha == 1,
             trigger .. " must reveal immediately")
-        owner[trigger] = function() return false end
+        owner[field] = function() return false end
     end
     ns.Faders.UpdateParty(1)
     PartyFrame:SetAlpha(1)
@@ -148,11 +149,11 @@ h.test("Party selection highlights and independent indicators fade with their bl
     A.ok(health._alpha == 0.5 and not health._quietAlphaHook, "Ordinary children must inherit container alpha")
     highlight:SetAlpha(1)
     A.eq(highlight._alpha, 0, "A Blizzard selection update must not reveal the hidden highlight")
-    ns.Glancing = function() return true end
+    ns.Glance.Active = function() return true end
     ns.Faders.UpdateParty(0)
     A.ok(highlight._alpha == 1 and ready._alpha == 1 and icon._alpha == 1,
         "Glance must restore independent indicators")
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     ns.Faders.UpdateParty(1)
     ns.World.InCombat = function() return true end
     ns.Faders.UpdateParty(0)

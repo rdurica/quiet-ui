@@ -9,12 +9,12 @@ local function fixture(t)
     QuietUIDB = {}; QuietUICharDB = { chatFade = 20 }
     local rec = {}
     ns.ApplyAll = function() end
-    ns.CurrentLayoutRef = function() return { layoutName = "Raid", layoutType = 1 } end
-    ns.LayoutChoices = function() return { { name = "Other", ref = { layoutName = "Other", layoutType = 1 } } } end
-    ns.PreviewLayout = function(ref) rec.preview = ref.layoutName end
-    ns.CommitLayoutPreview = function() rec.committed = true; rec.preview = nil end
-    ns.CancelLayoutPreview = function() rec.cancelled = true; rec.preview = nil end
-    rec.id = ns.Settings.SavePreset(nil, "Healer", ns.CurrentLayoutRef(), { chat = false, chatFade = 0, groupAuras = false,
+    ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
+    ns.Layout.Choices = function() return { { name = "Other", ref = { layoutName = "Other", layoutType = 1 } } } end
+    ns.Layout.Preview = function(ref) rec.preview = ref.layoutName end
+    ns.Layout.CommitPreview = function() rec.committed = true; rec.preview = nil end
+    ns.Layout.CancelPreview = function() rec.cancelled = true; rec.preview = nil end
+    rec.id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { chat = false, chatFade = 0, groupAuras = false,
         player = "resource", requireLivingTarget = true, visible = { bars = true, swing = true },
         groups = { ["1"] = 2 }, hostile = { ["1"] = true }, friendly = { ["2"] = true },
         range = { yards = "spell", kind = "friendly", spell = "Heal" } })

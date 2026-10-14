@@ -162,7 +162,7 @@ test("Glance, Edit Mode and ShowAll do not change the icons", function(t, w, f)
     f.ready()
     local a = f.add("nameplate1", { lines = f.KOBOLD })
     local b = f.add("nameplate2", { related = false, lines = f.KOBOLD })
-    t.ns.Glancing = function() return true end
+    t.ns.Glance.Active = function() return true end
     t.ns.World.InEditMode = function() return true end
     t.ns.World.ShowAll = function() return true end
     t.ns.QuestMobs.Apply()

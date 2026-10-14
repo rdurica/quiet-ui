@@ -29,7 +29,7 @@ local function setup(t)
     QuietUICharDB.autoHideParty = true
     ns.World.InGroup = function() return s.grouped end
     ns.World.InEditMode = function() return s.editing == true end
-    ns.Glancing = function() return s.glance == true end
+    ns.Glance.Active = function() return s.glance == true end
     ns.World.InCombat = function() return s.combat == true end
     ns.World.InForcedInstance = function() return s.instance == true end
     ns.Hit = function() return false end

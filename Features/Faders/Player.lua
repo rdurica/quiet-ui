@@ -4,7 +4,7 @@ local Faders = ns.Faders
 local state = Faders.state
 
 local function DeadTargetBlocked()
-    if not ns.Settings.RequireLivingTarget() or ns.World.InEditMode() or ns.Glancing() then return false end
+    if not ns.Settings.RequireLivingTarget() or ns.World.InEditMode() or ns.Glance.Active() then return false end
     local fn = type(UnitIsDeadOrGhost) == "function" and UnitIsDeadOrGhost
         or (type(UnitIsDead) == "function" and UnitIsDead)
     if not fn then return false end
@@ -18,7 +18,7 @@ local function DeadTargetBlocked()
 end
 
 local function PlayerDeathBlocked()
-    if ns.World.InEditMode() or ns.Glancing() then return false end
+    if ns.World.InEditMode() or ns.Glance.Active() then return false end
     if type(UnitIsDeadOrGhost) ~= "function" then return false end
     local ok, dead = pcall(UnitIsDeadOrGhost, "player")
     if not ok then ns.Report("player life", dead); return false end
@@ -41,7 +41,7 @@ function Faders.PlayerShouldShow(blocked)
     if blocked == nil then blocked = DeadTargetBlocked() end
     if blocked then return false end
     if ReadPlayerStyle() ~= "classic" then return false end
-    return ns.Glancing()
+    return ns.Glance.Active()
         or ns.World.InCombat()
         or ns.World.InForcedInstance()
         or ns.World.InGroup()

@@ -55,7 +55,7 @@ for _, mode in ipairs(modes) do
         ns.Setup.Show()
         local ui = QuietUISetup
         -- Prompt must not mutate layouts/hash simply by appearing or hiding.
-        ns.EnsureLayout()
+        ns.Layout.Ensure()
         local prompt
         for _, object in ipairs(objects) do
             if object.parent == UIParent and object.yes and object.no then prompt = object end
@@ -90,7 +90,7 @@ for _, mode in ipairs(modes) do
             local addNs, addObjects, addState = scenario(t, mode)
             local _, info = addState()
             if update then info.layouts[2] = { layoutName = 'QuietUI', layoutType = 1 } end
-            addNs.EnsureLayout()
+            addNs.Layout.Ensure()
             local addPrompt
             for _, object in ipairs(addObjects) do if object.yes and object.no then addPrompt = object end end
             t.assert.ok(addPrompt, 'Add/Update prompt fixture did not open')

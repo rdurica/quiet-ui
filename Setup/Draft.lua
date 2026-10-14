@@ -209,15 +209,15 @@ function Setup.Write()
         if not S.presetLayout then ns.Print("Choose an Edit Mode layout before saving."); return end
         local id, err = ns.Settings.SavePreset(S.selectedPresetId, S.presetName, S.presetLayout, settings)
         if not id then ns.Print(err); return end
-        if ns.CommitLayoutPreview then ns.CommitLayoutPreview(true) end
+        if ns.Layout.CommitPreview then ns.Layout.CommitPreview(true) end
         ns.Settings.ActivatePreset(id)
     else
-        if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+        if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         ns.Settings.ActivatePreset(nil, settings)
     end
     Setup.LoadSavedDraft()
     Setup.Paint()
-    if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
+    if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
     if ns.ApplyAll then ns.ApplyAll() end
 end
 

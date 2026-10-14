@@ -23,7 +23,7 @@ h.test("Temporary CPU timing measures, completes and stops reporting", function(
     local A, mock = t.assert, t.mock
     local update = bootDisabled(t)
     -- Each layout retry of the disabled addon costs three milliseconds on the fake timer.
-    t.ns.UpdateLayoutPreview = function()
+    t.ns.Layout.UpdatePreview = function()
         mock.profile = mock.profile + 3
         return true
     end

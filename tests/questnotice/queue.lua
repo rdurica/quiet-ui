@@ -68,7 +68,7 @@ h.test("the queue caps five quests and drops the oldest waiting entry", function
 end)
 
 local SUPPRESS = {
-    glance = { on = function(t) t.ns.ToggleGlance() end, off = function(t) t.ns.ToggleGlance() end },
+    glance = { on = function(t) t.ns.Glance.Toggle() end, off = function(t) t.ns.Glance.Toggle() end },
     edit = { on = function(t) EditModeManagerFrame:Show() end, off = function(t) EditModeManagerFrame:Hide() end },
     pinned = { on = function() QuietUICharDB.visible = { quests = true } end, off = function() QuietUICharDB.visible = nil end },
     hoverOnly = { on = function() QuietUICharDB.hoverOnly = { quests = true } end, off = function() QuietUICharDB.hoverOnly = nil end },

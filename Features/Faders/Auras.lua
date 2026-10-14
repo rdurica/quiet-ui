@@ -23,7 +23,7 @@ local function AurasShouldShow(hoverOnly, grouped)
         return ns.Settings.VisibilityShow("auras", false, hovered)
     end
     local show = ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InGroup() or ns.World.InEditMode()
-        or ns.Settings.Pinned("auras") or ns.Glancing()
+        or ns.Settings.Pinned("auras") or ns.Glance.Active()
     if not show and grouped and Faders.PlayerShouldShow() then
         show = true
     end

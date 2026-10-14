@@ -11,13 +11,13 @@ local function setup(t)
     ns.Settings.ActivatePreset(id)
     ns.Settings.ForceQuietLayout = function() return c.force ~= false end
     ns.Settings.ModernChat = function() return false end
-    ns.SelectQuietLayout = function() c.quiet = c.quiet + 1; return true end
-    ns.SelectPresetLayout = function()
+    ns.Layout.SelectQuiet = function() c.quiet = c.quiet + 1; return true end
+    ns.Layout.SelectPreset = function()
         if c.combat or not c.ready then return false end
         c.selected = c.selected + 1
         return true
     end
-    ns.RestorePreviousLayout = function()
+    ns.Layout.RestorePrevious = function()
         if c.combat then return false end
         c.restored = c.restored + 1
         return true
@@ -39,16 +39,16 @@ h.test("saving a different layout invalidates the selection", function(t)
     local c = setup(t)
     t.ns.ApplyAll()
     A.eq(c.selected, c.base, 'A chosen layout is not selected again')
-    t.ns.LayoutSettingsChanged(); t.ns.ApplyAll()
+    t.ns.Layout.SettingsChanged(); t.ns.ApplyAll()
     A.eq(c.selected, c.base + 1, 'Saving a different layout must invalidate selection')
 end)
 
 h.test("combat defers layout selection until combat ends", function(t)
     local A = t.assert
     local c = setup(t)
-    t.ns.LayoutSettingsChanged(); t.ns.ApplyAll()
+    t.ns.Layout.SettingsChanged(); t.ns.ApplyAll()
     A.eq(c.selected, c.base + 1)
-    c.combat = true; t.ns.LayoutSettingsChanged(); t.ns.ApplyAll()
+    c.combat = true; t.ns.Layout.SettingsChanged(); t.ns.ApplyAll()
     A.eq(c.selected, c.base + 1)
     c.combat = false; t.mock:fire('PLAYER_REGEN_ENABLED')
     A.eq(c.selected, c.base + 2, 'Combat must defer selection')
@@ -66,7 +66,7 @@ end)
 h.test("pending layout retries once Edit Mode is ready without another event", function(t)
     local A = t.assert
     local c = setup(t)
-    c.ready = false; t.ns.LayoutSettingsChanged(); t.ns.ApplyAll()
+    c.ready = false; t.ns.Layout.SettingsChanged(); t.ns.ApplyAll()
     A.eq(c.selected, c.base)
     c.ready = true; t.mock:tick(0.1)
     A.eq(c.selected, c.base + 1, 'Retry pending layout after Edit Mode becomes ready without another event')
@@ -76,8 +76,8 @@ h.test("saved layout does not override an active preview and disabled previews r
     local A = t.assert
     local c = setup(t)
     local previews = 0
-    t.ns.UpdateLayoutPreview = function() previews = previews + 1; return true end
-    t.ns.LayoutSettingsChanged(); t.ns.ApplyAll()
+    t.ns.Layout.UpdatePreview = function() previews = previews + 1; return true end
+    t.ns.Layout.SettingsChanged(); t.ns.ApplyAll()
     A.eq(c.selected, c.base, 'Saved layout must not override an active preview')
     A.ok(previews > 0, 'Saved layout must not override an active preview')
     QuietUIDB.enabled = false

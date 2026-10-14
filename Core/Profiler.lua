@@ -44,7 +44,7 @@ function Profiler.Finish(pending)
     local preset = ns.Settings.ActivePreset and ns.Settings.ActivePreset()
     ns.Print(string.format("CPU timing: %.1f seconds, %d frames, preset %s; pending layout: %s.", duration,
         profile.frames, preset and preset.name or "<no preset>", tostring(pending or "none")))
-    if ns.LayoutStatus then ns.Print(ns.LayoutStatus()) end
+    if ns.Layout.Status then ns.Print(ns.Layout.Status()) end
     for i = 1, math.min(8, #rows) do
         PrintRow(rows[i], duration)
     end

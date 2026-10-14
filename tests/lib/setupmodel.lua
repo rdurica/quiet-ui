@@ -181,8 +181,8 @@ local function scenario(t, mode)
     ns.ApplyAll = function() end
     ns.Settings.BarGroup = function() return 1 end
     ns.Settings.BarTarget = function() return false end
-    ns.Glancing = function() return false end
-    ns.LAYOUT_STRING = 'export'
+    ns.Glance.Active = function() return false end
+    ns.Layout.STRING = 'export'
     return ns, objects, function() return writes, layouts end
 end
 

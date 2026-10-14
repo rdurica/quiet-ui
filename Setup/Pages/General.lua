@@ -11,7 +11,7 @@ Setup.Pages.general = function(widget, general)
     widget.presetSelector = Setup.Button(general, "<no preset>", function()
         if widget.layoutMenu then widget.layoutMenu:Hide() end
         local entries = { { name = "<no preset>", selected = S.presetName == nil, select = function()
-            if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+            if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
             S.selectedPresetId, S.presetName, S.presetLayout = nil, nil, nil
             Setup.Paint()
         end } }
@@ -20,7 +20,7 @@ Setup.Pages.general = function(widget, general)
             entries[#entries + 1] = { name = item.name, selected = S.selectedPresetId == id, select = function()
                 local preset = ns.Settings.Presets()[id]
                 if not preset then return end
-                if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+                if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
                 Setup.ReadDraft(preset.settings)
                 S.selectedPresetId, S.presetName, S.presetLayout = id, preset.name, ns.Copy(preset.layout)
                 Setup.Paint()
@@ -35,7 +35,7 @@ Setup.Pages.general = function(widget, general)
             local valid, err = ns.Settings.PresetName(name)
             if not valid then return false, err end
             S.selectedPresetId, S.presetName = nil, valid
-            S.presetLayout = ns.CurrentLayoutRef()
+            S.presetLayout = ns.Layout.CurrentRef()
             return true
         end)
     end)
@@ -53,10 +53,10 @@ Setup.Pages.general = function(widget, general)
         local id = S.selectedPresetId
         if not id then return end
         Setup.PresetDialog(widget, 'Delete "' .. S.presetName .. '" for all characters? They will keep their last settings.', nil, function()
-            if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+            if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
             ns.Settings.DeletePreset(id)
             Setup.LoadSavedDraft()
-            if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
+            if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
             if ns.ApplyAll then ns.ApplyAll() end
             return true
         end)
@@ -68,14 +68,14 @@ Setup.Pages.general = function(widget, general)
     widget.layoutSelector = Setup.Button(general, "Choose layout", function()
         if widget.presetMenu then widget.presetMenu:Hide() end
         local entries = {}
-        for _, choice in ipairs(ns.LayoutChoices()) do
+        for _, choice in ipairs(ns.Layout.Choices()) do
             local ref = choice.ref
             entries[#entries + 1] = { name = choice.name, selected = S.presetLayout and (
                 ref.builtin and ref.builtin == S.presetLayout.builtin
                 or not ref.builtin and ref.layoutName == S.presetLayout.layoutName
                     and ref.layoutType == S.presetLayout.layoutType), select = function()
                 S.presetLayout = ns.Copy(ref)
-                if ns.PreviewLayout then ns.PreviewLayout(S.presetLayout) end
+                if ns.Layout.Preview then ns.Layout.Preview(S.presetLayout) end
                 Setup.Paint()
             end }
         end

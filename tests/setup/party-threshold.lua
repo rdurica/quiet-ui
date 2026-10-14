@@ -12,12 +12,12 @@ local function fixture(t, activate)
     local ns = t.ns
     QuietUIDB = {}; QuietUICharDB = { chatFade = 20 }
     ns.ApplyAll = function() end
-    ns.CurrentLayoutRef = function() return { layoutName = "Raid", layoutType = 1 } end
-    ns.LayoutChoices = function() return {} end
-    ns.PreviewLayout = function() end
-    ns.CommitLayoutPreview = function() end
-    ns.CancelLayoutPreview = function() end
-    local id = ns.Settings.SavePreset(nil, "Healer", ns.CurrentLayoutRef(), { chat = false, chatFade = 0, groupAuras = false, player = "resource" })
+    ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
+    ns.Layout.Choices = function() return {} end
+    ns.Layout.Preview = function() end
+    ns.Layout.CommitPreview = function() end
+    ns.Layout.CancelPreview = function() end
+    local id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { chat = false, chatFade = 0, groupAuras = false, player = "resource" })
     if activate then ns.Settings.ActivatePreset(id) end
     ns.Setup.Show()
     return t.mock:findByName("QuietUISetup"), id
@@ -41,7 +41,7 @@ h.test("Party frames: defaults, disabled hover, draft, save, presets, snapshot a
     A.ok(partyRow.always.box._checked, "Closing must cancel party autohide edits")
     click(partyRow.always); click(ui.save)
     A.ok(QuietUICharDB.autoHideParty and ns.Settings.AutoHideParty(), "Save must enable party autohide")
-    local partyPreset = ns.Settings.SavePreset(nil, "Party fade", ns.CurrentLayoutRef(), QuietUICharDB)
+    local partyPreset = ns.Settings.SavePreset(nil, "Party fade", ns.Layout.CurrentRef(), QuietUICharDB)
     ns.Settings.ActivatePreset(partyPreset)
     A.ok(ns.Settings.AutoHideParty(), "Preset must retain party autohide")
     ns.Setup.Show(); click(partyRow.always); click(ui.save)

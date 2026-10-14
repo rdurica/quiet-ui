@@ -5,10 +5,7 @@ local S = h.lib("structure")
 
 -- Files over the limit that may stay for now. Every entry needs a reason; an entry for a file
 -- that is gone or back under the limit fails, so the list can only shrink.
-local TEMP = "temporary: flat file until #15 restructure"
 local SIZE_ALLOWLIST = {
-    ["Layout.lua"] = TEMP,
-    ["QuietUI.lua"] = TEMP,
 }
 
 local function loadSources(t)

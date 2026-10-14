@@ -8,8 +8,8 @@ local function fixture(t)
     local ns = t.ns
     QuietUIDB = {}; QuietUICharDB = {}
     local applied = {}
-    ns.CurrentLayoutRef = function() return { layoutName = "Original", layoutType = 1 } end
-    ns.LayoutChoices = function() return {} end
+    ns.Layout.CurrentRef = function() return { layoutName = "Original", layoutType = 1 } end
+    ns.Layout.Choices = function() return {} end
     ns.ApplyAll = function()
         applied[#applied + 1] = { enabled = ns.Settings.QuestNoticeEnabled(), saved = QuietUICharDB.questNotice }
     end
@@ -26,7 +26,7 @@ h.test("Quest updates defaults on and only explicit false turns it off", functio
     end
     QuietUICharDB.questNotice = false
     A.eq(ns.Settings.QuestNoticeEnabled(), false, "Personal false must disable notices")
-    local id = ns.Settings.SavePreset(nil, "Default", ns.CurrentLayoutRef(), {})
+    local id = ns.Settings.SavePreset(nil, "Default", ns.Layout.CurrentRef(), {})
     ns.Settings.ActivatePreset(id)
     A.eq(ns.Settings.QuestNoticeEnabled(), true, "Effective preset default must override personal off")
     ns.Settings.Presets()[id].settings.questNotice = false
@@ -48,8 +48,8 @@ end)
 h.test("presets preserve off through create, select, save, detach and deletion", function(t)
     local ns = fixture(t)
     local A = t.assert
-    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questNotice = false })
-    local on = ns.Settings.SavePreset(nil, "On", ns.CurrentLayoutRef(), {})
+    local off = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questNotice = false })
+    local on = ns.Settings.SavePreset(nil, "On", ns.Layout.CurrentRef(), {})
     A.eq(ns.Settings.Presets()[off].settings.questNotice, false, "Preset creation must preserve false")
     ns.Settings.ActivatePreset(off)
     A.ok(QuietUICharDB.questNotice == false and not ns.Settings.QuestNoticeEnabled(), "Select off must snapshot false")
@@ -74,7 +74,7 @@ end)
 h.test("a preset selector choice stays a draft; saving the selection applies the notice setting", function(t)
     local ns, applied = fixture(t)
     local A = t.assert
-    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questNotice = false })
+    local off = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questNotice = false })
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     A.ok(ui.questNotice and ui.questNotice.box, "Misc. Quest updates choice is missing")
@@ -91,7 +91,7 @@ end)
 h.test("Reset turns notices on, detaches and leaves the shared preset unchanged", function(t)
     local ns, applied = fixture(t)
     local A = t.assert
-    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questNotice = false })
+    local off = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questNotice = false })
     ns.Settings.ActivatePreset(off); ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     click(ui.reset)

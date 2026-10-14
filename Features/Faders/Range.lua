@@ -174,7 +174,7 @@ function Faders.RangeDecision()
     if type(ns.Settings.Range) ~= "function" then return "hide" end
     local yards, kind, spellName = ns.Settings.Range()
     if not yards then return "hide" end
-    if ns.World.ShowAll() or ns.Glancing() then return "hide" end
+    if ns.World.ShowAll() or ns.Glance.Active() then return "hide" end
     local life = TargetLife()
     if life ~= "alive" then return life end
     if kind == "friendly" then

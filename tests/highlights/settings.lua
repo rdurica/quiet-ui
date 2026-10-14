@@ -11,11 +11,11 @@ local function fixture(t)
     local ns = t.ns
     QuietUIDB = {}; QuietUICharDB = {}
     local applied = {}
-    ns.CurrentLayoutRef = function() return { layoutName = "Original", layoutType = 1 } end
-    ns.LayoutChoices = function() return {} end
-    ns.PreviewLayout = function() end
-    ns.CommitLayoutPreview = function() end
-    ns.CancelLayoutPreview = function() end
+    ns.Layout.CurrentRef = function() return { layoutName = "Original", layoutType = 1 } end
+    ns.Layout.Choices = function() return {} end
+    ns.Layout.Preview = function() end
+    ns.Layout.CommitPreview = function() end
+    ns.Layout.CancelPreview = function() end
     ns.ApplyAll = function()
         applied[#applied + 1] = { highlights = ns.Settings.Highlights(), saved = ns.Copy(QuietUICharDB.highlights) }
     end
@@ -198,7 +198,7 @@ end)
 h.test("Reset default clears highlights and leaves the shared preset unchanged", function(t)
     local A = t.assert
     local ns, applied = fixture(t)
-    local id = ns.Settings.SavePreset(nil, "Gather", ns.CurrentLayoutRef(), { highlights = { ore = true, quest = true } })
+    local id = ns.Settings.SavePreset(nil, "Gather", ns.Layout.CurrentRef(), { highlights = { ore = true, quest = true } })
     ns.Settings.ActivatePreset(id); ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     A.ok(checked(ui, "ore") and checked(ui, "quest"), "Preset highlights must paint")
@@ -222,7 +222,7 @@ h.test("Presets copy, share and snapshot highlights", function(t)
     local target = { highlights = { quest = true } }
     ns.Settings.CopySettings({}, target)
     A.eq(target.highlights, nil, "Omitted highlights must clear a stale value")
-    local id = ns.Settings.SavePreset(nil, "Herbs", ns.CurrentLayoutRef(), { highlights = { herb = true } })
+    local id = ns.Settings.SavePreset(nil, "Herbs", ns.Layout.CurrentRef(), { highlights = { herb = true } })
     stored(t, ns.Settings.Presets()[id].settings.highlights, { herb = true }, "Preset creation must keep highlights")
     ns.Settings.ActivatePreset(id)
     stored(t, ns.Settings.Effective().highlights, { herb = true }, "Active preset settings must expose highlights")

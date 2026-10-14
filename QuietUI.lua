@@ -4,14 +4,6 @@ local ADDON, ns = ...
 
 local booted = false
 local chromeAcc = 0
-local glancing = false
-local layoutPending = nil
-local layoutChosen = false
-local presetCheckPending = false
-local finishingLayout = false
-local settleUntil = 0
-local settleToken = 0
-local settleArmed = false
 local rescanPending = false
 local rescanMissed = false
 
@@ -19,71 +11,15 @@ local function Run(label, fn, ...)
     ns.Profiler.Run(label, fn, ...)
 end
 
--- Select once per enable, restore on disable. Both wait out combat and login.
--- With Force QuietUI layout off, the active Edit Mode layout stays as it is.
-local function CheckStartupPreset()
-    if not presetCheckPending then return true end
-    if ns.ValidatePresetInterface and not ns.ValidatePresetInterface() then return false end
-    presetCheckPending = false
-    return true
-end
-
-local function FinishLayout()
-    if not CheckStartupPreset() then return end
-    if finishingLayout then return end
-    if ns.UpdateLayoutPreview and ns.UpdateLayoutPreview() then return end
-    if layoutPending == "select" and not ns.Settings.ForceQuietLayout() then
-        layoutPending = nil
-        return
-    end
-    if layoutPending ~= "select" and layoutPending ~= "restore" then return end
-    finishingLayout = true
-    local job = layoutPending
-    local select = ns.Settings.ActivePreset and ns.Settings.ActivePreset() and ns.SelectPresetLayout or ns.SelectQuietLayout
-    local fn = job == "select" and select or ns.RestorePreviousLayout
-    local ok, done = pcall(fn)
-    finishingLayout = false
-    if not ok then
-        layoutPending = nil
-        if job == "select" then layoutChosen = true end
-        ns.Report("layout", done)
-    elseif done then
-        layoutPending = nil
-        if job == "select" then layoutChosen = true end
-    end
-end
-
--- A new character applies the default preset after login. Keep selecting until that settles.
-local function ArmLayoutSettle()
-    if not ns.DB().enabled or not ns.Settings.ForceQuietLayout() then return end
-    settleToken = settleToken + 1
-    local token = settleToken
-    layoutChosen = false
-    layoutPending = "select"
-    local now = type(GetTime) == "function" and GetTime() or 0
-    settleUntil = now + 10
-    FinishLayout()
-    if not (C_Timer and C_Timer.After) then return end
-    for _, delay in ipairs({ 1, 3, 6 }) do
-        C_Timer.After(delay, function()
-            if token ~= settleToken or not ns.DB().enabled or not ns.Settings.ForceQuietLayout() then return end
-            if type(GetTime) == "function" and GetTime() > settleUntil then return end
-            layoutChosen = false
-            layoutPending = "select"
-            FinishLayout()
-        end)
-    end
-end
-
 local function RestoreAll()
     ns.Registry.Restore()
     ns.RestoreAlpha()
     -- The layout restore waits until the core restore is done.
-    if layoutPending == "restore" then FinishLayout() end
+    ns.Layout.FinishRestore()
 end
 
 local function ApplyAll()
-    if not CheckStartupPreset() then return end
+    if not ns.Layout.CheckStartupPreset() then return end
     if not ns.DB().enabled then
         RestoreAll()
         return
@@ -94,72 +30,6 @@ end
 
 ns.ApplyAll = ApplyAll
 ns.RestoreAll = RestoreAll
-
--- Glance and Layout register last: Layout restores first of the features but finishes after RestoreAlpha.
-ns.Feature({
-    name = "glance",
-    restore = function() glancing = false end,
-})
-
-ns.Feature({
-    name = "layout",
-    apply = function()
-        if ns.Settings.ForceQuietLayout() then
-            if not layoutChosen then
-                layoutPending = "select"
-                FinishLayout()
-            end
-        else
-            -- A later Save with force on selects again. previousLayout stays.
-            layoutChosen = false
-            layoutPending = nil
-        end
-        ns.EnsureLayout()
-    end,
-    restore = function()
-        ns.CancelLayoutPreview()
-        settleToken = settleToken + 1
-        settleUntil = 0
-        layoutChosen = false
-        if ns.Settings.ForceQuietLayout() or ns.Settings.CharDB().presetLayoutManaged then
-            layoutPending = "restore"
-        else
-            layoutPending = nil
-        end
-    end,
-    -- These also arrive while off: a layout job waits for combat or Edit Mode to end.
-    always = { "PLAYER_REGEN_ENABLED", "EDIT_MODE_LAYOUTS_UPDATED" },
-    events = {
-        PLAYER_REGEN_ENABLED = function()
-            FinishLayout()
-            if ns.DB().enabled then ns.EnsureLayout() end
-        end,
-        EDIT_MODE_LAYOUTS_UPDATED = function()
-            FinishLayout()
-            if not ns.DB().enabled then return end
-            ns.EnsureLayout()
-            if not ns.Settings.ForceQuietLayout() then return end
-            if type(GetTime) == "function" and GetTime() > settleUntil then return end
-            layoutChosen = false
-            layoutPending = "select"
-            FinishLayout()
-        end,
-        PLAYER_ENTERING_WORLD = function(isInitialLogin, isReloading)
-            -- Boot usually armed it already; arm once if it was skipped.
-            if (isInitialLogin or isReloading) and not settleArmed then
-                settleArmed = true
-                ArmLayoutSettle()
-            end
-        end,
-    },
-})
-
-function ns.LayoutSettingsChanged()
-    settleToken = settleToken + 1
-    settleUntil = 0
-    layoutChosen = false
-    if layoutPending ~= "restore" then layoutPending = nil end
-end
 
 -- Frames may have loaded: a deep scan, then apply again.
 local function Rescan()
@@ -198,32 +68,12 @@ function ns.RequestRescan()
     C_Timer.After(0, RunRescan)
 end
 
--- A default on the header binding is stored as HEADER_QUIETUI, so ` does nothing.
--- Take that key, or a free `, for QUIETUI_GLANCE. Leave any other action alone.
-local function EnsureGlanceBinding()
-    if type(GetBindingKey) ~= "function" or type(SetBinding) ~= "function" then return end
-    if type(GetBindingAction) ~= "function" then return end
-    if InCombatLockdown and InCombatLockdown() then return end
-    local ok, existing = pcall(GetBindingKey, "QUIETUI_GLANCE")
-    if ok and type(existing) == "string" and existing ~= "" then return end
-    local actionOk, action = pcall(GetBindingAction, "`")
-    if not actionOk or type(action) ~= "string" then return end
-    if action ~= "" and action ~= "HEADER_QUIETUI" then return end
-    local setOk, bound = pcall(SetBinding, "`", "QUIETUI_GLANCE")
-    if not setOk or not bound then return end
-    if type(SaveBindings) ~= "function" or type(GetCurrentBindingSet) ~= "function" then return end
-    local setOk2, set = pcall(GetCurrentBindingSet)
-    if setOk2 and type(set) == "number" then
-        pcall(SaveBindings, set)
-    end
-end
-
 local function Boot()
     local first = not booted
     booted = true
     ns.Registry.SetBooted(true)
     ns.Registry.InstallHooks()
-    if first then presetCheckPending = true end
+    if first then ns.Layout.ArmStartupPreset() end
     ns.Settings.CharDB()
     ns.Settings.Effective()
     if first then
@@ -233,11 +83,10 @@ local function Boot()
         print("   |cffffffff/quiet setup|r  choose what stays visible")
     end
     BootScan()
-    EnsureGlanceBinding()
+    ns.Glance.EnsureBinding()
     ns.Setup.EnsureMinimap()
     if first and ns.DB().enabled then
-        settleArmed = true
-        ArmLayoutSettle()
+        ns.Layout.BootSettle()
     end
     if first and C_Timer and C_Timer.After then
         C_Timer.After(0.5, function()
@@ -310,25 +159,25 @@ local disabledLayoutAcc = 0
 
 events:SetScript("OnUpdate", function(_, elapsed)
     if not booted then return end
-    ns.Profiler.Finish(layoutPending)
+    ns.Profiler.Finish(ns.Layout.Pending())
     if not ns.DB().enabled then
         disabledLayoutAcc = disabledLayoutAcc + (elapsed or 0)
         if disabledLayoutAcc >= 0.1 then
             disabledLayoutAcc = 0
-            Run("layout", FinishLayout)
+            Run("layout", ns.Layout.Finish)
         end
         return
     end
     elapsed = elapsed or 0
     local flyout = ns.World.FlyoutOpen and ns.World.FlyoutOpen() or false
-    local glance = ns.Glancing() and true or false
+    local glance = ns.Glance.Active() and true or false
     local moved = PointerMoved()
     local hud = ns.World.ConsumeHud()
     slowAcc = slowAcc + elapsed
     local slow = slowAcc >= 0.1
     if slow then
-        if layoutPending or (ns.LayoutPreviewActive and ns.LayoutPreviewActive()) then
-            Run("layout", FinishLayout)
+        if ns.Layout.Busy() then
+            Run("layout", ns.Layout.Finish)
         end
         slowAcc = 0
         ns.World.ForgetCursor()
@@ -380,26 +229,6 @@ ns.Feature({
 })
 
 ------------------------------------------------------------------------------
--- Press Glance to show the faded HUD. Press again and the rules apply.
--- The binding system calls a global; down and up both arrive.
-------------------------------------------------------------------------------
-BINDING_CATEGORY_QUIETUI = "QuietUI"
-BINDING_NAME_QUIETUI_GLANCE = "Glance"
-
-function ns.ToggleGlance()
-    if not ns.DB().enabled then return end
-    glancing = not glancing
-end
-
-function QuietUIGlance(keystate)
-    if keystate == "down" then ns.ToggleGlance() end
-end
-
-function ns.Glancing()
-    return glancing
-end
-
-------------------------------------------------------------------------------
 -- /quiet on | off | setup | glance | preset, no argument toggles.
 ------------------------------------------------------------------------------
 SLASH_QUIETUI1 = "/quiet"
@@ -421,7 +250,7 @@ SlashCmdList["QUIETUI"] = function(msg)
         return
     end
     if msg == "glance" then
-        ns.ToggleGlance()
+        ns.Glance.Toggle()
         return
     end
     local db = ns.DB()

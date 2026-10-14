@@ -7,21 +7,21 @@ local function setup(t)
     local ctx = { selected = {}, restored = 0, combat = false, canceled = 0, refreshed = 0 }
     ns.Settings.ForceQuietLayout = function() return ns.Settings.ActivePreset() ~= nil end
     ns.Settings.ModernChat = function() return false end
-    ns.SelectPresetLayout = function()
+    ns.Layout.SelectPreset = function()
         if ctx.combat then return false end
         ctx.selected[#ctx.selected + 1] = ns.Settings.ActivePreset().layout.layoutName
         ns.Settings.CharDB().previousLayout = ns.Settings.CharDB().previousLayout or 3
         ns.Settings.CharDB().presetLayoutManaged = true
         return true
     end
-    ns.RestorePreviousLayout = function()
+    ns.Layout.RestorePrevious = function()
         if ctx.combat then return false end
         ctx.restored = ctx.restored + 1
         ns.Settings.CharDB().previousLayout, ns.Settings.CharDB().presetLayoutManaged = nil, nil
         return true
     end
-    local cancel, refresh = ns.CancelLayoutPreview, ns.Setup.Refresh
-    ns.CancelLayoutPreview = function(...)
+    local cancel, refresh = ns.Layout.CancelPreview, ns.Setup.Refresh
+    ns.Layout.CancelPreview = function(...)
         ctx.canceled = ctx.canceled + 1
         if cancel then return cancel(...) end
     end

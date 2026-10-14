@@ -22,7 +22,7 @@ local function UpdateVisible(name, frames, usual, noHover, exception, glance, el
 end
 
 function Faders.Update(elapsed)
-    local glance = ns.Glancing()
+    local glance = ns.Glance.Active()
     ns.Run("xp bar", UpdateVisible, "xp", statusFrames, Faders.XPShouldShow(), false, ns.World.XPForced(), glance, elapsed)
     ns.Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true, nil,
         glance, elapsed)

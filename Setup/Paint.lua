@@ -26,7 +26,7 @@ function Setup.Paint()
     if not S.frame then return end
     if S.frame.presetSelector then
         Setup.ButtonText(S.frame.presetSelector, S.presetName or "<no preset>")
-        Setup.ButtonText(S.frame.layoutSelector, ns.LayoutLabel and ns.LayoutLabel(S.presetLayout)
+        Setup.ButtonText(S.frame.layoutSelector, ns.Layout.Label and ns.Layout.Label(S.presetLayout)
             or (S.presetLayout and S.presetLayout.layoutName or "Choose layout"))
         if S.presetName then
             S.frame.forceLayout:Hide()

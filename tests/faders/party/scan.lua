@@ -10,7 +10,7 @@ local function setup(t)
     local ctx = { ns = ns, mock = mock, grouped = false }
     ns.World.InGroup = function() return ctx.grouped end
     ns.World.InEditMode = function() return false end
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     ns.World.InCombat = function() return false end
     ns.World.InForcedInstance = function() return false end
     ns.Hit = function() return false end

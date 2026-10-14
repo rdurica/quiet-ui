@@ -24,9 +24,9 @@ h.test("Resource hover bypasses secret curves and restores both child and root a
     root.hot = false; update(0.15)
     A.ok(health._alpha > 0 and health._alpha < 1 and power._alpha > 0 and power._alpha < 1)
     update(0.15); A.ok(health._alpha == 0 and power._alpha == 0)
-    ns.Glancing = function() return true end
+    ns.Glance.Active = function() return true end
     update(0.01); A.ok(health._alpha == 1 and power._alpha == 1)
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     root._children = {}; root._quietKids = nil
     update(0.15); update(0.15)
     A.eq(root._alpha, 0, "Childless resource root never finished fading")
