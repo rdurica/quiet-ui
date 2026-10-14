@@ -1,4 +1,4 @@
--- Highlights settings contracts: ns.Highlights accessor, the Misc. tab (draft, Save, Reset, presets).
+-- Highlights settings contracts: ns.Settings.Highlights accessor, the Misc. tab (draft, Save, Reset, presets).
 local h = ...
 
 local KEYS = { herb = "highlightHerb", ore = "highlightOre", quest = "highlightQuest" }
@@ -17,13 +17,13 @@ local function fixture(t)
     ns.CommitLayoutPreview = function() end
     ns.CancelLayoutPreview = function() end
     ns.ApplyAll = function()
-        applied[#applied + 1] = { highlights = ns.Highlights(), saved = ns.Copy(QuietUICharDB.highlights) }
+        applied[#applied + 1] = { highlights = ns.Settings.Highlights(), saved = ns.Copy(QuietUICharDB.highlights) }
     end
     return ns, applied
 end
 
 local function expect(t, herb, ore, quest, message)
-    local value = t.ns.Highlights()
+    local value = t.ns.Settings.Highlights()
     t.assert.type(value, "table")
     t.assert.ok(value.herb == herb and value.ore == ore and value.quest == quest,
         string.format("%s (got herb=%s ore=%s quest=%s)", message, tostring(value.herb), tostring(value.ore),
@@ -198,44 +198,44 @@ end)
 h.test("Reset default clears highlights and leaves the shared preset unchanged", function(t)
     local A = t.assert
     local ns, applied = fixture(t)
-    local id = ns.SavePreset(nil, "Gather", ns.CurrentLayoutRef(), { highlights = { ore = true, quest = true } })
-    ns.ActivatePreset(id); ns.ShowSetup()
+    local id = ns.Settings.SavePreset(nil, "Gather", ns.CurrentLayoutRef(), { highlights = { ore = true, quest = true } })
+    ns.Settings.ActivatePreset(id); ns.ShowSetup()
     local ui = t.mock:findByName("QuietUISetup")
     A.ok(checked(ui, "ore") and checked(ui, "quest"), "Preset highlights must paint")
     click(ui.reset)
     A.ok(QuietUICharDB.presetId == nil and QuietUICharDB.highlights == nil, "Reset must detach and clear highlights")
     expect(t, false, false, false, "Reset must turn every category off")
     A.ok(not checked(ui, "herb") and not checked(ui, "ore") and not checked(ui, "quest"), "Reset paints all off")
-    stored(t, ns.Presets()[id].settings.highlights, { ore = true, quest = true }, "Reset must not mutate shared preset")
+    stored(t, ns.Settings.Presets()[id].settings.highlights, { ore = true, quest = true }, "Reset must not mutate shared preset")
     A.eq(#applied, 1, "Reset applies immediately")
 end)
 
 h.test("Presets copy, share and snapshot highlights", function(t)
     local A = t.assert
     local ns = fixture(t)
-    local copy = ns.CopySettings({ highlights = { herb = true }, unrelated = 1 })
+    local copy = ns.Settings.CopySettings({ highlights = { herb = true }, unrelated = 1 })
     stored(t, copy.highlights, { herb = true }, "CopySettings must copy highlights")
     local source = { highlights = { ore = true } }
-    local deep = ns.CopySettings(source)
+    local deep = ns.Settings.CopySettings(source)
     deep.highlights.herb = true
     A.eq(source.highlights.herb, nil, "CopySettings must deep-copy highlights")
     local target = { highlights = { quest = true } }
-    ns.CopySettings({}, target)
+    ns.Settings.CopySettings({}, target)
     A.eq(target.highlights, nil, "Omitted highlights must clear a stale value")
-    local id = ns.SavePreset(nil, "Herbs", ns.CurrentLayoutRef(), { highlights = { herb = true } })
-    stored(t, ns.Presets()[id].settings.highlights, { herb = true }, "Preset creation must keep highlights")
-    ns.ActivatePreset(id)
-    stored(t, ns.Settings().highlights, { herb = true }, "Active preset settings must expose highlights")
+    local id = ns.Settings.SavePreset(nil, "Herbs", ns.CurrentLayoutRef(), { highlights = { herb = true } })
+    stored(t, ns.Settings.Presets()[id].settings.highlights, { herb = true }, "Preset creation must keep highlights")
+    ns.Settings.ActivatePreset(id)
+    stored(t, ns.Settings.Effective().highlights, { herb = true }, "Active preset settings must expose highlights")
     stored(t, QuietUICharDB.highlights, { herb = true }, "Activation must snapshot highlights")
     expect(t, true, false, false, "Accessor reads effective preset settings")
-    ns.Presets()[id].settings.highlights = { quest = true }
+    ns.Settings.Presets()[id].settings.highlights = { quest = true }
     QuietUICharDB.highlights = nil
     expect(t, false, false, true, "Accessor must read the active preset, not the snapshot")
     ns.ShowSetup()
     local ui = t.mock:findByName("QuietUISetup")
     click(choice(ui, "ore")); click(ui.save)
-    stored(t, ns.Presets()[id].settings.highlights, { ore = true, quest = true }, "Save must update the active preset")
-    ns.ActivatePreset(nil)
+    stored(t, ns.Settings.Presets()[id].settings.highlights, { ore = true, quest = true }, "Save must update the active preset")
+    ns.Settings.ActivatePreset(nil)
     stored(t, QuietUICharDB.highlights, { ore = true, quest = true }, "Detach keeps the last snapshot")
     expect(t, false, true, true, "Detached accessor reads personal snapshot")
 end)

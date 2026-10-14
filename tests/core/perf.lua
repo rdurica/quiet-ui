@@ -67,16 +67,16 @@ h.test("Smooth breakdown rows, total, inactive timer and completion", function(t
     local events = mock:eventFrame("PLAYER_LOGIN")
     local function update(elapsed) events._scripts.OnUpdate(events, elapsed) end
     local ns = t.ns
-    ns.Pinned = function(name)
+    ns.Settings.Pinned = function(name)
         if name == "resource" then mock.profile = mock.profile + 1 end
         return false
     end
     -- Visibility and threshold decisions now share this two-millisecond lookup.
-    ns.PlayerStyle = function()
+    ns.Settings.PlayerStyle = function()
         mock.profile = mock.profile + 2
         return "resource"
     end
-    ns.AlwaysShowDebuffs = function()
+    ns.Settings.AlwaysShowDebuffs = function()
         mock.profile = mock.profile + 4
         return true
     end

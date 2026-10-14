@@ -7,7 +7,7 @@ local S = h.lib("structure")
 -- that is gone or back under the limit fails, so the list can only shrink.
 local TEMP = "temporary: flat file until #15 restructure"
 local SIZE_ALLOWLIST = {
-    ["Bars.lua"] = TEMP, ["Chat.lua"] = TEMP, ["Core.lua"] = TEMP, ["Faders.lua"] = TEMP,
+    ["Bars.lua"] = TEMP, ["Chat.lua"] = TEMP, ["Faders.lua"] = TEMP,
     ["Highlights.lua"] = TEMP, ["Layout.lua"] = TEMP, ["Menu.lua"] = TEMP,
     ["QuestNotice.lua"] = TEMP, ["QuietUI.lua"] = TEMP, ["Setup.lua"] = TEMP,
 }

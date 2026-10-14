@@ -230,7 +230,7 @@ end
 
 -- Missing means on. Only an explicit false turns notices off.
 local function Enabled()
-    return type(ns.QuestNoticeEnabled) ~= "function" or ns.QuestNoticeEnabled() ~= false
+    return type(ns.Settings.QuestNoticeEnabled) ~= "function" or ns.Settings.QuestNoticeEnabled() ~= false
 end
 
 -- Center-screen quest lines. Rewards and failures stay on the error frame.
@@ -448,13 +448,13 @@ end
 
 local function Draw(alpha)
     local tracker = Tracker()
-    if not tracker or ns.Glancing() or ns.InEditMode() or ns.Pinned("quests") or ns.OnlyOnHover("quests") then Hide(); return end
+    if not tracker or ns.Glancing() or ns.World.InEditMode() or ns.Settings.Pinned("quests") or ns.Settings.OnlyOnHover("quests") then Hide(); return end
     local width = Call(tracker.GetWidth, tracker)
     if not Number(width) or width <= 20 or not EnsureFrame() then Hide(); return end
     local anchor, point, dx, dy = FirstSlot(tracker)
     local anchorScale = ScaleOf(anchor)
     local frameScale = ScaleOf(frame)
-    local chosen = type(ns.QuestNoticeSize) == "function" and ns.QuestNoticeSize() or "default"
+    local chosen = type(ns.Settings.QuestNoticeSize) == "function" and ns.Settings.QuestNoticeSize() or "default"
     local titleFont = ObjectiveTrackerHeaderFont or GameFontNormal
     local bodyFont = ObjectiveTrackerFont or GameFontHighlightSmall
     -- The tracker text size option resizes the same font objects in place.

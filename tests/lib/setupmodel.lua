@@ -179,8 +179,8 @@ local function scenario(t, mode)
     ns.Report = function(name, err) error(name .. ': ' .. tostring(err)) end
     ns.Print = function() end
     ns.ApplyAll = function() end
-    ns.BarGroup = function() return 1 end
-    ns.BarTarget = function() return false end
+    ns.Settings.BarGroup = function() return 1 end
+    ns.Settings.BarTarget = function() return false end
     ns.Glancing = function() return false end
     ns.LAYOUT_STRING = 'export'
     return ns, objects, function() return writes, layouts end

@@ -12,7 +12,7 @@ local function boot(t)
     t.ns.CurrentLayoutRef = function() return { layoutName = "Original", layoutType = 1 } end
     local applied = {}
     t.ns.ApplyAll = function()
-        applied[#applied + 1] = { enabled = t.ns.QuestMobs(), saved = QuietUICharDB.questMobs }
+        applied[#applied + 1] = { enabled = t.ns.Settings.QuestMobs(), saved = QuietUICharDB.questMobs }
     end
     return applied
 end
@@ -72,31 +72,31 @@ end
 
 h.test("Clean profile reads on and only explicit false turns it off", function(t)
     local ns, A = t.ns, t.assert
-    A.eq(ns.QuestMobs(), true, "Missing questMobs must default on")
+    A.eq(ns.Settings.QuestMobs(), true, "Missing questMobs must default on")
     for _, value in ipairs({ true, 0, "off" }) do
         QuietUICharDB.questMobs = value
-        A.eq(ns.QuestMobs(), true, "Only false may disable quest mob icons")
+        A.eq(ns.Settings.QuestMobs(), true, "Only false may disable quest mob icons")
     end
     QuietUICharDB.questMobs = false
-    A.eq(ns.QuestMobs(), false, "Personal false must disable quest mob icons")
+    A.eq(ns.Settings.QuestMobs(), false, "Personal false must disable quest mob icons")
 end)
 
 h.test("questMobs is a shared preset key", function(t)
     local ns, A = t.ns, t.assert
     t.boot()
     ns.CurrentLayoutRef = function() return { layoutName = "Original", layoutType = 1 } end
-    local copy = ns.CopySettings({ questMobs = false, unrelated = "ignore" })
+    local copy = ns.Settings.CopySettings({ questMobs = false, unrelated = "ignore" })
     A.eq(copy.questMobs, false, "CopySettings must keep questMobs = false")
     local target = { questMobs = false }
-    ns.CopySettings({}, target)
+    ns.Settings.CopySettings({}, target)
     A.eq(target.questMobs, nil, "Omitted questMobs must clear a stale false")
-    local id = ns.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
-    A.eq(ns.Presets()[id].settings.questMobs, false, "Preset creation must preserve questMobs = false")
-    ns.ActivatePreset(id)
-    A.ok(QuietUICharDB.questMobs == false and ns.QuestMobs() == false, "Activating an off preset must turn icons off")
-    ns.Presets()[id].settings.questMobs = nil
+    local id = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
+    A.eq(ns.Settings.Presets()[id].settings.questMobs, false, "Preset creation must preserve questMobs = false")
+    ns.Settings.ActivatePreset(id)
+    A.ok(QuietUICharDB.questMobs == false and ns.Settings.QuestMobs() == false, "Activating an off preset must turn icons off")
+    ns.Settings.Presets()[id].settings.questMobs = nil
     QuietUICharDB.questMobs = false
-    A.eq(ns.QuestMobs(), true, "Accessor must read the active preset, not the personal snapshot")
+    A.eq(ns.Settings.QuestMobs(), true, "Accessor must read the active preset, not the personal snapshot")
 end)
 
 h.test("Misc. shows Quest mobs checked under Highlights with an English info text", function(t)
@@ -157,7 +157,7 @@ h.test("Unchecking is a draft; X and Escape discard it", function(t)
     local ui = t.mock:findByName("QuietUISetup")
     click(choice(ui))
     A.falsy(checked(ui), "Click must paint an off draft")
-    A.ok(QuietUICharDB.questMobs == nil and ns.QuestMobs() == true, "Unsaved draft must not change the setting")
+    A.ok(QuietUICharDB.questMobs == nil and ns.Settings.QuestMobs() == true, "Unsaved draft must not change the setting")
     A.eq(#applied, 0, "Draft must not apply live changes")
     ui:Hide(); ns.ShowSetup()
     A.ok(checked(ui) and QuietUICharDB.questMobs == nil, "Closing must discard the off draft")
@@ -180,63 +180,63 @@ h.test("Save stores false only when off, nothing when on, and applies", function
     A.eq(QuietUICharDB.questMobs, nil, "Save while on must not store questMobs")
     A.ok(#applied == 1 and applied[1].enabled == true, "Save applies the on state")
     click(choice(ui)); click(ui.save)
-    A.ok(QuietUICharDB.questMobs == false and ns.QuestMobs() == false, "Save off must persist explicit false")
+    A.ok(QuietUICharDB.questMobs == false and ns.Settings.QuestMobs() == false, "Save off must persist explicit false")
     A.ok(#applied == 2 and applied[2].enabled == false and applied[2].saved == false,
         "Save off must call ApplyAll after committing the setting")
     A.ok(ui:IsShown() and not checked(ui), "Save keeps setup open and paints saved off")
     click(choice(ui)); click(ui.save)
-    A.ok(QuietUICharDB.questMobs == nil and ns.QuestMobs() == true, "Save on must omit the default")
+    A.ok(QuietUICharDB.questMobs == nil and ns.Settings.QuestMobs() == true, "Save on must omit the default")
     A.ok(#applied == 3 and applied[3].enabled == true and applied[3].saved == nil, "Save on applies")
 end)
 
 h.test("Save with an active preset writes into the preset; switching picks up its value", function(t)
     local ns, A = t.ns, t.assert
     boot(t)
-    local off = ns.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
-    local on = ns.SavePreset(nil, "On", ns.CurrentLayoutRef(), {})
-    ns.ActivatePreset(off); ns.ShowSetup()
+    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
+    local on = ns.Settings.SavePreset(nil, "On", ns.CurrentLayoutRef(), {})
+    ns.Settings.ActivatePreset(off); ns.ShowSetup()
     local ui = t.mock:findByName("QuietUISetup")
     A.falsy(checked(ui), "Selecting an off preset must paint unchecked")
     click(choice(ui)); click(ui.save)
-    A.ok(ns.Presets()[off].settings.questMobs == nil and ns.QuestMobs() == true, "Save on must clear preset false")
+    A.ok(ns.Settings.Presets()[off].settings.questMobs == nil and ns.Settings.QuestMobs() == true, "Save on must clear preset false")
     click(choice(ui)); click(ui.save)
-    A.ok(ns.Presets()[off].settings.questMobs == false and ns.QuestMobs() == false, "Save off must update the preset")
-    ns.ActivatePreset(on); ns.ShowSetup()
-    A.ok(checked(ui) and ns.QuestMobs() == true and QuietUICharDB.questMobs == nil, "Switching to on preset reads on")
-    ns.ActivatePreset(off); ns.ShowSetup()
-    A.ok(not checked(ui) and ns.QuestMobs() == false, "Switching back reads the preset off value")
-    ns.ActivatePreset(nil)
-    A.ok(QuietUICharDB.questMobs == false and ns.QuestMobs() == false, "Detach keeps the last snapshot")
+    A.ok(ns.Settings.Presets()[off].settings.questMobs == false and ns.Settings.QuestMobs() == false, "Save off must update the preset")
+    ns.Settings.ActivatePreset(on); ns.ShowSetup()
+    A.ok(checked(ui) and ns.Settings.QuestMobs() == true and QuietUICharDB.questMobs == nil, "Switching to on preset reads on")
+    ns.Settings.ActivatePreset(off); ns.ShowSetup()
+    A.ok(not checked(ui) and ns.Settings.QuestMobs() == false, "Switching back reads the preset off value")
+    ns.Settings.ActivatePreset(nil)
+    A.ok(QuietUICharDB.questMobs == false and ns.Settings.QuestMobs() == false, "Detach keeps the last snapshot")
 end)
 
 h.test("Preset selector is a draft; saving the selection applies its questMobs", function(t)
     local ns, A = t.ns, t.assert
     local applied = boot(t)
-    local off = ns.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
+    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
     ns.ShowSetup()
     local ui = t.mock:findByName("QuietUISetup")
     choice(ui)
     click(ui.presetSelector); click(ui.presetMenu.items[2])
-    A.ok(not checked(ui) and ns.QuestMobs() == true, "Preset draft must paint off without applying it")
+    A.ok(not checked(ui) and ns.Settings.QuestMobs() == true, "Preset draft must paint off without applying it")
     A.ok(QuietUICharDB.presetId == nil and #applied == 0, "Preset choice must stay unsaved")
     ui:Hide(); ns.ShowSetup()
     A.ok(checked(ui), "Closing discards the preset draft")
     click(ui.presetSelector); click(ui.presetMenu.items[2]); click(ui.save)
-    A.ok(QuietUICharDB.presetId == off and ns.QuestMobs() == false, "Saving the preset selection applies off")
+    A.ok(QuietUICharDB.presetId == off and ns.Settings.QuestMobs() == false, "Saving the preset selection applies off")
     A.ok(#applied == 1 and applied[1].enabled == false, "Preset Save applies the committed state")
 end)
 
 h.test("Reset turns Quest mobs on, saves, and leaves the shared preset unchanged", function(t)
     local ns, A = t.ns, t.assert
     local applied = boot(t)
-    local off = ns.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
-    ns.ActivatePreset(off); ns.ShowSetup()
+    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
+    ns.Settings.ActivatePreset(off); ns.ShowSetup()
     local ui = t.mock:findByName("QuietUISetup")
     A.falsy(checked(ui), "Preset off must paint")
     click(ui.reset)
-    A.ok(QuietUICharDB.presetId == nil and QuietUICharDB.questMobs == nil and ns.QuestMobs() == true,
+    A.ok(QuietUICharDB.presetId == nil and QuietUICharDB.questMobs == nil and ns.Settings.QuestMobs() == true,
         "Reset must detach and save default on")
     A.ok(checked(ui) and ui:IsShown(), "Reset paints on and leaves setup open")
-    A.eq(ns.Presets()[off].settings.questMobs, false, "Reset must not mutate the shared preset")
+    A.eq(ns.Settings.Presets()[off].settings.questMobs, false, "Reset must not mutate the shared preset")
     A.ok(#applied == 1 and applied[1].enabled == true, "Reset applies immediately")
 end)

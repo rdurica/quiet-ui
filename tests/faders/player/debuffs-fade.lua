@@ -8,8 +8,8 @@ h.test("Debuffs stay visible alone and opt-out restores aura fading and alpha", 
     local ns, A = t.ns, t.assert
     BuffFrame, DebuffFrame, TemporaryEnchantFrame = frame(UIParent), frame(UIParent), frame(UIParent)
     DebuffFrame._alpha = 0.8
-    ns.PlayerStyle = function() return "resource" end
-    ns.GroupAuras = function() return false end
+    ns.Settings.PlayerStyle = function() return "resource" end
+    ns.Settings.GroupAuras = function() return false end
     ns.FindFaders(false)
     ns.UpdateSmooth(1)
     A.eq(DebuffFrame._alpha, 1, "Default did not show debuffs with player frame off")
@@ -21,7 +21,7 @@ h.test("Debuffs stay visible alone and opt-out restores aura fading and alpha", 
     A.ok(DebuffFrame._alpha > 0 and DebuffFrame._alpha < 1, "Opt-out did not fade smoothly")
     ns.UpdateSmooth(1)
     A.eq(DebuffFrame._alpha, 0)
-    ns.InCombat = function() return true end
+    ns.World.InCombat = function() return true end
     ns.UpdateSmooth(1)
     A.ok(DebuffFrame._alpha == 1 and BuffFrame._alpha == 1, "Opt-out broke normal combat visibility")
     QuietUICharDB.alwaysShowDebuffs = nil
@@ -39,9 +39,9 @@ h.test("Always visible debuffs override the shared power alpha curve", function(
     mock:setUnit("player", { health = 100, healthMax = 100, power = 100, powerMax = 100 })
     BuffFrame, DebuffFrame = frame(UIParent), frame(UIParent)
     ns.FindFaders(false)
-    ns.InCombat = function() return true end
+    ns.World.InCombat = function() return true end
     ns.UpdateSmooth(1)
-    ns.InCombat = function() return false end
+    ns.World.InCombat = function() return false end
     ns.UpdateSmooth(0.225)
     A.near(BuffFrame._alpha, 0.25, 1e-9, "Buffs did not follow the shared curve")
     A.eq(DebuffFrame._alpha, 1)

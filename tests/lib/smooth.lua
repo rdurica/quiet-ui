@@ -40,14 +40,14 @@ function S.build(t, h)
         function curve:SetType(...) self.stepSet = true; return set(self, ...) end
         return curve
     end
-    ns.PlayerStyle = function() c.style = c.style + 1; return "classic" end
-    ns.PlayerThreshold = function() c.threshold = c.threshold + 1; return "resource", 70 end
-    ns.GroupAuras = function() c.grouping = c.grouping + 1; return true end
-    ns.OnlyOnHover = function(name)
+    ns.Settings.PlayerStyle = function() c.style = c.style + 1; return "classic" end
+    ns.Settings.PlayerThreshold = function() c.threshold = c.threshold + 1; return "resource", 70 end
+    ns.Settings.GroupAuras = function() c.grouping = c.grouping + 1; return true end
+    ns.Settings.OnlyOnHover = function(name)
         if name == "auras" then c.aura = c.aura + 1 end
         return false
     end
-    ns.AlwaysShowDebuffs = function() return true end
+    ns.Settings.AlwaysShowDebuffs = function() return true end
     ns.Hit = function() c.hover = c.hover + 1; return false end
     local isForbidden = DebuffFrame.IsForbidden
     DebuffFrame.IsForbidden = function(self)

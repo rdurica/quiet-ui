@@ -304,11 +304,11 @@ end
 
 local function ReadDraft(source)
     if frame and frame.rangeSpell and frame.rangeSpell.edit:HasFocus() then frame.rangeSpell.edit:ClearFocus() end
-    source = source or (ns.Settings and ns.Settings() or ns.CharDB())
-    if ns.MigrateOnce then ns.MigrateOnce(source) end
+    source = source or (ns.Settings.Effective())
+    if ns.Settings.MigrateOnce then ns.Settings.MigrateOnce(source) end
     draft.hoverOnly = {}
     for _, row in ipairs(ROWS) do
-        draft.hoverOnly[row.key] = ns.HoverSetting(source, row.key)
+        draft.hoverOnly[row.key] = ns.Settings.HoverSetting(source, row.key)
         if row.noHover then
             draft.hoverOnly[row.key] = false
             draft[row.key] = source.autoHideParty ~= true
@@ -361,8 +361,8 @@ end
 
 LoadSavedDraft = function()
     ReadDraft()
-    local preset = ns.ActivePreset()
-    selectedPresetId = preset and ns.CharDB().presetId or nil
+    local preset = ns.Settings.ActivePreset()
+    selectedPresetId = preset and ns.Settings.CharDB().presetId or nil
     presetName = preset and preset.name or nil
     presetLayout = preset and ns.Copy(preset.layout) or nil
 end
@@ -480,13 +480,13 @@ local function Write()
     if not settings then ns.Print(err); return end
     if presetName then
         if not presetLayout then ns.Print("Choose an Edit Mode layout before saving."); return end
-        local id, err = ns.SavePreset(selectedPresetId, presetName, presetLayout, settings)
+        local id, err = ns.Settings.SavePreset(selectedPresetId, presetName, presetLayout, settings)
         if not id then ns.Print(err); return end
         if ns.CommitLayoutPreview then ns.CommitLayoutPreview(true) end
-        ns.ActivatePreset(id)
+        ns.Settings.ActivatePreset(id)
     else
         if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
-        ns.ActivatePreset(nil, settings)
+        ns.Settings.ActivatePreset(nil, settings)
     end
     LoadSavedDraft()
     Paint()
@@ -1131,10 +1131,10 @@ local function CreateSetup()
             selectedPresetId, presetName, presetLayout = nil, nil, nil
             Paint()
         end } }
-        for _, item in ipairs(ns.PresetList()) do
+        for _, item in ipairs(ns.Settings.PresetList()) do
             local id = item.id
             entries[#entries + 1] = { name = item.name, selected = selectedPresetId == id, select = function()
-                local preset = ns.Presets()[id]
+                local preset = ns.Settings.Presets()[id]
                 if not preset then return end
                 if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
                 ReadDraft(preset.settings)
@@ -1148,7 +1148,7 @@ local function CreateSetup()
     widget.presetSelector:SetPoint("TOPLEFT", general, "TOPLEFT", 0, -24)
     widget.newPreset = ActionButton(general, "New preset", function()
         PresetDialog(widget, "Name the new shared preset.", "", function(name)
-            local valid, err = ns.PresetName(name)
+            local valid, err = ns.Settings.PresetName(name)
             if not valid then return false, err end
             selectedPresetId, presetName = nil, valid
             presetLayout = ns.CurrentLayoutRef()
@@ -1158,7 +1158,7 @@ local function CreateSetup()
     widget.newPreset:SetPoint("TOPLEFT", general, "TOPLEFT", 0, -58)
     widget.renamePreset = ActionButton(general, "Rename", function()
         PresetDialog(widget, "Rename this shared preset.", presetName, function(name)
-            local valid, err = ns.PresetName(name, selectedPresetId)
+            local valid, err = ns.Settings.PresetName(name, selectedPresetId)
             if not valid then return false, err end
             presetName = valid
             return true
@@ -1170,7 +1170,7 @@ local function CreateSetup()
         if not id then return end
         PresetDialog(widget, 'Delete "' .. presetName .. '" for all characters? They will keep their last settings.', nil, function()
             if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
-            ns.DeletePreset(id)
+            ns.Settings.DeletePreset(id)
             LoadSavedDraft()
             if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
             if ns.ApplyAll then ns.ApplyAll() end
@@ -1475,7 +1475,7 @@ local function CreateSetup()
 
     widget.reset = ActionButton(widget, "Reset default", function()
         if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
-        ns.ActivatePreset(nil, {})
+        ns.Settings.ActivatePreset(nil, {})
         LoadSavedDraft()
         Paint()
         if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end

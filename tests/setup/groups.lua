@@ -12,11 +12,11 @@ local function fixture(t)
     ns.PreviewLayout = function() end
     ns.CommitLayoutPreview = function() end
     ns.CancelLayoutPreview = function() end
-    local id = ns.SavePreset(nil, "Healer", ns.CurrentLayoutRef(), { chat = false, chatFade = 0, groupAuras = false,
+    local id = ns.Settings.SavePreset(nil, "Healer", ns.CurrentLayoutRef(), { chat = false, chatFade = 0, groupAuras = false,
         player = "resource", requireLivingTarget = true, visible = { bars = true, swing = true },
         groups = { ["1"] = 2 }, hostile = { ["1"] = true }, friendly = { ["2"] = true },
         range = { yards = "spell", kind = "friendly", spell = "Heal" } })
-    ns.ActivatePreset(id)
+    ns.Settings.ActivatePreset(id)
     ns.ShowSetup()
     return t.mock:findByName("QuietUISetup"), id
 end
@@ -47,7 +47,7 @@ h.test("group modes: hover/always exclusion, cancel, save into preset, membershi
     ui:Hide(); ns.ShowSetup()
     A.ok(ui.visibilityRows[2].always.box._checked, "Cancel saved a hover mode")
     click(ui.visibilityRows[2].hover); click(ui.save)
-    A.eq(ns.Presets()[id].settings.groupVisibility[2], "hover")
+    A.eq(ns.Settings.Presets()[id].settings.groupVisibility[2], "hover")
     click(ui.visibilityRows[3].always)
     click(first.plus)
     A.ok(ui.visibilityRows[3].members._text:find("Bar 1"), "Group membership did not refresh")
@@ -87,6 +87,6 @@ h.test("every group is reachable, regrouping clamps scroll, Reset leaves shared 
         and not ui.visibilityRows[2]:IsShown())
     ui:Hide(); ns.ShowSetup()
     click(ui.reset)
-    A.ok(not QuietUICharDB.groupVisibility and not QuietUICharDB.hoverOnly and ns.OnlyOnHover("xp"))
-    A.eq(ns.Presets()[id].settings.groupVisibility[2], "hover", "Reset changed shared modes")
+    A.ok(not QuietUICharDB.groupVisibility and not QuietUICharDB.hoverOnly and ns.Settings.OnlyOnHover("xp"))
+    A.eq(ns.Settings.Presets()[id].settings.groupVisibility[2], "hover", "Reset changed shared modes")
 end)

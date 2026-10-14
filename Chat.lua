@@ -80,7 +80,7 @@ local function ChatCount()
 end
 
 local function StripTab(tab)
-    if not tab or not ns.DB().enabled or not ns.ModernChat() then return end
+    if not tab or not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     local marked = ns.MarkingChat
     ns.MarkingChat = true
     ns.HideTextures(tab)
@@ -96,7 +96,7 @@ local function StripTab(tab)
     if not tab._quietClick and tab.HookScript then
         tab._quietClick = true
         tab:HookScript("OnClick", function()
-            if ns.DB().enabled and ns.ModernChat() then StripTab(tab) end
+            if ns.DB().enabled and ns.Settings.ModernChat() then StripTab(tab) end
         end)
     end
     ns.MarkingChat = marked
@@ -280,7 +280,7 @@ local function ReleaseEditMouse(edit)
 end
 
 local function SyncEdit(edit)
-    if not ns.DB().enabled or not ns.ModernChat() then
+    if not ns.DB().enabled or not ns.Settings.ModernChat() then
         ReleaseEditMouse(edit)
         edit._quietAlpha = nil
         if edit._quietPlate then
@@ -332,7 +332,7 @@ end
 
 -- Focus events can be missed, so visible input boxes are checked every frame.
 function ns.SyncVisibleEdits()
-    if not ns.DB().enabled or not ns.ModernChat() then return end
+    if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     for i = 1, ChatCount() do
         local edit = _G["ChatFrame" .. i .. "EditBox"]
         if edit and edit._quietEdit and edit:IsShown() then
@@ -625,7 +625,7 @@ local function HoldFont(frame, fs)
         fs._quietHoldHook = true
         pcall(hooksecurefunc, fs, "SetAlpha", function(self, alpha)
             if self._quietApplying or not ns.DB().enabled then return end
-            if ns.ModernChat and not ns.ModernChat() then return end
+            if ns.Settings.ModernChat and not ns.Settings.ModernChat() then return end
             if type(alpha) == "number" and not ns.IsSecret(alpha) and alpha < 0.01 then return end
             self._quietApplying = true
             self:SetAlpha(0)
@@ -691,7 +691,7 @@ local function TextSignature(frame, children)
 end
 
 local function HideNativeText(frame, force)
-    if not ns.DB().enabled or not ns.ModernChat() then return end
+    if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     if Forbidden(frame) then return end
     -- The root child list is read once and shared by the signature and the walk.
     local okKids, rootKids = pcall(function()
@@ -1363,7 +1363,7 @@ end
 
 local function ChatLife()
     local life = 10
-    if ns.ChatFade then life = ns.ChatFade() end
+    if ns.Settings.ChatFade then life = ns.Settings.ChatFade() end
     if type(life) ~= "number" then return 10 end
     return life
 end
@@ -1426,11 +1426,7 @@ local function PlaceCatcher(frame)
         box:SetAllPoints(frame)
         box._quietSpan = frame
     end
-    local strata = frame.GetFrameStrata and frame:GetFrameStrata()
-    if type(strata) == "string" and box._quietStrata ~= strata then
-        box:SetFrameStrata(strata)
-        box._quietStrata = strata
-    end
+    ns.Catcher.Strata(box, frame)
     local level = frame.GetFrameLevel and frame:GetFrameLevel() or 0
     if type(level) ~= "number" then level = 0 end
     if box._quietAnchor ~= level then
@@ -1870,7 +1866,7 @@ local function BindBubbles(frame)
         if self._quietScrollHook and not bottom then
             self._quietScroll = (self._quietScroll or 0) + 1
         end
-        PushLine(self, text, r, g, b, ns.DB().enabled and ns.ModernChat() and bottom)
+        PushLine(self, text, r, g, b, ns.DB().enabled and ns.Settings.ModernChat() and bottom)
         HideNativeText(self)
         if self._quietScrollHook then
             self._quietScroll = ClampScroll(self, self._quietScroll or 0)
@@ -1889,7 +1885,7 @@ local function BindBubbles(frame)
     if frame.HookScript and not frame._quietWheel then
         frame._quietWheel = true
         frame:HookScript("OnMouseWheel", function(self, delta)
-            if not ns.DB().enabled or not ns.ModernChat() then return end
+            if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
             Wheel(self, delta)
         end)
     end
@@ -1943,7 +1939,7 @@ local function FadeTabs(elapsed)
 end
 
 function ns.UpdateChat(elapsed)
-    if not ns.DB().enabled or not ns.ModernChat() then return end
+    if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     local now = GetTime()
     for i = 1, ChatCount() do
         EaseEdit(_G["ChatFrame" .. i .. "EditBox"], elapsed)
@@ -2053,10 +2049,10 @@ local function RestoreTabPoints(list)
 end
 
 local function PlaceTabs()
-    if placingTabs or not ns.DB().enabled or not ns.ModernChat() then return end
+    if placingTabs or not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     placingTabs = true
     local ok, err = pcall(function()
-        local top = ns.ChatTabs() == "top"
+        local top = ns.Settings.ChatTabs() == "top"
         local main = _G.ChatFrame1
         if top then
             -- Blizzard's own points: put back what Bottom moved, then leave them alone.
@@ -2163,7 +2159,7 @@ local function StripDock()
 end
 
 function ns.StripAllChat(force)
-    if stripping or not ns.DB().enabled or not ns.ModernChat() then return end
+    if stripping or not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     stripping = true
     ns.MarkingChat = true
     if force then chromeStripped = false end
@@ -2200,7 +2196,7 @@ end
 
 function ns.RestripChat(frame)
     if stripping or not ns.Usable(frame) or not OwnChatFrame(frame) or not ns.DB().enabled
-        or not ns.ModernChat() then return end
+        or not ns.Settings.ModernChat() then return end
     stripping = true
     ns.MarkingChat = true
     local ok, err = pcall(StripChat, frame)

@@ -5,19 +5,19 @@ local h = ...
 local function setup(t)
     local ns = t.ns
     local ctx = { selected = {}, restored = 0, combat = false, canceled = 0, refreshed = 0 }
-    ns.ForceQuietLayout = function() return ns.ActivePreset() ~= nil end
-    ns.ModernChat = function() return false end
+    ns.Settings.ForceQuietLayout = function() return ns.Settings.ActivePreset() ~= nil end
+    ns.Settings.ModernChat = function() return false end
     ns.SelectPresetLayout = function()
         if ctx.combat then return false end
-        ctx.selected[#ctx.selected + 1] = ns.ActivePreset().layout.layoutName
-        ns.CharDB().previousLayout = ns.CharDB().previousLayout or 3
-        ns.CharDB().presetLayoutManaged = true
+        ctx.selected[#ctx.selected + 1] = ns.Settings.ActivePreset().layout.layoutName
+        ns.Settings.CharDB().previousLayout = ns.Settings.CharDB().previousLayout or 3
+        ns.Settings.CharDB().presetLayoutManaged = true
         return true
     end
     ns.RestorePreviousLayout = function()
         if ctx.combat then return false end
         ctx.restored = ctx.restored + 1
-        ns.CharDB().previousLayout, ns.CharDB().presetLayoutManaged = nil, nil
+        ns.Settings.CharDB().previousLayout, ns.Settings.CharDB().presetLayoutManaged = nil, nil
         return true
     end
     local cancel, refresh = ns.CancelLayoutPreview, ns.RefreshSetup
@@ -31,8 +31,8 @@ local function setup(t)
     end
     QuietUIDB = { enabled = true }
     QuietUICharDB = {}
-    ctx.healer = ns.SavePreset(nil, 'Raid Healer', { layoutName = 'Raid' }, { chatFade = 0 })
-    ctx.minimal = ns.SavePreset(nil, 'Minimal', { layoutName = 'Quiet' }, { chat = false })
+    ctx.healer = ns.Settings.SavePreset(nil, 'Raid Healer', { layoutName = 'Raid' }, { chatFade = 0 })
+    ctx.minimal = ns.Settings.SavePreset(nil, 'Minimal', { layoutName = 'Quiet' }, { chat = false })
     t.boot()
     ctx.command = SlashCmdList.QUIETUI
     t.mock.printed = {}

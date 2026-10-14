@@ -165,9 +165,9 @@ h.test("A layout reads the fade setting once and timed lines fade, expire and re
     local chat, _, tick = fixture(t, 318)
     tick(); tick()
     local bubble = bubbles(chat)[1]
-    local read = ns.ChatFade
+    local read = ns.Settings.ChatFade
     local fadeReads = 0
-    ns.ChatFade = function() fadeReads = fadeReads + 1; return read() end
+    ns.Settings.ChatFade = function() fadeReads = fadeReads + 1; return read() end
     chat:GetScript("OnSizeChanged")(chat)
     tick()
     A.eq(fadeReads, 1, "A layout must read the fade setting once for all its lines")

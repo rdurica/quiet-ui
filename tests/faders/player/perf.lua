@@ -17,7 +17,7 @@ local function setup(t)
         if unit == "target" then s.targetReads = s.targetReads + 1 end
         return life(unit)
     end
-    ns.PlayerStyle = function() s.styleReads = s.styleReads + 1; return s.style end
+    ns.Settings.PlayerStyle = function() s.styleReads = s.styleReads + 1; return s.style end
     QuietUICharDB.requireLivingTarget = true
     function s.countParents(f)
         local get = f.GetParent

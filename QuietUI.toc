@@ -6,9 +6,23 @@
 ## SavedVariables: QuietUIDB
 ## SavedVariablesPerCharacter: QuietUICharDB
 
-Core.lua
-Presets.lua
-Settings.lua
+Core\Base.lua
+Core\Profiler.lua
+Core\UI.lua
+Core\Hover.lua
+Core\Catcher.lua
+Core\Alpha.lua
+Core\Fade.lua
+Core\Textures.lua
+Core\Restore.lua
+Core\World.lua
+Core\Plates.lua
+Core\Feature.lua
+Settings\Store.lua
+Settings\Getters.lua
+Settings\Groups.lua
+Settings\Migrate.lua
+Settings\Presets.lua
 Frames.lua
 Bars.lua
 Faders.lua

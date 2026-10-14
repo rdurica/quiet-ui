@@ -37,8 +37,8 @@ h.test("Party autohide keeps combat, instance and explicit reveal priorities", f
     A.eq(#catchers, 0, "Always visible needs no hover catcher")
     QuietUICharDB.autoHideParty = true
     ns.FindFaders(false)
-    ns.InGroup = function() return true end
-    ns.HasTarget = function() return true end
+    ns.World.InGroup = function() return true end
+    ns.World.HasTarget = function() return true end
     ns.UpdateParty(0.1)
     A.ok(PartyFrame._alpha > 0 and PartyFrame._alpha < 0.6, "Hide must fade, not disappear immediately")
     ns.UpdateParty(0.3)
@@ -56,13 +56,14 @@ h.test("Party autohide keeps combat, instance and explicit reveal priorities", f
         "Hover over a hidden block must reveal all members immediately")
     catchers[1].hot = false
     for _, trigger in ipairs({ "InCombat", "InForcedInstance", "Glancing", "InEditMode" }) do
+        local owner = trigger == "Glancing" and ns or ns.World
         ns.UpdateParty(1)
         A.eq(PartyFrame._alpha, 0)
-        ns[trigger] = function() return true end
+        owner[trigger] = function() return true end
         ns.UpdateParty(0)
         A.ok(PartyFrame._alpha == 1 and CompactPartyFrameContainer._alpha == 1,
             trigger .. " must reveal immediately")
-        ns[trigger] = function() return false end
+        owner[trigger] = function() return false end
     end
     ns.UpdateParty(1)
     PartyFrame:SetAlpha(1)
@@ -93,7 +94,7 @@ end)
 
 h.test("Party frame discovery releases replaced roots and skips forbidden frames", function(t)
     local ns, A = t.ns, t.assert
-    ns.InGroup = function() return true end
+    ns.World.InGroup = function() return true end
     QuietUICharDB.autoHideParty = true
     ns.Hit = function() return false end
     PartyFrame = frame(UIParent)
@@ -125,7 +126,7 @@ end)
 
 h.test("Party selection highlights and independent indicators fade with their block", function(t)
     local ns, A = t.ns, t.assert
-    ns.InGroup = function() return true end
+    ns.World.InGroup = function() return true end
     QuietUICharDB.autoHideParty = true
     ns.Hit = function() return false end
     PartyFrame = frame(UIParent)
@@ -153,7 +154,7 @@ h.test("Party selection highlights and independent indicators fade with their bl
         "Glance must restore independent indicators")
     ns.Glancing = function() return false end
     ns.UpdateParty(1)
-    ns.InCombat = function() return true end
+    ns.World.InCombat = function() return true end
     ns.UpdateParty(0)
     A.ok(highlight._alpha == 1 and ready._alpha == 1, "Combat must reveal independent indicators immediately")
     QuietUICharDB.autoHideParty = nil

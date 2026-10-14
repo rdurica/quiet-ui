@@ -8,9 +8,9 @@ h.test("Visible hover mode suppresses combat, grace, XP rewards and grouped aura
     QuietUICharDB.hoverOnly = { xp = true, cooldowns = true, meter = true, auras = true }
     MainStatusTrackingBarContainer, EssentialCooldownViewer, DamageMeter = frame(UIParent), frame(UIParent), frame(UIParent)
     BuffFrame, DebuffFrame = frame(UIParent), frame(UIParent)
-    ns.InCombat = function() return true end
-    ns.InGroup = function() return true end
-    ns.InForcedInstance = function() return true end
+    ns.World.InCombat = function() return true end
+    ns.World.InGroup = function() return true end
+    ns.World.InForcedInstance = function() return true end
     ns.Hit = function(obj) return obj.hot == true end
     ns.FindFaders(false)
     ns.MarkCombatEnd(); ns.MarkQuestXP(100)
@@ -30,9 +30,9 @@ h.test("Visible hover mode suppresses combat, grace, XP rewards and grouped aura
     ns.Glancing = function() return true end
     tick(); A.ok(DamageMeter._alpha == 1 and DebuffFrame._alpha == 1)
     ns.Glancing = function() return false end
-    ns.InEditMode = function() return true end
+    ns.World.InEditMode = function() return true end
     tick(); A.ok(DamageMeter._alpha == 1 and BuffFrame._alpha == 1)
-    ns.InEditMode = function() return false end
+    ns.World.InEditMode = function() return false end
     tick(); A.ok(DamageMeter._alpha == 0 and DebuffFrame._alpha == 0)
     local box
     for _, f in ipairs(mock.frames) do

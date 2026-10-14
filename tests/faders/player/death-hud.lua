@@ -10,8 +10,8 @@ for _, trigger in ipairs({ "quiet", "InCombat", "InForcedInstance", "InGroup", "
         local A = t.assert
         local ns = t.ns
         local s = P.env(t)
-        ns.ShowAll = function() return s.InCombat or s.InForcedInstance or s.InVehicle or s.InEditMode or false end
-        ns.XPForced = function() return false end
+        ns.World.ShowAll = function() return s.InCombat or s.InForcedInstance or s.InVehicle or s.InEditMode or false end
+        ns.World.XPForced = function() return false end
         CharacterMicroButton = CreateFrame("Button", "CharacterMicroButton", UIParent)
         ChatFrame1:AddMessage("Existing message")
         ChatFrame1EditBox:SetFocus()
@@ -25,10 +25,10 @@ for _, trigger in ipairs({ "quiet", "InCombat", "InForcedInstance", "InGroup", "
         if trigger == "hover" then
             MainActionBar.hot, CharacterMicroButton.hot, bag.hot = true, true, true
         elseif trigger ~= "quiet" then s[trigger] = true end
-        ns.RefreshWorld()
+        ns.World.RefreshWorld()
         local function hudTick()
             s.tick()
-            ns.UpdateBars(ns.ShowAll(), 0.3, true)
+            ns.UpdateBars(ns.World.ShowAll(), 0.3, true)
             ns.UpdateFaders(0.3)
             ns.UpdateMenuButton(0.3)
             ns.UpdateChat(0.3)
@@ -41,7 +41,7 @@ for _, trigger in ipairs({ "quiet", "InCombat", "InForcedInstance", "InGroup", "
         local messages = serialize(ChatFrame1._lines)
         for _, life in ipairs({ "dead", "ghost" }) do
             s.life = life
-            ns.RefreshWorld()
+            ns.World.RefreshWorld()
             hudTick()
             for i, obj in ipairs(tracked) do
                 A.eq(P.effective(obj), before[i], "Death changed HUD frame " .. tostring(obj._name or i))
