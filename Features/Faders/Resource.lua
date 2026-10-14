@@ -6,7 +6,7 @@ local resourceFrames = state.resourceFrames
 
 local function ResourceForced()
     return ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InEditMode() or ns.Settings.Pinned("resource")
-        or ns.Glancing()
+        or ns.Glance.Active()
 end
 
 local function HealthPart(frame)

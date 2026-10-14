@@ -16,7 +16,7 @@ function ns.Settings.OnlyOnHover(name)
 end
 
 function ns.Settings.VisibilityShow(name, usual, hovered)
-    if ns.World.InEditMode() or ns.Glancing() then return true end
+    if ns.World.InEditMode() or ns.Glance.Active() then return true end
     if ns.Settings.OnlyOnHover(name) then return hovered and true or false end
     return ns.Settings.Pinned(name) or usual or hovered or false
 end

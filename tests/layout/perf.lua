@@ -18,8 +18,8 @@ h.test("Layout retry stays idle without a pending layout or preview", function(t
     tick(0.2)
     A.eq(applied - before, 0, "Idle ticks still ran layout preview")
     -- A preview the client has not applied yet is retried on the next slow tick.
-    t.ns.PreviewLayout({ builtin = 2 })
-    A.ok(t.ns.LayoutPreviewActive(), "precondition: the preview is open")
+    t.ns.Layout.Preview({ builtin = 2 })
+    A.ok(t.ns.Layout.PreviewActive(), "precondition: the preview is open")
     before = applied
     tick(0.2)
     A.eq(applied - before, 1, "An open preview did not keep retrying")

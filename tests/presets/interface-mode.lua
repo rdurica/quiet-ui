@@ -5,12 +5,12 @@ h.test("preset mode tags, legacy migration, lists, commands and activation guard
     local ns, A, mock = t.ns, t.assert, t.mock
     QuietUIDB = {}; QuietUICharDB = {}
     local mode, canceled, applied = 0, 0, 0
-    ns.CurrentInterfaceStyle = function() return mode end
-    ns.LayoutInterfaceStyle = function(ref)
+    ns.Layout.CurrentStyle = function() return mode end
+    ns.Layout.InterfaceStyle = function(ref)
         if ref.builtin == 3 or ref.layoutName == "aaaddd" then return 1 end
         return ref.interfaceStyle or 0
     end
-    ns.CancelLayoutPreview = function() canceled = canceled + 1 end
+    ns.Layout.CancelPreview = function() canceled = canceled + 1 end
     ns.ApplyAll = function() applied = applied + 1 end
     local db, char = QuietUIDB, QuietUICharDB
     local keyboard = ns.Settings.SavePreset(nil, "Keyboard", { layoutName = "QuietUI", layoutType = 1 }, { chat = false })

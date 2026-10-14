@@ -99,7 +99,7 @@ function P.env(t, opts)
     end
     for _, key in ipairs({ "InEditMode", "InCombat", "InForcedInstance", "InGroup", "InVehicle",
         "HasTarget", "Glancing", "ShowAll", "XPForced" }) do
-        (key == "Glancing" and ns or ns.World)[key] = function() return s[key] == true end
+        (key == "Glancing" and ns.Glance or ns.World)[key == "Glancing" and "Active" or key] = function() return s[key] == true end
     end
     ns.Hit = function(obj) return obj and obj.hot == true end
     if opts.preset then

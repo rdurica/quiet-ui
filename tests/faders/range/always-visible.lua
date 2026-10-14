@@ -27,11 +27,11 @@ h.test("Range ignores always-visible groups, keeps forced suppression and detach
     ns.World.ShowAll = function() return false end
     ns.Faders.UpdateRange(0.1)
     A.ok(mark._shown, "Range did not return after forced visibility ended")
-    ns.Glancing = function() return true end
+    ns.Glance.Active = function() return true end
     reads = distanceReads
     ns.Faders.UpdateRange(0.3)
     A.ok(not mark._shown and distanceReads == reads, "Glance must hide range without reading distance")
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     ns.Faders.UpdateRange(0.1)
     A.ok(mark._shown, "Range did not return after Glance ended")
     ns.Settings.Range = function() end

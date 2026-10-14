@@ -8,7 +8,7 @@ h.test("Enabling again runs a full party scan without a signature change", funct
     QuietUICharDB.autoHideParty = true
     ns.World.InGroup = function() return false end
     ns.World.InEditMode = function() return false end
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     ns.World.InCombat = function() return false end
     ns.World.InForcedInstance = function() return false end
     ns.Hit = function() return false end

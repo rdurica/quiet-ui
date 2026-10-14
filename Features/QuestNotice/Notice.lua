@@ -100,7 +100,7 @@ end
 
 function Q.Draw(alpha)
     local tracker = Tracker()
-    if not tracker or ns.Glancing() or ns.World.InEditMode() or ns.Settings.Pinned("quests") or ns.Settings.OnlyOnHover("quests") then Q.Hide(); return end
+    if not tracker or ns.Glance.Active() or ns.World.InEditMode() or ns.Settings.Pinned("quests") or ns.Settings.OnlyOnHover("quests") then Q.Hide(); return end
     local width = Q.Call(tracker.GetWidth, tracker)
     if not Q.Number(width) or width <= 20 or not EnsureFrame() then Q.Hide(); return end
     local anchor, point, dx, dy = FirstSlot(tracker)

@@ -132,13 +132,13 @@ local haveBarShow = false
 local function RowForced(id, showAllForced)
     local mode = ns.Settings.GroupVisibility(ns.Settings.BarGroup(id))
     if mode == "always" then return true end
-    if mode == "hover" then return ns.World.XPForced() or ns.Glancing() end
+    if mode == "hover" then return ns.World.XPForced() or ns.Glance.Active() end
     return showAllForced
 end
 
 function Bars.Update(showAll, elapsed, rescan)
     if rescan == nil then rescan = true end
-    local showAllForced = showAll or ns.Glancing()
+    local showAllForced = showAll or ns.Glance.Active()
     -- ApplyBar reads hosts/covered, which ForgetBarButtons drops between rescans.
     S.Collect()
     if rescan or not haveBarShow then

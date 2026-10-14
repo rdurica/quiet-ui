@@ -49,16 +49,16 @@ end
 
 function ns.Settings.PresetInterfaceStyle(preset)
     if type(preset.interfaceStyle) == "number" then return preset.interfaceStyle end
-    local style = ns.LayoutInterfaceStyle and ns.LayoutInterfaceStyle(preset.layout)
+    local style = ns.Layout.InterfaceStyle and ns.Layout.InterfaceStyle(preset.layout)
         or (preset.layout and preset.layout.interfaceStyle)
-    if style == nil and not ns.LayoutInterfaceStyle then style = 0 end
+    if style == nil and not ns.Layout.InterfaceStyle then style = 0 end
     if style ~= nil then preset.interfaceStyle = style end
     return style
 end
 
 function ns.Settings.PresetCompatible(preset)
     local style = ns.Settings.PresetInterfaceStyle(preset)
-    return style ~= nil and style == (ns.CurrentInterfaceStyle and ns.CurrentInterfaceStyle() or 0)
+    return style ~= nil and style == (ns.Layout.CurrentStyle and ns.Layout.CurrentStyle() or 0)
 end
 
 function ns.Settings.PresetList()
@@ -94,9 +94,9 @@ function ns.Settings.SavePreset(id, name, layout, settings)
     end
     local saved = ns.Settings.CopySettings(settings)
     saved.forceLayout = nil
-    local style = ns.LayoutInterfaceStyle and ns.LayoutInterfaceStyle(layout)
+    local style = ns.Layout.InterfaceStyle and ns.Layout.InterfaceStyle(layout)
         or (layout and layout.interfaceStyle)
-        or (ns.CurrentInterfaceStyle and ns.CurrentInterfaceStyle() or 0)
+        or (ns.Layout.CurrentStyle and ns.Layout.CurrentStyle() or 0)
     ns.Settings.Presets()[id] = { name = valid, layout = ns.Copy(layout), settings = saved, interfaceStyle = style }
     return id
 end
@@ -156,9 +156,9 @@ function ns.Settings.PresetCommand(name)
         ns.Print('Preset "' .. ns.Settings.Presets()[selected].name .. '" is not available for the current interface mode.')
         return
     end
-    if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+    if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
     ns.Settings.ActivatePreset(selected)
-    if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
+    if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
     if ns.ApplyAll then ns.ApplyAll() end
     if ns.Setup then ns.Setup.Refresh() end
     ns.Print('Preset "' .. ns.Settings.Presets()[selected].name .. '" selected.')

@@ -53,33 +53,33 @@ h.test("show-all transitions recalculate bars even with a stationary pointer", f
     mock:tick(0.01)
     A.eq(scans, 1, 'Leaving edit mode did not recalculate bars')
     QuietUIGlance('up')
-    A.falsy(ns.Glancing(), 'Key-up toggled Glance')
+    A.falsy(ns.Glance.Active(), 'Key-up toggled Glance')
     QuietUIGlance('down')
-    A.ok(ns.Glancing(), 'Key-down did not toggle Glance')
+    A.ok(ns.Glance.Active(), 'Key-down did not toggle Glance')
     QuietUIGlance('down')
-    A.falsy(ns.Glancing(), 'Second key-down did not clear Glance')
+    A.falsy(ns.Glance.Active(), 'Second key-down did not clear Glance')
     SlashCmdList.QUIETUI('  GlAnCe  ')
-    A.ok(ns.Glancing(), 'Slash command did not toggle Glance')
+    A.ok(ns.Glance.Active(), 'Slash command did not toggle Glance')
     A.ok(QuietUIDB.enabled, 'Glance command disabled the addon')
     scans = 0
     mock:tick(0.01)
     A.eq(scans, 1, 'Glance command did not recalculate bars')
     QuietUIGlance('down')
-    A.falsy(ns.Glancing(), 'Key binding did not clear command Glance')
+    A.falsy(ns.Glance.Active(), 'Key binding did not clear command Glance')
     SlashCmdList.QUIETUI('glance')
     SlashCmdList.QUIETUI('glance')
-    A.falsy(ns.Glancing(), 'Second Glance command did not clear Glance')
+    A.falsy(ns.Glance.Active(), 'Second Glance command did not clear Glance')
     QuietUIDB.enabled = false
     QuietUIGlance('down')
-    A.falsy(ns.Glancing(), 'Glance toggled while addon was disabled')
+    A.falsy(ns.Glance.Active(), 'Glance toggled while addon was disabled')
     SlashCmdList.QUIETUI('glance')
-    A.falsy(ns.Glancing(), 'Glance command toggled while addon was disabled')
+    A.falsy(ns.Glance.Active(), 'Glance command toggled while addon was disabled')
     A.falsy(QuietUIDB.enabled, 'Glance command enabled the addon')
     QuietUIDB.enabled = true
     SlashCmdList.QUIETUI('glance')
     ns.Settings.ForceQuietLayout = function() return false end
     SlashCmdList.QUIETUI('off')
-    A.falsy(ns.Glancing(), 'Disabling the addon did not clear command Glance')
+    A.falsy(ns.Glance.Active(), 'Disabling the addon did not clear command Glance')
     A.falsy(QuietUIDB.enabled, 'Off command did not disable the addon')
 end)
 
@@ -91,7 +91,7 @@ h.test("group visibility overrides automatic triggers and keeps hover exceptions
     local main, left = MainActionBar, MultiBarBottomLeft
     local hot = {}
     ns.Hit = function(obj) return hot[obj] == true end
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     local explicit = false
     ns.World.XPForced = function() return explicit end
     QuietUICharDB.groups = { swing = 1 }
@@ -117,9 +117,9 @@ h.test("group visibility overrides automatic triggers and keeps hover exceptions
     explicit = true; tick(false)
     A.alpha(main, 1, 'Edit/flyout/cursor exception failed')
     explicit = false
-    ns.Glancing = function() return true end; tick(false)
+    ns.Glance.Active = function() return true end; tick(false)
     A.alpha(main, 1, 'Glance exception failed')
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     QuietUICharDB.groupVisibility[1] = 'always'; tick(false)
     A.ok(main._alpha == 1 and swing._alpha == 1)
     QuietUICharDB.groupVisibility = nil; tick(false)

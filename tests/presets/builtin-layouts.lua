@@ -22,22 +22,22 @@ h.test("third built-in layout: name, one-time selection, cached copy, restore, m
         SaveLayouts = function() end,
         ConvertStringToLayoutInfo = function() return {} end,
     }
-    A.eq(ns.LayoutChoices()[3].name, "Controller", "Read the actual name of the third built-in layout")
+    A.eq(ns.Layout.Choices()[3].name, "Controller", "Read the actual name of the third built-in layout")
     local id = ns.Settings.SavePreset(nil, "Test A", { builtin = 3 }, { chat = false })
     ns.Settings.ActivatePreset(id)
-    for _ = 1, 600 do A.ok(ns.SelectPresetLayout()) end
+    for _ = 1, 600 do A.ok(ns.Layout.SelectPreset()) end
     A.ok(switches == 1 and info.activeLayout == 3, "A settled third layout must not be switched again")
     A.eq(copies, 1, "Repeated layout checks must not deep-copy the full built-in layouts")
-    A.eq(ns.LayoutLabel({ builtin = 3 }), "Controller")
+    A.eq(ns.Layout.Label({ builtin = 3 }), "Controller")
     A.ok(QuietUICharDB.previousLayout == 4 and QuietUICharDB.previousLayoutRef.layoutName == "Original")
-    A.eq(ns.LayoutStatus(), "Active layout: 3; preset layout: 3; preview: none.")
-    A.ok(ns.RestorePreviousLayout() and info.activeLayout == 4)
+    A.eq(ns.Layout.Status(), "Active layout: 3; preset layout: 3; preview: none.")
+    A.ok(ns.Layout.RestorePrevious() and info.activeLayout == 4)
     EditModePresetLayoutManager = {
         presetLayoutInfo = { { layoutName = "Modern", interfaceStyle = 0 },
             { layoutName = "Classic", interfaceStyle = 0 }, { layoutName = "Gamepad", interfaceStyle = 1 } },
         GetCopyOfPresetLayouts = function() error("Do not copy all systems when metadata is available") end,
     }
     InputUtil = { GetCurrentInterfaceStyle = function() return 1 end }
-    A.eq(ns.LayoutChoices()[1].name, "Gamepad (Gamepad mode only)", "Filter built-ins by interface style")
-    A.eq(ns.LayoutLabel({ builtin = 3 }), "Gamepad (Gamepad mode only)")
+    A.eq(ns.Layout.Choices()[1].name, "Gamepad (Gamepad mode only)", "Filter built-ins by interface style")
+    A.eq(ns.Layout.Label({ builtin = 3 }), "Gamepad (Gamepad mode only)")
 end)

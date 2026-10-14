@@ -239,15 +239,15 @@ local function CreateSetup()
     end
 
     widget.reset = Setup.Button(widget, "Reset default", function()
-        if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+        if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         ns.Settings.ActivatePreset(nil, {})
         Setup.LoadSavedDraft()
         Setup.Paint()
-        if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
+        if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
         if ns.ApplyAll then ns.ApplyAll() end
     end)
     widget.import = Setup.Button(widget, "Import layout", function()
-        ns.ForceLayout()
+        ns.Layout.Force()
     end)
     widget.save = Setup.Button(widget, "Save", function()
         Setup.Write()
@@ -260,7 +260,7 @@ local function CreateSetup()
     widget.import:SetPoint("BOTTOM", 0, metrics.buttonY)
     widget.save:SetPoint("BOTTOMRIGHT", -metrics.side, metrics.buttonY)
     widget:SetScript("OnHide", function()
-        if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+        if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         for _, key in ipairs({ "presetMenu", "layoutMenu", "presetDialog" }) do
             if widget[key] then widget[key]:Hide() end
         end
@@ -279,7 +279,7 @@ function Setup.Refresh()
 end
 
 function Setup.Show()
-    if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
+    if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
     S.frame = S.frame or CreateSetup()
     Setup.LoadSavedDraft()
     if S.frame._quietPortrait then

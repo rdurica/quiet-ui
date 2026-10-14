@@ -9,7 +9,7 @@ end
 -- Records what ApplyAll sees when Setup commits: the Quest mobs setting and the stored value.
 local function boot(t)
     t.boot()
-    t.ns.CurrentLayoutRef = function() return { layoutName = "Original", layoutType = 1 } end
+    t.ns.Layout.CurrentRef = function() return { layoutName = "Original", layoutType = 1 } end
     local applied = {}
     t.ns.ApplyAll = function()
         applied[#applied + 1] = { enabled = t.ns.Settings.QuestMobs(), saved = QuietUICharDB.questMobs }
@@ -84,13 +84,13 @@ end)
 h.test("questMobs is a shared preset key", function(t)
     local ns, A = t.ns, t.assert
     t.boot()
-    ns.CurrentLayoutRef = function() return { layoutName = "Original", layoutType = 1 } end
+    ns.Layout.CurrentRef = function() return { layoutName = "Original", layoutType = 1 } end
     local copy = ns.Settings.CopySettings({ questMobs = false, unrelated = "ignore" })
     A.eq(copy.questMobs, false, "CopySettings must keep questMobs = false")
     local target = { questMobs = false }
     ns.Settings.CopySettings({}, target)
     A.eq(target.questMobs, nil, "Omitted questMobs must clear a stale false")
-    local id = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
+    local id = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questMobs = false })
     A.eq(ns.Settings.Presets()[id].settings.questMobs, false, "Preset creation must preserve questMobs = false")
     ns.Settings.ActivatePreset(id)
     A.ok(QuietUICharDB.questMobs == false and ns.Settings.QuestMobs() == false, "Activating an off preset must turn icons off")
@@ -192,8 +192,8 @@ end)
 h.test("Save with an active preset writes into the preset; switching picks up its value", function(t)
     local ns, A = t.ns, t.assert
     boot(t)
-    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
-    local on = ns.Settings.SavePreset(nil, "On", ns.CurrentLayoutRef(), {})
+    local off = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questMobs = false })
+    local on = ns.Settings.SavePreset(nil, "On", ns.Layout.CurrentRef(), {})
     ns.Settings.ActivatePreset(off); ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     A.falsy(checked(ui), "Selecting an off preset must paint unchecked")
@@ -212,7 +212,7 @@ end)
 h.test("Preset selector is a draft; saving the selection applies its questMobs", function(t)
     local ns, A = t.ns, t.assert
     local applied = boot(t)
-    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
+    local off = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questMobs = false })
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     choice(ui)
@@ -229,7 +229,7 @@ end)
 h.test("Reset turns Quest mobs on, saves, and leaves the shared preset unchanged", function(t)
     local ns, A = t.ns, t.assert
     local applied = boot(t)
-    local off = ns.Settings.SavePreset(nil, "Off", ns.CurrentLayoutRef(), { questMobs = false })
+    local off = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questMobs = false })
     ns.Settings.ActivatePreset(off); ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     A.falsy(checked(ui), "Preset off must paint")

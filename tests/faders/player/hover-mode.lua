@@ -27,9 +27,9 @@ h.test("Visible hover mode suppresses combat, grace, XP rewards and grouped aura
     A.ok(DebuffFrame._alpha == 1 and BuffFrame._alpha == 1 and DamageMeter._alpha == 1
         and EssentialCooldownViewer._alpha == 1 and MainStatusTrackingBarContainer._alpha == 1)
     for _, obj in ipairs(all) do obj.hot = false end
-    ns.Glancing = function() return true end
+    ns.Glance.Active = function() return true end
     tick(); A.ok(DamageMeter._alpha == 1 and DebuffFrame._alpha == 1)
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     ns.World.InEditMode = function() return true end
     tick(); A.ok(DamageMeter._alpha == 1 and BuffFrame._alpha == 1)
     ns.World.InEditMode = function() return false end

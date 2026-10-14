@@ -119,12 +119,12 @@ function Faders.UpdateParty(elapsed)
         return
     end
     if not ns.World.InGroup() and not ns.World.InCombat() and not ns.World.InForcedInstance()
-        and not ns.World.InEditMode() and not ns.Glancing() then
+        and not ns.World.InEditMode() and not ns.Glance.Active() then
         Faders.ParkHover("party")
         return
     end
     local hovered = Faders.HoverFrames("party", partyFrames, true)
-    local show = ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InEditMode() or ns.Glancing() or hovered
+    local show = ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InEditMode() or ns.Glance.Active() or hovered
     local target = show and 1 or 0
     for root, block in pairs(partyAlphaBlocks) do
         if ns.Usable(root) and root:IsShown() then

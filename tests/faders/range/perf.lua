@@ -21,7 +21,7 @@ local function setup(t, rangeSettings)
         IsSpellInRange = function() return true end,
     }
     ns.World.ShowAll = function() return false end
-    ns.Glancing = function() return false end
+    ns.Glance.Active = function() return false end
     ns.Report = function(name, err) error(name .. ": " .. tostring(err)) end
     mock.calls.GetActionInfo = 0
 

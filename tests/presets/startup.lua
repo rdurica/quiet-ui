@@ -20,8 +20,8 @@ h.test("once-only startup validation, delayed layouts and detach before selectio
     QuietUIDB.presets[id].interfaceStyle = nil
     QuietUICharDB.presetId = id
     local checks = 0
-    local validate = ns.ValidatePresetInterface
-    ns.ValidatePresetInterface = function() checks = checks + 1; return validate() end
+    local validate = ns.Layout.ValidatePresetInterface
+    ns.Layout.ValidatePresetInterface = function() checks = checks + 1; return validate() end
     mock:fire("PLAYER_LOGIN")
     A.ok(QuietUICharDB.presetId == id and switches == 0, "Unloaded layouts must defer validation and selection")
     ready = true
