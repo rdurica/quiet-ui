@@ -3,7 +3,6 @@ local ADDON, ns = ...
 -- Wiring: apply / restore, events, the per-frame update, and /quiet.
 
 local booted = false
-local hookedGlobal = {}
 local chromeAcc = 0
 local glancing = false
 local layoutPending = nil
@@ -18,16 +17,6 @@ local rescanMissed = false
 
 local function Run(label, fn, ...)
     ns.Profiler.Run(label, fn, ...)
-end
-
-local function UpdateFades(elapsed, rescan)
-    if not ns.DB().enabled then return end
-    ns.NextFadeTick()
-    ns.World.BeginTick(rescan)
-    local showAll = ns.World.ShowAll()
-    Run("bar visibility", ns.UpdateBars, showAll, elapsed, rescan)
-    Run("faders", ns.UpdateFaders, elapsed)
-    Run("menu", ns.UpdateMenuButton, elapsed)
 end
 
 -- Select once per enable, restore on disable. Both wait out combat and login.
@@ -87,32 +76,10 @@ local function ArmLayoutSettle()
 end
 
 local function RestoreAll()
-    if ns.HideHoverCatchers then ns.HideHoverCatchers() end
-    if ns.UpdateParty then ns.UpdateParty(0) end
-    if ns.CancelLayoutPreview then ns.CancelLayoutPreview() end
-    glancing = false
-    if type(ns.RestoreQuestNotice) == "function" then ns.RestoreQuestNotice() end
-    if type(ns.RestoreHighlights) == "function" then ns.RestoreHighlights() end
-    if type(ns.RestoreQuestMobs) == "function" then ns.RestoreQuestMobs() end
-    ns.HideQuestCatcher()
-    ns.HideRangeMark()
-    -- Target and action bar events stop while off.
-    if ns.ForgetRangeSlot then ns.ForgetRangeSlot() end
-    if ns.ForgetRangePlate then ns.ForgetRangePlate() end
-    ns.HideBarCatchers()
-    ns.ResetMenu()
-    ns.RestoreChat()
+    ns.Registry.Restore()
     ns.RestoreAlpha()
-    if ns.RestorePlayerFader then ns.RestorePlayerFader() end
-    settleToken = settleToken + 1
-    settleUntil = 0
-    layoutChosen = false
-    if ns.Settings.ForceQuietLayout() or ns.Settings.CharDB().presetLayoutManaged then
-        layoutPending = "restore"
-        FinishLayout()
-    else
-        layoutPending = nil
-    end
+    -- The layout restore waits until the core restore is done.
+    if layoutPending == "restore" then FinishLayout() end
 end
 
 local function ApplyAll()
@@ -121,35 +88,71 @@ local function ApplyAll()
         RestoreAll()
         return
     end
-    if ns.ForgetBarButtons then ns.ForgetBarButtons() end
-    ns.World.RefreshWorld()
-    if type(ns.ApplyQuestNotice) == "function" then ns.ApplyQuestNotice() end
-    if type(ns.ApplyHighlights) == "function" then ns.ApplyHighlights() end
-    if type(ns.ApplyQuestMobs) == "function" then ns.ApplyQuestMobs() end
-    if ns.Settings.ForceQuietLayout() then
-        if not layoutChosen then
-            layoutPending = "select"
-            FinishLayout()
-        end
-    else
-        -- A later Save with force on selects again. previousLayout stays.
-        layoutChosen = false
-        layoutPending = nil
-    end
-    ns.EnsureLayout()
-    ns.RefreshChrome()
-    if ns.Settings.ModernChat() then
-        ns.StripAllChat()
-    else
-        ns.RestoreChat()
-    end
-    UpdateFades(0)
-    ns.FindFaders(false)
-    ns.UpdateParty(0)
-    ns.UpdateBagSlots()
+    ns.Registry.Apply()
+    ns.Registry.Fade(0)
 end
 
 ns.ApplyAll = ApplyAll
+ns.RestoreAll = RestoreAll
+
+-- Glance and Layout register last: Layout restores first of the features but finishes after RestoreAlpha.
+ns.Feature({
+    name = "glance",
+    restore = function() glancing = false end,
+})
+
+ns.Feature({
+    name = "layout",
+    apply = function()
+        if ns.Settings.ForceQuietLayout() then
+            if not layoutChosen then
+                layoutPending = "select"
+                FinishLayout()
+            end
+        else
+            -- A later Save with force on selects again. previousLayout stays.
+            layoutChosen = false
+            layoutPending = nil
+        end
+        ns.EnsureLayout()
+    end,
+    restore = function()
+        ns.CancelLayoutPreview()
+        settleToken = settleToken + 1
+        settleUntil = 0
+        layoutChosen = false
+        if ns.Settings.ForceQuietLayout() or ns.Settings.CharDB().presetLayoutManaged then
+            layoutPending = "restore"
+        else
+            layoutPending = nil
+        end
+    end,
+    -- These also arrive while off: a layout job waits for combat or Edit Mode to end.
+    always = { "PLAYER_REGEN_ENABLED", "EDIT_MODE_LAYOUTS_UPDATED" },
+    events = {
+        PLAYER_REGEN_ENABLED = function()
+            FinishLayout()
+            if ns.DB().enabled then ns.EnsureLayout() end
+        end,
+        EDIT_MODE_LAYOUTS_UPDATED = function()
+            FinishLayout()
+            if not ns.DB().enabled then return end
+            ns.EnsureLayout()
+            if not ns.Settings.ForceQuietLayout() then return end
+            if type(GetTime) == "function" and GetTime() > settleUntil then return end
+            layoutChosen = false
+            layoutPending = "select"
+            FinishLayout()
+        end,
+        PLAYER_ENTERING_WORLD = function(isInitialLogin, isReloading)
+            -- Boot usually armed it already; arm once if it was skipped.
+            if (isInitialLogin or isReloading) and not settleArmed then
+                settleArmed = true
+                ArmLayoutSettle()
+            end
+        end,
+    },
+})
 
 function ns.LayoutSettingsChanged()
     settleToken = settleToken + 1
@@ -158,7 +161,14 @@ function ns.LayoutSettingsChanged()
     if layoutPending ~= "restore" then layoutPending = nil end
 end
 
+-- Frames may have loaded: a deep scan, then apply again.
 local function Rescan()
+    ns.Registry.Phase("rescan", true)
+    ApplyAll()
+end
+
+-- Boot and its delayed retries: the same scan, outside the rescan phase.
+local function BootScan()
     ns.World.RefreshWorld()
     ns.FindFaders(true)
     ns.ScanSwing()
@@ -211,6 +221,8 @@ end
 local function Boot()
     local first = not booted
     booted = true
+    ns.Registry.SetBooted(true)
+    ns.Registry.InstallHooks()
     if first then presetCheckPending = true end
     ns.Settings.CharDB()
     ns.Settings.Effective()
@@ -220,7 +232,7 @@ local function Boot()
         print("   |cffffffff/quiet|r  switch it on or off")
         print("   |cffffffff/quiet setup|r  choose what stays visible")
     end
-    Rescan()
+    BootScan()
     EnsureGlanceBinding()
     ns.EnsureMinimap()
     if first and ns.DB().enabled then
@@ -232,34 +244,14 @@ local function Boot()
             ApplyAll()
             ns.EnsureMinimap()
         end)
-        C_Timer.After(2, Rescan)
-    end
-end
-
-local function HookGlobal(name, fn)
-    if hookedGlobal[name] or type(_G[name]) ~= "function" then return end
-    local ok = pcall(hooksecurefunc, name, function(...)
-        if not ns.DB().enabled then return end
-        Run(name, fn, ...)
-    end)
-    if ok then
-        hookedGlobal[name] = true
+        C_Timer.After(2, BootScan)
     end
 end
 
 ------------------------------------------------------------------------------
--- Events. Unknown names throw on this client, so each one is registered alone.
+-- Boot events. Everything else arrives through the registry's event frame.
 ------------------------------------------------------------------------------
 local handlers = {}
-
-local function Highlights(event, ...)
-    if type(ns.HighlightsEvent) == "function" then ns.HighlightsEvent(event, ...) end
-end
-
--- Own Run so an error here or in a neighbouring handler does not skip the other.
-local function QuestMobs(event, ...)
-    if type(ns.QuestMobsEvent) == "function" then Run("quest mobs", ns.QuestMobsEvent, event, ...) end
-end
 
 function handlers.ADDON_LOADED(name)
     if name == ADDON then
@@ -274,131 +266,16 @@ function handlers.PLAYER_LOGIN()
     Boot()
 end
 
-function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloading)
+function handlers.PLAYER_ENTERING_WORLD()
     ns.DB()
     if booted then
         ns.RequestRescan()
     else
         Boot()
     end
-    if ns.DB().enabled and type(ns.QuestNoticeEvent) == "function" then
-        ns.QuestNoticeEvent("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
-    end
-    if ns.DB().enabled then
-        Highlights("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
-        QuestMobs("PLAYER_ENTERING_WORLD", isInitialLogin, isReloading)
-    end
-    -- Boot usually armed it already; arm once if it was skipped.
-    if ns.DB().enabled and (isInitialLogin or isReloading) and not settleArmed then
-        settleArmed = true
-        ArmLayoutSettle()
-    end
 end
 
-function handlers.PLAYER_REGEN_DISABLED()
-    ns.World.NoteCombat(true)
-    ns.UpdateParty(0)
-    UpdateFades(0)
-    Highlights("PLAYER_REGEN_DISABLED")
-end
-
-function handlers.PLAYER_REGEN_ENABLED()
-    ns.World.NoteCombat(false)
-    ns.MarkCombatEnd()
-    UpdateFades(0)
-    ns.RefreshChrome()
-    ns.EnsureLayout()
-    Highlights("PLAYER_REGEN_ENABLED")
-end
-
-for _, event in ipairs({ "PLAYER_SOFT_INTERACT_CHANGED", "ZONE_CHANGED_NEW_AREA" }) do
-    handlers[event] = function(...) Highlights(event, ...) end
-end
-
-function handlers.NAME_PLATE_UNIT_ADDED(...)
-    Highlights("NAME_PLATE_UNIT_ADDED", ...)
-    QuestMobs("NAME_PLATE_UNIT_ADDED", ...)
-end
-
-function handlers.UNIT_QUEST_LOG_CHANGED(...)
-    QuestMobs("UNIT_QUEST_LOG_CHANGED", ...)
-end
-
-for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE" }) do
-    local name = event
-    handlers[name] = function(...)
-        if type(ns.QuestNoticeEvent) == "function" then ns.QuestNoticeEvent(name, ...) end
-    end
-end
-
-local questLogUpdate = handlers.QUEST_LOG_UPDATE
-function handlers.QUEST_LOG_UPDATE(...)
-    questLogUpdate(...)
-    QuestMobs("QUEST_LOG_UPDATE", ...)
-end
-
-function handlers.QUEST_TURNED_IN(_, xp)
-    ns.MarkQuestXP(xp)
-end
-
-function handlers.EDIT_MODE_LAYOUTS_UPDATED()
-    if ns.ForgetBarButtons then ns.ForgetBarButtons() end
-    ns.EnsureLayout()
-    if not ns.DB().enabled or not ns.Settings.ForceQuietLayout() then return end
-    if type(GetTime) == "function" and GetTime() > settleUntil then return end
-    layoutChosen = false
-    layoutPending = "select"
-    FinishLayout()
-end
-
-function handlers.UPDATE_CHAT_WINDOWS()
-    ns.StripAllChat(true)
-end
-handlers.UPDATE_FLOATING_CHAT_WINDOWS = handlers.UPDATE_CHAT_WINDOWS
-
-function handlers.GROUP_ROSTER_UPDATE()
-    ns.World.RefreshWorld()
-    ns.ScanParty()
-    ns.UpdateParty(0)
-end
-
-function handlers.PLAYER_TARGET_CHANGED()
-    ns.World.RefreshWorld()
-    ns.ForgetRangePlate()
-end
-
-function handlers.NAME_PLATE_UNIT_REMOVED(...)
-    ns.ForgetRangePlate()
-    Highlights("NAME_PLATE_UNIT_REMOVED", ...)
-    QuestMobs("NAME_PLATE_UNIT_REMOVED", ...)
-end
-
-function handlers.ACTIONBAR_SLOT_CHANGED()
-    ns.ForgetRangeSlot()
-end
-
-handlers.SPELLS_CHANGED = handlers.ACTIONBAR_SLOT_CHANGED
-
-function handlers.UNIT_FLAGS(unit)
-    if unit == "target" then ns.World.RefreshWorld() end
-end
-
-handlers.UNIT_FACTION = handlers.UNIT_FLAGS
-
-function handlers.UNIT_ENTERED_VEHICLE()
-    ns.World.RefreshWorld()
-end
-
-handlers.UNIT_EXITED_VEHICLE = handlers.UNIT_ENTERED_VEHICLE
-
--- These run before boot and while disabled; the rest only while active.
-local ALWAYS = {
-    ADDON_LOADED = true,
-    PLAYER_LOGIN = true,
-    PLAYER_ENTERING_WORLD = true,
-}
-
-local events = CreateFrame("Frame")
+local events = ns.Registry.Frame()
 local lastPointerX, lastPointerY
 local pointerMoved = false
 local lastFlyout = false
@@ -428,20 +305,6 @@ end
 function ns.PointerMoved()
     return pointerMoved
 end
-
-events:SetScript("OnEvent", function(_, event, ...)
-    if booted and (event == "PLAYER_REGEN_ENABLED" or event == "EDIT_MODE_LAYOUTS_UPDATED") then
-        Run("layout", FinishLayout)
-    end
-    local handler = handlers[event]
-    if not handler then return end
-    if not ALWAYS[event] and (not booted or not ns.DB().enabled) then
-        -- A CVar restore deferred by combat must finish after /quiet off.
-        if event == "PLAYER_REGEN_ENABLED" and booted then Run("highlights", Highlights, event, ...) end
-        return
-    end
-    Run(event, handler, ...)
-end)
 
 local disabledLayoutAcc = 0
 
@@ -493,58 +356,28 @@ events:SetScript("OnUpdate", function(_, elapsed)
     lastGlance = glance
     lastShowAll = showAll
     if rescan or wasHot then
-        Run(nil, UpdateFades, elapsed, rescan)
+        Run(nil, ns.Registry.Fade, elapsed, rescan)
         wasHot = ns.FrameHot()
     end
     if slow then
         if not rescan and not wasHot then
-            ns.NextFadeTick()
-            Run("faders", ns.UpdateFaders, elapsed)
-            Run("menu", ns.UpdateMenuButton, elapsed)
+            Run(nil, ns.Registry.Fade, elapsed, false, true)
             if ns.FrameHot() then wasHot = true end
         end
-        Run("bags", ns.UpdateBagSlots)
-        if ns.Settings.ModernChat() then
-            Run("input", ns.SyncVisibleEdits)
-        end
+        ns.Registry.Phase("tick")
     end
-    if ns.Settings.ModernChat() then
-        Run("bubbles", ns.UpdateChat, elapsed)
-    end
-    if type(ns.UpdateQuestNotice) == "function" then Run("quest notice", ns.UpdateQuestNotice, elapsed) end
-    -- Range changes while you walk, with no focus or cursor change, so it cannot wait for a rescan.
-    Run("range", ns.UpdateRange, elapsed)
-    Run("smooth", ns.UpdateSmooth, elapsed, ns.Profiler.Active() and ns.Profiler.Smooth or nil)
+    ns.Registry.Phase("frame", elapsed)
     chromeAcc = chromeAcc + elapsed
     if chromeAcc < 1 then return end
     chromeAcc = 0
-    Run("frame scan", ns.FindFaders, false)
-    Run("swing", ns.ScanSwing)
-    if ns.BarChildrenChanged and ns.BarChildrenChanged() then
-        Run("bar buttons", ns.ForgetBarButtons)
-    end
-    Run("world", ns.World.RefreshWorld)
-    Run("menu", ns.RefreshChrome)
-    if ns.Settings.ModernChat() then
-        Run("chat", ns.StripAllChat)
-    end
+    ns.Registry.Phase("rescan", false)
 end)
 
--- Without these two the glow cannot follow the soft target, so say so once.
-local HIGHLIGHT_EVENTS = { PLAYER_SOFT_INTERACT_CHANGED = true, NAME_PLATE_UNIT_ADDED = true }
-for eventName in pairs(handlers) do
-    local ok, err = pcall(events.RegisterEvent, events, eventName)
-    if not ok and HIGHLIGHT_EVENTS[eventName] then ns.Report("highlights events", err) end
-end
-
--- Hooked arguments are not ours to forward, except the chat frame.
-HookGlobal("UpdateMicroButtons", function() ns.RefreshChrome() end)
-HookGlobal("FCF_SetWindowAlpha", function(frame) ns.RestripChat(frame) end)
-HookGlobal("FCF_SetWindowColor", function(frame) ns.RestripChat(frame) end)
-HookGlobal("FCF_DockUpdate", function() ns.StripAllChat() end)
-HookGlobal("FCF_SetTabPosition", function() ns.StripAllChat() end)
-HookGlobal("FCF_RestorePositionAndDimensions", function() ns.StripAllChat() end)
-HookGlobal("FCF_OpenTemporaryWindow", function() ns.StripAllChat() end)
+ns.Feature({
+    name = "quietui",
+    early = { "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD" },
+    events = handlers,
+})
 
 ------------------------------------------------------------------------------
 -- Press Glance to show the faded HUD. Press again and the rules apply.

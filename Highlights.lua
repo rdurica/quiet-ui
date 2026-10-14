@@ -444,3 +444,23 @@ function ns.HighlightsEvent(event, ...)
         Evaluate()
     end
 end
+
+local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+    "PLAYER_SOFT_INTERACT_CHANGED", "ZONE_CHANGED_NEW_AREA", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED" }
+local events = {}
+for _, event in ipairs(EVENTS) do
+    events[event] = function(...)
+        if type(ns.HighlightsEvent) == "function" then ns.HighlightsEvent(event, ...) end
+    end
+end
+
+ns.Feature({
+    name = "highlights",
+    apply = function() if type(ns.ApplyHighlights) == "function" then ns.ApplyHighlights() end end,
+    restore = function() if type(ns.RestoreHighlights) == "function" then ns.RestoreHighlights() end end,
+    events = events,
+    -- A CVar restore deferred by combat must finish after /quiet off.
+    always = { "PLAYER_REGEN_ENABLED" },
+    -- Without these two the glow cannot follow the soft target, so say so once.
+    required = { "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED" },
+})

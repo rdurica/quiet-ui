@@ -267,3 +267,19 @@ function ns.QuestMobsEvent(event, ...)
         if (...) == "player" then Schedule() end
     end
 end
+
+local EVENTS = { "PLAYER_ENTERING_WORLD", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
+    "UNIT_QUEST_LOG_CHANGED", "QUEST_LOG_UPDATE" }
+local events = {}
+for _, event in ipairs(EVENTS) do
+    events[event] = function(...)
+        if type(ns.QuestMobsEvent) == "function" then ns.QuestMobsEvent(event, ...) end
+    end
+end
+
+ns.Feature({
+    name = "quest mobs",
+    apply = function() if type(ns.ApplyQuestMobs) == "function" then ns.ApplyQuestMobs() end end,
+    restore = function() if type(ns.RestoreQuestMobs) == "function" then ns.RestoreQuestMobs() end end,
+    events = events,
+})

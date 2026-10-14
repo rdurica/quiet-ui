@@ -18,6 +18,7 @@ Core\Restore.lua
 Core\World.lua
 Core\Plates.lua
 Core\Feature.lua
+Core\WorldFeature.lua
 Settings\Store.lua
 Settings\Getters.lua
 Settings\Groups.lua

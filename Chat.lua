@@ -2205,3 +2205,34 @@ function ns.RestripChat(frame)
     PlaceTabs()
     if not ok then ns.Report("chat", err) end
 end
+
+ns.Feature({
+    name = "chat",
+    -- No gate: apply also takes the chrome off again when Modern chat is switched off.
+    apply = function()
+        if ns.Settings.ModernChat() then ns.StripAllChat() else ns.RestoreChat() end
+    end,
+    restore = function() ns.RestoreChat() end,
+    frame = function(elapsed)
+        if ns.Settings.ModernChat() then ns.Profiler.Run("bubbles", ns.UpdateChat, elapsed) end
+    end,
+    tick = function()
+        if ns.Settings.ModernChat() then ns.SyncVisibleEdits() end
+    end,
+    rescan = function(deep)
+        if not deep and ns.Settings.ModernChat() then ns.StripAllChat() end
+    end,
+    events = {
+        UPDATE_CHAT_WINDOWS = function() ns.StripAllChat(true) end,
+        UPDATE_FLOATING_CHAT_WINDOWS = function() ns.StripAllChat(true) end,
+    },
+    hooks = {
+        -- Hooked arguments are not ours to forward, except the chat frame.
+        FCF_SetWindowAlpha = function(frame) ns.RestripChat(frame) end,
+        FCF_SetWindowColor = function(frame) ns.RestripChat(frame) end,
+        FCF_DockUpdate = function() ns.StripAllChat() end,
+        FCF_SetTabPosition = function() ns.StripAllChat() end,
+        FCF_RestorePositionAndDimensions = function() ns.StripAllChat() end,
+        FCF_OpenTemporaryWindow = function() ns.StripAllChat() end,
+    },
+})
