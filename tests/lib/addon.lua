@@ -19,15 +19,43 @@ function A.tocFiles(root)
     local out = {}
     for _, line in ipairs(readLines(root .. "/QuietUI.toc")) do
         local trimmed = line:match("^%s*(.-)%s*$")
-        if trimmed ~= "" and trimmed:sub(1, 2) ~= "##" then out[#out + 1] = trimmed end
+        if trimmed ~= "" and trimmed:sub(1, 2) ~= "##" then
+            -- WoW paths use "\\"; everything else here uses "/".
+            out[#out + 1] = (trimmed:gsub("\\", "/"))
+        end
     end
     return out
 end
 
 function A.fileExists(name)
+    name = name:gsub("\\", "/")
     local f = io.open(A.root .. "/" .. name, "rb")
     if f then f:close() return true end
     return false
+end
+
+-- Text of an addon file (either separator), or nil when it does not exist.
+function A.readFile(name)
+    name = name:gsub("\\", "/")
+    local f = io.open(A.root .. "/" .. name, "rb")
+    if not f then return nil end
+    local text = f:read("*a")
+    f:close()
+    return text
+end
+
+-- Every .lua file under the given top-level folders of the addon, as sorted "Dir/Sub/File.lua"
+-- paths (folders that do not exist are skipped).
+function A.luaFiles(dirs)
+    local out = {}
+    for _, dir in ipairs(dirs) do
+        local p = io.popen("cd '" .. A.root .. "' 2>/dev/null && find '" .. dir
+            .. "' -type f -name '*.lua' 2>/dev/null", "r")
+        for line in p:lines() do out[#out + 1] = line end
+        p:close()
+    end
+    table.sort(out)
+    return out
 end
 
 -- Loads every file of the .toc, in order, into a fresh ns. Returns ns and the loaded list.

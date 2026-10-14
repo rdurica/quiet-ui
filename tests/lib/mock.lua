@@ -35,6 +35,8 @@ local ABSENT = {
 
 local Frame = {}
 Frame.__index = function(self, key)
+    local absent = rawget(self, "_absent")
+    if absent and absent[key] then return nil end
     local v = Frame[key]
     if v ~= nil then return v end
     if type(key) ~= "string" or ABSENT[key] then return nil end
@@ -175,6 +177,11 @@ function Frame:RegisterUnitEvent(event) self:RegisterEvent(event) end
 function Frame:UnregisterEvent(event) self._events[event] = nil end
 function Frame:UnregisterAllEvents() self._events = {} end
 function Frame:IsEventRegistered(event) return self._events[event] == true end
+-- Alpha inheritance: SetIgnoreParentAlpha / IsIgnoringParentAlpha keep a flag; SetAbsent(name)
+-- makes a method read back as nil on that one frame (probed optional API missing).
+function Frame:SetIgnoreParentAlpha(v) self._ignoreParent = v and true or false end
+function Frame:IsIgnoringParentAlpha() return self._ignoreParent or false end
+function Frame:SetAbsent(name) self._absent = self._absent or {}; self._absent[name] = true end
 
 local function newRegion(self, kind, layer)
     local r = newFrame(self._mock, kind, nil, self)
@@ -186,7 +193,17 @@ local function newRegion(self, kind, layer)
 end
 function Frame:CreateTexture(name, layer) return newRegion(self, "Texture", layer) end
 function Frame:CreateFontString(name, layer) return newRegion(self, "FontString", layer) end
-function Frame:CreateAnimationGroup() return newFrame(self._mock, "AnimationGroup", nil, nil) end
+function Frame:CreateAnimationGroup()
+    local group = newFrame(self._mock, "AnimationGroup", nil, nil)
+    group._owner = self
+    return group
+end
+-- Animation group state: _owner (frame it was created on), _looping, _playing, _plays (Play count).
+function Frame:SetLooping(v) self._looping = v end
+function Frame:GetLooping() return self._looping end
+function Frame:Play() self._playing = true; self._plays = (self._plays or 0) + 1 end
+function Frame:Stop() self._playing = false end
+function Frame:IsPlaying() return self._playing == true end
 function Frame:SetTexture(v) self._texture = v end
 function Frame:GetTexture() return self._texture end
 function Frame:SetColorTexture(...) self._color = { ... } end
@@ -736,5 +753,161 @@ function M:drain()
 end
 
 function M:pendingTimers() return #self.timers end
+
+------------------------------------------------------------------------------
+-- Quest mob world (tests/questmobs): attackable/related nameplate units with tooltip lines
+-- and quest objectives, call counters for the client APIs the feature reads, and the
+-- invariants every such test ends with (w.check). Call after mock:install().
+--   w.addPlate(token, spec, opts)   spec: attack, related, lines (+ noAttack, noRelated flags);
+--                                   opts: noHealthBar, barHeight; returns the plate (mock.nameplates)
+--   w.removePlate(token)            w.iconOn(plate) -> "kill" | "loot" | nil (at most one visible)
+--   w.roots(plate)                  icon frames attached below plate;  w.nothingShown()
+--   w.calls[name][arg], w.total[name]: UnitCanAttack, Related, GetUnit, Objectives, GetNamePlates
+--   w.objectives[questID]           w.tooltipUsed / w.violations: GameTooltip use, plate mutations
+function M:questWorld()
+    local mock = self
+    local w = { calls = {}, total = {}, objectives = {}, violations = {}, tooltipUsed = 0,
+        base = #mock.frames, timers0 = #mock.timers, TITLE = 17, OBJECTIVE = 8 }
+    local function rec(name, arg)
+        w.calls[name] = w.calls[name] or {}
+        w.calls[name][arg] = (w.calls[name][arg] or 0) + 1
+        w.total[name] = (w.total[name] or 0) + 1
+    end
+    function w.count(name, arg) return (w.calls[name] or {})[arg] or 0 end
+    function w.quest(id, title) return { type = w.TITLE, id = id, leftText = title or ("Quest " .. id) } end
+    function w.objective(text) return { type = w.OBJECTIVE, leftText = text } end
+    function w.pending() return #mock.timers - w.timers0 end
+
+    _G.GameTooltip = setmetatable({}, { __index = function()
+        return function() w.tooltipUsed = w.tooltipUsed + 1 end
+    end })
+    _G.C_QuestLog.UnitIsRelatedToActiveQuest = function(unit)
+        rec("Related", unit)
+        local u = mock.units[unit]
+        if u then return u.related end
+        return false
+    end
+    _G.C_QuestLog.GetQuestObjectives = function(id) rec("Objectives", id); return w.objectives[id] end
+    _G.C_TooltipInfo = { GetUnit = function(unit)
+        rec("GetUnit", unit)
+        local u = mock.units[unit]
+        if not u or u.lines == nil then return nil end
+        return { lines = u.lines }
+    end }
+    local canAttack, getPlates = _G.UnitCanAttack, _G.C_NamePlate.GetNamePlates
+    _G.UnitCanAttack = function(a, b)
+        rec("UnitCanAttack", b)
+        if a ~= "player" then w.violations[#w.violations + 1] = "UnitCanAttack asked for " .. tostring(a) end
+        return canAttack(a, b)
+    end
+    _G.C_NamePlate.GetNamePlates = function() rec("GetNamePlates", "all"); return getPlates() end
+
+    local function guard(f, label)
+        f._plate = true
+        for _, m in ipairs({ "SetAlpha", "SetPoint", "ClearAllPoints", "Show", "Hide" }) do
+            local orig = f[m]
+            f[m] = function(self, ...)
+                w.violations[#w.violations + 1] = label .. ":" .. m
+                return orig(self, ...)
+            end
+        end
+    end
+    function w.addPlate(token, spec, opts)
+        spec, opts = spec or {}, opts or {}
+        local plate = CreateFrame("Frame", nil, UIParent)
+        local unitFrame = CreateFrame("Frame", nil, plate)
+        unitFrame.unit = token
+        plate.UnitFrame, plate.namePlateUnitToken = unitFrame, token
+        guard(plate, token); guard(unitFrame, token .. ".UnitFrame")
+        if not opts.noHealthBar then
+            local bar = CreateFrame("StatusBar", nil, unitFrame)
+            bar:SetHeight(opts.barHeight or 8)
+            unitFrame.healthBar, plate.bar = bar, bar
+            guard(bar, token .. ".healthBar")
+        end
+        local u = { exists = true, attackable = true, related = true, lines = spec.lines }
+        if spec.attack ~= nil or spec.noAttack then u.attackable = spec.attack end
+        if spec.related ~= nil or spec.noRelated then u.related = spec.related end
+        mock.units[token], mock.nameplates[token] = u, plate
+        return plate
+    end
+    function w.removePlate(token) mock.units[token], mock.nameplates[token] = nil, nil end
+
+    local function kindOf(path)
+        if type(path) ~= "string" then return end
+        path = path:lower():gsub("\\", "/")
+        if path:find("media/quest%-kill") then return "kill" end
+        if path:find("media/quest%-loot") then return "loot" end
+    end
+    local function within(f, root)
+        for _ = 1, 50 do
+            if not f then return false end
+            if f == root then return true end
+            f = f._parent
+        end
+        return false
+    end
+    local function visible(f)
+        for _ = 1, 50 do
+            if not f then return true end
+            if f._shown == false or (type(f._alpha) == "number" and f._alpha <= 0) then return false end
+            f = f._parent
+        end
+        return true
+    end
+    w.within, w.visible = within, visible
+    -- The visible quest icon texture on plate, never more than one.
+    function w.iconOn(plate)
+        local kind, tex, n = nil, nil, 0
+        for _, f in ipairs(mock.frames) do
+            local k = f._kind == "Texture" and kindOf(f._texture)
+            if k and within(f, plate) and visible(f) then n = n + 1; kind, tex = k, f end
+        end
+        if n > 1 then error("expected at most one quest icon on a plate, got " .. n, 0) end
+        return kind, tex
+    end
+    function w.roots(plate)
+        local list = {}
+        for i = w.base + 1, #mock.frames do
+            local f = mock.frames[i]
+            if f._kind == "Frame" and not f._plate and f._parent and f._parent ~= UIParent
+                and within(f._parent, plate) then
+                list[#list + 1] = f
+            end
+        end
+        return list
+    end
+    function w.nothingShown()
+        for _, f in ipairs(mock.frames) do
+            if f._kind == "Texture" and kindOf(f._texture) and visible(f) then return false end
+        end
+        return true
+    end
+    function w.reports()
+        local n = 0
+        for _, line in ipairs(mock.printed) do if line:find("error", 1, true) then n = n + 1 end end
+        return n
+    end
+    -- End-of-test invariants: plates untouched, no OnUpdate, no GameTooltip, no stray output,
+    -- every visible icon sits on a current plate. allowOutput skips the chat-output rule.
+    function w.check(allowOutput)
+        if #w.violations > 0 then error("plate frames were touched: " .. table.concat(w.violations, ", "), 0) end
+        for i = w.base + 1, #mock.frames do
+            if mock.frames[i]._scripts.OnUpdate then error("an OnUpdate script was set on a created frame", 0) end
+        end
+        if w.tooltipUsed > 0 then error("GameTooltip was used " .. w.tooltipUsed .. " times", 0) end
+        if not allowOutput and #mock.printed > 0 then
+            error("unexpected chat output: " .. table.concat(mock.printed, " | "), 0)
+        end
+        for _, f in ipairs(mock.frames) do
+            if f._kind == "Texture" and kindOf(f._texture) and visible(f) then
+                local home = false
+                for _, plate in pairs(mock.nameplates) do if within(f, plate) then home = true end end
+                if not home then error("a visible quest icon is not on any current nameplate", 0) end
+            end
+        end
+    end
+    return w
+end
 
 return M
