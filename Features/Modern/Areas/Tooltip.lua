@@ -4,7 +4,7 @@ local Modern = ns.Modern
 local savedBorders = setmetatable({}, { __mode = "k" })
 
 local function Quality(tip)
-    if not ns.Usable(tip) then return end
+    if not ns.Settings.ModernArea("tooltip") or not ns.Usable(tip) then return end
     local link = tip.GetItem and select(2, tip:GetItem())
     local itemID = type(link) == "string" and tonumber(link:match("item:(%d+)"))
     local quality
@@ -65,9 +65,10 @@ local function ApplyTip(skin, tip)
         bar:SetStatusBarTexture(Modern.Theme().bar)
     end
     HookQuality(skin, tip)
-    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-        pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Item, Quality)
-    end
+end
+
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+    pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Item, Quality)
 end
 
 Modern.Register{

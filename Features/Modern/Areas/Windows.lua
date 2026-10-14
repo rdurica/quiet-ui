@@ -97,7 +97,7 @@ local function Apply(skin)
         local frame = _G[name]
         if Usable(frame) then Modern.WindowChrome(skin, frame) end
     end
-    if Modern.Parchment then Modern.Parchment.Apply(skin) end
+    if Modern.Parchment then Modern.Parchment.Apply() end
 end
 
 Modern.Register{
