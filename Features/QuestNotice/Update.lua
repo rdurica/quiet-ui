@@ -81,15 +81,15 @@ end
 
 local function Forward(event)
     return function(...)
-        if type(Q.Event) == "function" then Q.Event(event, ...) end
+        Q.Event(event, ...)
     end
 end
 
 ns.Feature({
     name = "quest notice",
-    apply = function() if type(Q.Apply) == "function" then Q.Apply() end end,
-    restore = function() if type(Q.Restore) == "function" then Q.Restore() end end,
-    frame = function(elapsed) if type(Q.Update) == "function" then Q.Update(elapsed) end end,
+    apply = function() Q.Apply() end,
+    restore = function() Q.Restore() end,
+    frame = function(elapsed) Q.Update(elapsed) end,
     events = {
         PLAYER_ENTERING_WORLD = Forward("PLAYER_ENTERING_WORLD"),
         QUEST_ACCEPTED = Forward("QUEST_ACCEPTED"),
