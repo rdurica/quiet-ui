@@ -32,6 +32,9 @@ function W.window(name)
     frame.TitleContainer.TitleText = frame.TitleContainer:CreateFontString(nil, "OVERLAY")
     frame.TitleContainer.TitleText:SetText(name .. " title")
     frame.TitleContainer.TitleText:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
+    frame.TitleContainer.TitleText.GetTextColor = function(self)
+        return unpack(self._textColor or { 1, 1, 1, 1 })
+    end
     return frame
 end
 

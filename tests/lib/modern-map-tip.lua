@@ -47,6 +47,14 @@ function M.tooltip(name, withNineSlice)
     bar.SetStatusBarTexture = function(_, value) texture:SetTexture(value) end
     bar.GetStatusBarTexture = function() return texture end
     tip.StatusBar = bar
+    tip.GetBackdropColor = function(self)
+        if self._backdropColor == nil then return end
+        return unpack(self._backdropColor)
+    end
+    tip.GetBackdropBorderColor = function(self)
+        if self._backdropBorder == nil then return end
+        return unpack(self._backdropBorder)
+    end
     if withNineSlice then
         local nine = CreateFrame("Frame", nil, tip)
         nine:SetAlpha(0.65)

@@ -7,14 +7,22 @@ local function enable(ns)
     ns.Modern.Apply()
 end
 
-local function fixture(t)
+local function createGamepad(t)
     local m = t.mock
     _G.GamepadMainActionBarFrame = CreateFrame("Frame", "GamepadMainActionBarFrame", UIParent)
+    return I.button(m, "GamepadActionButton1", GamepadMainActionBarFrame)
+end
+
+local function fixture(t, withoutGamepad)
+    local m = t.mock
     local standard = I.button(m, "ActionButton1", MainActionBar)
     local pet = I.button(m, "PetActionButton1", PetActionBar)
     local stance = I.button(m, "StanceButton1", StanceBar)
-    local gamepad = I.button(m, "GamepadActionButton1", GamepadMainActionBarFrame)
-    GamepadMainActionBarFrame:Hide()
+    local gamepad
+    if not withoutGamepad then
+        gamepad = createGamepad(t)
+        GamepadMainActionBarFrame:Hide()
+    end
     local barArt = I.barArt(MainActionBar, "MainMenuBarTexture0")
     return standard, pet, stance, gamepad, barArt
 end
@@ -68,12 +76,11 @@ end)
 
 h.test("late gamepad load reapplies the same skin and disabled restore returns every property", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
-    local standard, _, _, gamepad = fixture(t)
-    GamepadMainActionBarFrame:Hide()
+    local standard = fixture(t, true)
     enable(ns)
     A.ok(I.zoomed(standard.Icon), "initial standard button")
-    A.ok(not I.zoomed(gamepad.Icon), "unloaded gamepad untouched")
-    GamepadMainActionBarFrame:Show()
+    A.eq(_G.GamepadMainActionBarFrame, nil, "unloaded gamepad controls are absent")
+    local gamepad = createGamepad(t)
     ns.Modern.AddonLoaded("Blizzard_GamepadActionBars")
     A.ok(I.zoomed(gamepad.Icon), "loaded gamepad button")
     QuietUICharDB.modernize.enabled = nil

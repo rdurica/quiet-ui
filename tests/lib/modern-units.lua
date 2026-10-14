@@ -101,6 +101,16 @@ function U.portraitBorder(frame)
     return count >= 4
 end
 
+function U.portraitBorderColor(frame)
+    for _, region in ipairs(frame._regions) do
+        if region._layer == "BORDER" and region._shown and region._color then
+            for _, point in ipairs(region._points) do
+                if point[2] == frame.Portrait then return region._color end
+            end
+        end
+    end
+end
+
 function U.panel(frame)
     for _, region in ipairs(frame._regions) do
         if region._layer == "BACKGROUND" and region._shown and region._color then return true end

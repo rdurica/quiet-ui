@@ -32,6 +32,7 @@ end)
 
 h.test("ResetPositions defers original placement in combat and completes after QuietUI turns off", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
+    t.boot()
     QuietUICharDB = { modernize = { enabled = true }, windowPoints = { ZzResetWindow = { "CENTER", "CENTER", 4, 5 } } }
     QuietUICharDB.windowPoints = nil
     local frame, original = tracked(ns)

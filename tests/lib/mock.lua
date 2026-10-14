@@ -72,8 +72,12 @@ local function newFrame(mock, kind, name, parent, template)
     if parent and parent._children then parent._children[#parent._children + 1] = f end
     if template and tostring(template):find("BackdropTemplate", 1, true) then
         f.SetBackdrop = function(self, spec) self._backdrop = spec end
-        f.SetBackdropColor = function(self, ...) self._backdropColor = { ... } end
-        f.SetBackdropBorderColor = function(self, ...) self._backdropBorder = { ... } end
+        f.SetBackdropColor = function(self, ...)
+            if select("#", ...) == 0 then self._backdropColor = nil else self._backdropColor = { ... } end
+        end
+        f.SetBackdropBorderColor = function(self, ...)
+            if select("#", ...) == 0 then self._backdropBorder = nil else self._backdropBorder = { ... } end
+        end
     end
     return f
 end
@@ -317,7 +321,12 @@ function M:build()
         if template and mock.rejectTemplates[template] then
             error("Unknown template: " .. tostring(template), 2)
         end
-        return frame(kind, name, parent or G.UIParent, template)
+        local f = frame(kind, name, parent or G.UIParent, template)
+        if type(name) == "string" and name ~= "" then
+            G[name] = f
+            _G[name] = f
+        end
+        return f
     end
     G.hooksecurefunc = function(a, b, c)
         local obj, method, hook

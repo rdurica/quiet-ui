@@ -119,16 +119,23 @@ end
 -- Methods themselves are stable mock methods; the script table records only the scripts an area owns.
 local FIELDS = { "_texCoord", "_texture", "_color", "_vertex", "_points", "_alpha", "_backdropColor",
     "_backdropBorder", "_text", "_textColor", "_font", "_w", "_h", "_shown", "_mouse", "_wheel",
-    "_mask", "_scripts" }
+    "_mask", "_scripts", "_statusColor" }
 function L.snapshot(frames)
     local snap = {}
-    for _, f in ipairs(frames) do
+    for i, f in ipairs(frames) do
         local s = {}
         for _, k in ipairs(FIELDS) do s[k] = copy(rawget(f, k)) end
+        s._quietLabel = f._name or (f._kind .. "#" .. i)
         snap[f] = s
     end
     return snap
 end
+local function defaultTexCoord(v)
+    if v == nil then return true end
+    if type(v) == "table" and v[1] == 0 and v[2] == 1 and v[3] == 0 and v[4] == 1 then return true end
+    return false
+end
+
 function L.diff(snap)
     local changed = {}
     for f, s in pairs(snap) do
@@ -141,7 +148,11 @@ function L.diff(snap)
                 for kk in pairs(y) do if x[kk] == nil then return false end end
                 return true
             end
-            if not same(a, b) then changed[#changed + 1] = (f._name or f._kind) .. "." .. k end
+            local differs = not same(a, b)
+            if differs and k == "_texCoord" and defaultTexCoord(a) and defaultTexCoord(b) then
+                differs = false
+            end
+            if differs then changed[#changed + 1] = s._quietLabel .. "." .. k end
         end
     end
     table.sort(changed)

@@ -26,6 +26,7 @@ h.test("Tooltip item quality updates its border and restore returns Blizzard's c
     local A, ns = t.assert, t.ns
     F.area(ns, "tooltip")
     GameTooltip, GameTooltipStatusBar = F.tooltip("GameTooltip", false)
+    GameTooltip.GetItem = function() return "Epic Item", "item:12345" end
     GameTooltip:SetBackdropBorderColor(0.1, 0.2, 0.3, 0.4)
     local old = { 0.1, 0.2, 0.3, 0.4 }
     C_Item = { GetItemQualityByID = function() return 4 end }

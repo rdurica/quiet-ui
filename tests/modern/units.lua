@@ -118,12 +118,8 @@ h.test("units refresh target colour on target-change events and select elite, ra
     }) do
         mock:setUnit("target", { exists = true, player = false, classification = spec[1] })
         mock:fire("PLAYER_TARGET_CHANGED")
-        local found = false
-        for _, region in ipairs(target.Portrait._regions) do
-            local c = region._color
-            if c and c[1] == spec[2][1] and c[2] == spec[2][2] and c[3] == spec[2][3] then found = true end
-        end
-        A.ok(found, spec[1] .. " portrait border")
+        local c = U.portraitBorderColor(target)
+        A.deep({ c[1], c[2], c[3] }, spec[2], spec[1] .. " portrait border")
         A.deep({ U.colour(target.HealthBar) }, { 0.2, 0.8, 0.2, 1 }, spec[1] .. " target event refreshes health colour")
     end
 end)
@@ -140,7 +136,7 @@ h.test("units never read secret health or power and safely skip missing or forbi
     target.ManaBar._forbidden = true
     A.noThrow(function() enable(ns) end)
     A.ok(U.hidden(PlayerFrame), "valid player frame still skins")
-    A.eq(target.ManaBar:GetStatusBarTexture(), "Interface\\TargetingFrame\\TargetFramePower", "forbidden power bar skipped")
+    A.eq(U.statusTexture(target.ManaBar), "Interface\\TargetingFrame\\TargetFramePower", "forbidden power bar skipped")
     A.eq(#t.mock.printed, 0, "missing focus and forbidden controls do not break other unit skins")
     ns.Modern.Restore()
     A.alpha(PlayerFrame.Border, 0.7, "restore releases held frame art")
