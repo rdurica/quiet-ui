@@ -223,7 +223,7 @@ h.test("contract: every registered area applies cleanly and restores everything"
     local A, ns, mock = t.assert, t.ns, t.mock
     -- One fake that touches every kind of state through the journal helpers.
     local texA, texB = UIParent:CreateTexture(), UIParent:CreateTexture()
-    texA:SetTexture("Interface\\Orig-A"); texA:SetVertexColor(0.2, 0.3, 0.4, 1)
+    texA:SetTexture("Interface\\Orig-A"); texA:SetTexCoord(0, 1, 0, 1); texA:SetVertexColor(0.2, 0.3, 0.4, 1)
     texB:SetColorTexture(0.5, 0.5, 0.5, 1); texB:SetAlpha(0.8)
     local frame = CreateFrame("Frame", nil, UIParent)
     frame:SetPoint("CENTER", UIParent, "CENTER", 5, 6)
