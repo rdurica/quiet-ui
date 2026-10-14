@@ -111,7 +111,7 @@ end
 local function CopyLine(bubble)
     local msg = bubble.msg
     if not msg or msg.secret then return end
-    local text = Chat.PlainText(msg.text)
+    local text = Chat.PlainText(Chat.MessageBody(msg.text))
     if text == "" then return end
     if WriteClipboard(text) then return end
     ShowCopyBox(bubble, text)

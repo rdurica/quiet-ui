@@ -60,6 +60,34 @@ local function ShortChannel(text)
     return text:sub(1, from - 1) .. short .. text:sub(to)
 end
 
+-- The message a line carries, for copying: no time, channel tag or sender.
+-- Lines without a sender (loot, system, emotes) keep everything after the tag.
+local function MessageBody(text)
+    if type(text) ~= "string" then return "" end
+    local pos = SkipCodes(text, 1)
+    for i = 1, #TIMESTAMPS do
+        local _, e = text:find(TIMESTAMPS[i], pos)
+        if e then
+            pos = SkipCodes(text, e + 1)
+            break
+        end
+    end
+    local _, e = text:find("^|Hchannel:[^|]*|h%[[^%]]*%]|h", pos)
+    if not e then _, e = text:find("^%[[^%]]*%]", pos) end
+    if e then pos = SkipCodes(text, e + 1) end
+    local rest = text:sub(pos)
+    local sender = SkipCodes(rest, (rest:match("^To ()") or 1))
+    _, e = rest:find("^|HB?N?player:.-|h.-|h", sender)
+    if e then
+        -- " says: ", " whispers: " or ": " right after the name, before any other link.
+        local said = rest:match("^[^|:]*:%s*()", SkipCodes(rest, e + 1))
+        local body = said and rest:sub(said)
+        if body and body ~= "" then return body end
+    end
+    return rest
+end
+Chat.MessageBody = MessageBody
+
 -- "Changed Channel: |Hchannel:%d|h[%s]|h" -> "Changed Channel:".
 -- A missing global keeps the English lead from this client.
 local NOTICE_SOURCES = {
