@@ -50,7 +50,7 @@ to `` ` `` if the key is free; change it under **QuietUI** in **Key Bindings**.
 
 Open `/quiet setup`, change your choices, then click **Save**. **X** or **Escape**
 closes the window without saving. Tabs: General (presets and layout), Visible,
-Bars, Groups, Player, Misc. (chat, quest updates, highlights, quest mobs), and Info.
+Bars, Groups, Player, Misc. (chat, quest updates, highlights, quest mobs), Modern, and Info.
 
 ![QuietUI setup](docs/images/img007.png)
 
