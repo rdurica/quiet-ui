@@ -2,6 +2,10 @@
 -- contract every registered area (today fakes, later the real ones) has to keep.
 local h = ...
 local L = h.lib("modern")
+local I = h.lib("modern-icons")
+local M = h.lib("modern-map-tip")
+local U = h.lib("modern-units")
+local W = h.lib("modern-windows")
 
 h.test("ns.Modern exposes the registry API", function(t)
     local A = t.assert
@@ -216,9 +220,81 @@ h.test("only Modern is added to ns by the Modern feature files", function(t)
     end
 end)
 
--- The contract every registered area keeps: it has a checkbox, defaults to on, applies without a
--- Report and apply then restore leaves every touched texture, TexCoord, colour, point and alpha
--- as before. Runs over ns.Modern.Areas(), so a future area is covered without changes.
+-- Builds a real client-shaped fixture for each delivered area. This is deliberately keyed by the
+-- runtime registry: adding an area without extending this function fails the shared contract,
+-- rather than silently treating that area as covered.
+local function Fixture(t, key)
+    local ns, mock = t.ns, t.mock
+    if key == "bars" then
+        local button = I.button(mock, "ActionButton1", MainActionBar)
+        local art = I.barArt(MainActionBar, "MainMenuBarTexture0")
+        return function(A)
+            A.ok(I.zoomed(button.Icon), "bars fixture was skinned")
+            A.alpha(art, 0, "bars art was held")
+        end
+    end
+    if key == "auras" then
+        local aura = I.aura(mock, "BuffButton1", BuffFrame)
+        return function(A) A.ok(I.zoomed(aura.Icon), "aura fixture was skinned") end
+    end
+    if key == "minimap" then
+        local map = M.minimap(mock)
+        local oldMask = map:GetMaskTexture()
+        GetMinimapShape = nil
+        return function(A)
+            A.ne(map:GetMaskTexture(), oldMask, "minimap mask was changed")
+            A.eq(GetMinimapShape(), "SQUARE", "minimap shape was changed")
+        end
+    end
+    if key == "tooltip" then
+        GameTooltip, GameTooltipStatusBar = M.tooltip("GameTooltip", true)
+        ItemRefTooltip = M.tooltip("ItemRefTooltip", false)
+        ShoppingTooltip1 = M.tooltip("ShoppingTooltip1", false)
+        return function(A)
+            A.eq(GameTooltipStatusBar:GetStatusBarTexture():GetTexture(), ns.Modern.Theme().bar,
+                "tooltip health bar was skinned")
+        end
+    end
+    if key == "units" then
+        local frames = U.fixture()
+        return function(A)
+            A.ok(U.hidden(frames.player), "unit frame art was held")
+            A.eq(U.statusTexture(frames.player.HealthBar), ns.Modern.Theme().bar, "unit health bar was skinned")
+        end
+    end
+    if key == "windows" then
+        local character = W.window("CharacterFrame")
+        CharacterFrame = character
+        return function(A) A.ok(W.isDark(character), "window fixture was skinned") end
+    end
+    if key == "map" then
+        local map = W.window("WorldMapFrame")
+        WorldMapFrame = map
+        return function(A) A.ok(W.isDark(map), "map fixture was skinned") end
+    end
+    if key == "status" then
+        UnitXP = function() return 0.25 end
+        UnitXPMax = function() return 1 end
+        GetXPExhaustion = function() return 0.1 end
+        GetWatchedFactionInfo = function() return "Faction", 1, 0, 1, 0.7 end
+        local before = #mock.frames
+        return function(A)
+            local xp, reputation
+            for i = before + 1, #mock.frames do
+                local frame = mock.frames[i]
+                if frame._parent == MainStatusTrackingBarContainer and frame._h == 6 then xp = frame end
+                if frame._parent == MainStatusTrackingBarContainer and frame._h == 4 then reputation = frame end
+            end
+            A.type(xp, "table", "status XP bar was created")
+            A.type(reputation, "table", "status reputation bar was created")
+        end
+    end
+    error("no real fixture for registered Modern area " .. tostring(key), 0)
+end
+
+-- The contract every registered area keeps: it is listed in the runtime order, defaults to on,
+-- applies without a Report and restores all observable original state. Fakes keep exercising the
+-- journal itself; every non-test area must obtain a concrete fixture above.
 h.test("contract: every registered area applies cleanly and restores everything", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     -- One fake that touches every kind of state through the journal helpers.
@@ -237,6 +313,11 @@ h.test("contract: every registered area applies cleanly and restores everything"
         skin:Panel(frame)
         skin:Set(frame, "SetWidth", 123)
     end })
+    local real = {}
+    for _, area in ipairs(ns.Modern.Areas()) do
+        A.eq(ns.Settings.ModernArea(area.key), false, area.key .. " is gated while Modernize is off")
+        if area.key:sub(1, 3) ~= "zz_" then real[area.key] = Fixture(t, area.key) end
+    end
     t.boot()
     L.enable()
     for _, area in ipairs(ns.Modern.Areas()) do
@@ -249,6 +330,7 @@ h.test("contract: every registered area applies cleanly and restores everything"
     A.eq(L.errors(mock), 0, "apply reports nothing")
     A.ok(#L.diff(snap) > 0, "the fake area changed something")
     A.ok(L.zoomed(texA)); A.alpha(texB, 0)
+    for key, assertApplied in pairs(real) do assertApplied(A, key) end
     ns.Modern.Restore()
     A.deep(L.diff(snap), {}, "state differs after restore")
     texB:SetAlpha(1)

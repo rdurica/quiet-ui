@@ -115,8 +115,11 @@ local function copy(v)
     for k, x in pairs(v) do r[k] = copy(x) end
     return r
 end
+-- Include the observable input and mask state that the minimap and status areas must return.
+-- Methods themselves are stable mock methods; the script table records only the scripts an area owns.
 local FIELDS = { "_texCoord", "_texture", "_color", "_vertex", "_points", "_alpha", "_backdropColor",
-    "_backdropBorder", "_text", "_textColor", "_font", "_w", "_h", "_shown" }
+    "_backdropBorder", "_text", "_textColor", "_font", "_w", "_h", "_shown", "_mouse", "_wheel",
+    "_mask", "_scripts" }
 function L.snapshot(frames)
     local snap = {}
     for _, f in ipairs(frames) do
