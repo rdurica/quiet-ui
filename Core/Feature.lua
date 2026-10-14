@@ -3,7 +3,8 @@ local _, ns = ...
 -- Feature registry. A feature registers one spec; QuietUI.lua walks the registry for
 -- apply, restore and the per-frame phases, and the registry owns the event frame.
 --
---   ns.Feature{ name, enabled, apply, restore, events, always, required, fade, frame, tick, rescan, hooks }
+--   ns.Feature{ name, enabled, apply, restore, events, always, early, required, fade, frame, tick, rescan, hooks }
+--   always: events also delivered while the addon is off (once booted).
 --   early: events delivered before boot and while off (QuietUI's own boot events).
 --   required: events whose failed RegisterEvent is reported once as "<name> events".
 

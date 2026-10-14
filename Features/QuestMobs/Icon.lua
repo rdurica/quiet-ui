@@ -33,7 +33,7 @@ function QuestMobs.Active()
     if S.stopped then return false end
     local db = ns.DB and ns.DB()
     if not (db and db.enabled) then return false end
-    -- The setting accessor lives in Setup.lua; missing means on.
+    -- The setting accessor lives in Settings/Getters.lua; missing means on.
     if type(ns.Settings.QuestMobs) == "function" then return ns.Settings.QuestMobs() ~= false end
     return true
 end
