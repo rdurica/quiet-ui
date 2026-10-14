@@ -97,9 +97,10 @@ end
 
 local function Hook(feature, global, fn)
     if type(_G[global]) ~= "function" then return end
+    feature.labels[global] = feature.labels[global] or (feature.name .. "." .. global)
     local ok = pcall(hooksecurefunc, global, function(...)
         if not ns.DB().enabled then return end
-        ns.Profiler.Run(feature.name .. "." .. global, fn, ...)
+        ns.Profiler.Run(feature.labels[global], fn, ...)
     end)
     if ok then feature.hooked[global] = true end
 end
@@ -119,7 +120,9 @@ function ns.Feature(spec)
         ns.Report("feature " .. (type(spec) == "table" and type(spec.name) == "string" and spec.name or "spec"), err)
         return
     end
-    local feature = { name = spec.name, spec = spec, alwaysSet = {}, earlySet = {}, requiredSet = {}, hooked = {} }
+    local feature = { name = spec.name, spec = spec, alwaysSet = {}, earlySet = {}, requiredSet = {}, hooked = {}, labels = {} }
+    -- Profiler labels built once; phases run per frame and per tick.
+    for _, key in ipairs(FUNCTIONS) do feature.labels[key] = spec.name .. "." .. key end
     for _, event in ipairs(spec.always or {}) do feature.alwaysSet[event] = true end
     for _, event in ipairs(spec.early or {}) do feature.earlySet[event] = true end
     for _, event in ipairs(spec.required or {}) do feature.requiredSet[event] = true end
@@ -161,7 +164,7 @@ function Registry.Phase(phase, ...)
         local feature = features[i]
         local fn = feature.spec[phase]
         if fn and Registry.On(feature) then
-            ns.Profiler.Run(feature.name .. "." .. phase, fn, ...)
+            ns.Profiler.Run(feature.labels[phase] or (feature.name .. "." .. phase), fn, ...)
         end
     end
 end
@@ -175,7 +178,7 @@ function Registry.Restore()
     for i = #features, 1, -1 do
         local feature = features[i]
         if feature.spec.restore then
-            ns.Profiler.Run(feature.name .. ".restore", feature.spec.restore)
+            ns.Profiler.Run(feature.labels.restore, feature.spec.restore)
         end
     end
 end
