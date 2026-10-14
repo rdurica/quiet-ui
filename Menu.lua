@@ -45,7 +45,7 @@ local refreshing = false
 ------------------------------------------------------------------------------
 function ns.BagsShouldShow()
     if not ns.DB().enabled then return false end
-    return bagSlotsPinned or ns.CursorHasItem()
+    return bagSlotsPinned or ns.World.CursorHasItem()
 end
 
 -- ItemButtonMixin:SetAlpha fades the icon, not the frame. HoldAlpha would
@@ -340,11 +340,9 @@ local microCatcher
 
 local function EnsureMicroCatcher()
     if microCatcher then return microCatcher end
-    local ok, created = pcall(CreateFrame, "Frame", nil, UIParent)
-    if not ok or not created then return end
-    ns.ArmCatcher(created)
+    local created = ns.Catcher.Create()
+    if not created then return end
     created:SetAlpha(1)
-    created:Hide()
     microCatcher = created
     return created
 end
@@ -380,7 +378,7 @@ end
 local function PlaceMicroCatcher()
     local box = EnsureMicroCatcher()
     if not box then return end
-    if not ns.DB().enabled or ns.InEditMode() then
+    if not ns.DB().enabled or ns.World.InEditMode() then
         box:Hide()
         return
     end
@@ -396,20 +394,12 @@ local function PlaceMicroCatcher()
         box:SetPoint("BOTTOMRIGHT", br, "BOTTOMRIGHT")
         box._quietA, box._quietB = tl, br
     end
-    local strata = tl.GetFrameStrata and tl:GetFrameStrata()
-    if type(strata) == "string" and box._quietStrata ~= strata then
-        box:SetFrameStrata(strata)
-        box._quietStrata = strata
-    end
+    ns.Catcher.Strata(box, tl)
     local level = tl.GetFrameLevel and tl:GetFrameLevel() or 1
     if type(level) ~= "number" then level = 1 end
     local other = br.GetFrameLevel and br:GetFrameLevel()
     if type(other) == "number" and other < level then level = other end
-    level = math.max(level - 1, 0)
-    if box._quietLevel ~= level then
-        box:SetFrameLevel(level)
-        box._quietLevel = level
-    end
+    ns.Catcher.Level(box, math.max(level - 1, 0))
     if not box:IsShown() then box:Show() end
 end
 
@@ -425,7 +415,7 @@ end
 local function UpdateMicro(elapsed)
     if not ns.DB().enabled then return end
     PlaceMicroCatcher()
-    local show = ns.VisibilityShow("micro", false, MicroHot())
+    local show = ns.Settings.VisibilityShow("micro", false, MicroHot())
     local list = MicroList()
     for i = 1, #list do
         if ns.Usable(list[i]) then ns.UpdateFaded(list[i], show, elapsed) end
@@ -436,7 +426,7 @@ end
 function ns.UpdateMenuButton(elapsed)
     UpdateMicro(elapsed)
     if not button or not button:IsShown() then return end
-    local show = ns.VisibilityShow("menu", false, ns.Hit(button))
+    local show = ns.Settings.VisibilityShow("menu", false, ns.Hit(button))
         or button._moved or ns.BagsShouldShow()
     ns.UpdateFaded(button, show, elapsed)
 end

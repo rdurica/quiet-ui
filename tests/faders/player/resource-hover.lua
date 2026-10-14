@@ -6,7 +6,7 @@ local function frame(parent) return CreateFrame("Frame", nil, parent) end
 h.test("Resource hover bypasses secret curves and restores both child and root alpha", function(t)
     local ns, mock, A = t.ns, t.mock, t.assert
     QuietUICharDB.hoverOnly = { resource = true }
-    ns.InCombat = function() return true end
+    ns.World.InCombat = function() return true end
     ns.Hit = function(obj) return obj.hot == true end
     PersonalResourceDisplayFrame = frame(UIParent)
     local root = PersonalResourceDisplayFrame

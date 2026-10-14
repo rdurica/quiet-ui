@@ -65,8 +65,8 @@ local function setup(t, fade, lines, bornAt)
         if bornAt then mock.now = bornAt(i) end
         chat:AddMessage("Line " .. i)
     end
-    local read = ns.ChatFade
-    ns.ChatFade = function() state.fadeReads = state.fadeReads + 1; return read() end
+    local read = ns.Settings.ChatFade
+    ns.Settings.ChatFade = function() state.fadeReads = state.fadeReads + 1; return read() end
     ns.StripAllChat()
     local function tick(elapsed)
         elapsed = elapsed or 1 / 60

@@ -15,7 +15,7 @@ h.test("once-only startup validation, delayed layouts and detach before selectio
         SaveLayouts = function() end,
         ConvertStringToLayoutInfo = function() return {} end,
     }
-    local id = ns.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { chat = false })
+    local id = ns.Settings.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { chat = false })
     -- Simulate the character's saved selection from before the mode change.
     QuietUIDB.presets[id].interfaceStyle = nil
     QuietUICharDB.presetId = id

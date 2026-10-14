@@ -38,13 +38,6 @@ local function Secret(value)
     return ns.IsSecret and ns.IsSecret(value)
 end
 
-local function Try(obj, method, ...)
-    local fn = obj and obj[method]
-    if type(fn) ~= "function" then return end
-    local ok, a, b = pcall(fn, obj, ...)
-    if ok then return a, b end
-end
-
 local function InCombat()
     if fighting then return true end
     local ok, combat = pcall(InCombatLockdown)
@@ -58,7 +51,7 @@ local function InBlockedInstance()
 end
 
 local function Flags()
-    local flags = type(ns.Highlights) == "function" and ns.Highlights()
+    local flags = type(ns.Settings.Highlights) == "function" and ns.Settings.Highlights()
     return type(flags) == "table" and flags or {}
 end
 
@@ -138,30 +131,30 @@ end
 -- Glow --------------------------------------------------------------------------------
 
 local function Loop(owner, looping)
-    local group = Try(owner, "CreateAnimationGroup")
+    local group = ns.Plates.Try(owner, "CreateAnimationGroup")
     if type(group) ~= "table" then
         ns.Report("highlights animations", "Animations are not available on this client.")
         return
     end
-    Try(group, "SetLooping", looping)
+    ns.Plates.Try(group, "SetLooping", looping)
     loops[#loops + 1] = group
     return group
 end
 
 local function Animation(group, kind, duration, delay)
-    local anim = group and Try(group, "CreateAnimation", kind)
+    local anim = group and ns.Plates.Try(group, "CreateAnimation", kind)
     if type(anim) ~= "table" then return end
-    Try(anim, "SetDuration", duration)
-    if delay then Try(anim, "SetStartDelay", delay) end
+    ns.Plates.Try(anim, "SetDuration", duration)
+    if delay then ns.Plates.Try(anim, "SetStartDelay", delay) end
     return anim
 end
 
 local function Texture(path, width, height, layer)
-    local tex = Try(root, "CreateTexture", nil, layer or "ARTWORK")
+    local tex = ns.Plates.Try(root, "CreateTexture", nil, layer or "ARTWORK")
     if type(tex) ~= "table" then return end
-    Try(tex, "SetTexture", path)
-    Try(tex, "SetBlendMode", "ADD")
-    Try(tex, "SetSize", width, height)
+    ns.Plates.Try(tex, "SetTexture", path)
+    ns.Plates.Try(tex, "SetBlendMode", "ADD")
+    ns.Plates.Try(tex, "SetSize", width, height)
     textures[#textures + 1] = tex
     if path == GLOW then glowTextures[#glowTextures + 1] = tex end
     return tex
@@ -178,29 +171,29 @@ local function Build()
     end
     root = frame
     root:Hide()
-    Try(root, "EnableMouse", false)
-    Try(root, "SetSize", 64, 64)
+    ns.Plates.Try(root, "EnableMouse", false)
+    ns.Plates.Try(root, "SetSize", 64, 64)
 
     -- A soft cloud behind the object, with a quieter outer halo.
     local halo = Texture(GLOW, 104, 136, "BACKGROUND")
     if halo then
-        Try(halo, "SetPoint", "CENTER", root, "CENTER")
+        ns.Plates.Try(halo, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(halo, "BOUNCE")
         local fade = Animation(pulse, "Alpha", 1.2)
-        Try(fade, "SetFromAlpha", 0.14)
-        Try(fade, "SetToAlpha", 0.26)
+        ns.Plates.Try(fade, "SetFromAlpha", 0.14)
+        ns.Plates.Try(fade, "SetToAlpha", 0.26)
     end
 
     local aura = Texture(GLOW, 78, 110, "BORDER")
     if aura then
-        Try(aura, "SetPoint", "CENTER", root, "CENTER")
+        ns.Plates.Try(aura, "SetPoint", "CENTER", root, "CENTER")
         local pulse = Loop(aura, "BOUNCE")
         local fade = Animation(pulse, "Alpha", 1.2)
-        Try(fade, "SetFromAlpha", 0.38)
-        Try(fade, "SetToAlpha", 0.64)
+        ns.Plates.Try(fade, "SetFromAlpha", 0.38)
+        ns.Plates.Try(fade, "SetToAlpha", 0.64)
         local grow = Animation(pulse, "Scale", 1.2)
-        Try(grow, "SetScaleFrom", 0.96, 0.96)
-        Try(grow, "SetScaleTo", 1.04, 1.04)
+        ns.Plates.Try(grow, "SetScaleFrom", 0.96, 0.96)
+        ns.Plates.Try(grow, "SetScaleTo", 1.04, 1.04)
     end
 
     for i = 1, SPARKS do
@@ -211,24 +204,24 @@ local function Build()
             -- Mix three four-point glints with small motes around the object.
             local angle = (i - 1) / SPARKS * 2 * math.pi
             local reach = star and 0.65 or 0.95
-            Try(spark, "SetPoint", "CENTER", root, "CENTER", math.cos(angle) * 32 * reach,
+            ns.Plates.Try(spark, "SetPoint", "CENTER", root, "CENTER", math.cos(angle) * 32 * reach,
                 14 + math.sin(angle) * 20 * reach)
-            Try(spark, "SetAlpha", 0)
+            ns.Plates.Try(spark, "SetAlpha", 0)
             local rise = Loop(spark, "REPEAT")
             local delay = (i - 1) * 0.27
             local duration = 3.2 + i * 0.08
             local peak = star and 0.85 or 0.45
             local move = Animation(rise, "Translation", duration, delay)
-            Try(move, "SetOffset", 0, star and 28 or 34)
-            Try(move, "SetOrder", 1)
+            ns.Plates.Try(move, "SetOffset", 0, star and 28 or 34)
+            ns.Plates.Try(move, "SetOrder", 1)
             local fadeIn = Animation(rise, "Alpha", 0.4, delay)
-            Try(fadeIn, "SetFromAlpha", 0)
-            Try(fadeIn, "SetToAlpha", peak)
-            Try(fadeIn, "SetOrder", 1)
+            ns.Plates.Try(fadeIn, "SetFromAlpha", 0)
+            ns.Plates.Try(fadeIn, "SetToAlpha", peak)
+            ns.Plates.Try(fadeIn, "SetOrder", 1)
             local fadeOut = Animation(rise, "Alpha", duration - 0.4, delay + 0.4)
-            Try(fadeOut, "SetFromAlpha", peak)
-            Try(fadeOut, "SetToAlpha", 0)
-            Try(fadeOut, "SetOrder", 1)
+            ns.Plates.Try(fadeOut, "SetFromAlpha", peak)
+            ns.Plates.Try(fadeOut, "SetToAlpha", 0)
+            ns.Plates.Try(fadeOut, "SetOrder", 1)
         end
     end
     return root
@@ -251,10 +244,10 @@ end
 local function HideGlow()
     anchorToken = nil
     if not root then return end
-    for _, group in ipairs(loops) do Try(group, "Stop") end
+    for _, group in ipairs(loops) do ns.Plates.Try(group, "Stop") end
     root:Hide()
-    Try(root, "ClearAllPoints")
-    Try(root, "SetParent", UIParent)
+    ns.Plates.Try(root, "ClearAllPoints")
+    ns.Plates.Try(root, "SetParent", UIParent)
 end
 
 local function HideNow()
@@ -268,28 +261,28 @@ local function ShowOn(plate, soft, token, kind)
     local glowY = kind == "ore" and -8 or 0
     for i, tex in ipairs(glowTextures) do
         local width = i == 1 and 104 or 78
-        Try(tex, "SetWidth", width * (kind == "quest" and 0.8 or 1))
-        Try(tex, "ClearAllPoints")
-        Try(tex, "SetPoint", "CENTER", root, "CENTER", 0, glowY)
+        ns.Plates.Try(tex, "SetWidth", width * (kind == "quest" and 0.8 or 1))
+        ns.Plates.Try(tex, "ClearAllPoints")
+        ns.Plates.Try(tex, "SetPoint", "CENTER", root, "CENTER", 0, glowY)
     end
-    Try(root, "SetParent", plate)
-    Try(root, "ClearAllPoints")
-    Try(root, "SetPoint", ANCHOR.point, soft, ANCHOR.relative, ANCHOR.x, ANCHOR.y)
-    local level = Try(soft, "GetFrameLevel")
+    ns.Plates.Try(root, "SetParent", plate)
+    ns.Plates.Try(root, "ClearAllPoints")
+    ns.Plates.Try(root, "SetPoint", ANCHOR.point, soft, ANCHOR.relative, ANCHOR.x, ANCHOR.y)
+    local level = ns.Plates.Try(soft, "GetFrameLevel")
     if type(level) == "number" and not Secret(level) then
-        Try(root, "SetFrameLevel", math.max(0, level - 1))
+        ns.Plates.Try(root, "SetFrameLevel", math.max(0, level - 1))
     end
-    for _, tex in ipairs(textures) do Try(tex, "SetVertexColor", color[1], color[2], color[3]) end
+    for _, tex in ipairs(textures) do ns.Plates.Try(tex, "SetVertexColor", color[1], color[2], color[3]) end
     local strength = GLOW_STRENGTH[kind]
     for _, tex in ipairs(glowTextures) do
-        Try(tex, "SetVertexColor", color[1] * strength, color[2] * strength, color[3] * strength)
+        ns.Plates.Try(tex, "SetVertexColor", color[1] * strength, color[2] * strength, color[3] * strength)
     end
-    Try(root, "SetAlpha", 1)
+    ns.Plates.Try(root, "SetAlpha", 1)
     -- Play again only after HideNow stopped the loops, so re-checks do not restart the pulse.
-    local wasShown = Try(root, "IsShown")
+    local wasShown = ns.Plates.Try(root, "IsShown")
     root:Show()
     if not wasShown then
-        for _, group in ipairs(loops) do Try(group, "Play") end
+        for _, group in ipairs(loops) do ns.Plates.Try(group, "Play") end
     end
     anchorToken = token
 end
@@ -307,14 +300,6 @@ local function PlateApi()
     ns.Report("highlights nameplates", "Nameplates are not available on this client.")
 end
 
-local function PlateToken(plate)
-    local unitFrame = plate.UnitFrame
-    local token = type(unitFrame) == "table" and unitFrame.unit
-    if type(token) == "string" then return token end
-    token = plate.namePlateUnitToken
-    if type(token) == "string" then return token end
-end
-
 local function FindPlate(guid)
     local api = PlateApi()
     if not api or type(api.GetNamePlates) ~= "function" then return end
@@ -322,7 +307,7 @@ local function FindPlate(guid)
     if not ok or type(plates) ~= "table" then return end
     for _, plate in ipairs(plates) do
         if ns.Usable(plate) then
-            local token = PlateToken(plate)
+            local token = ns.Plates.Token(plate)
             if SameGUID(token, guid) then return plate, token end
         end
     end
@@ -331,9 +316,9 @@ end
 local function IconTexture(soft)
     local icon = soft.Icon
     if type(icon) ~= "table" then return end
-    local texture = Try(icon, "GetTexture")
+    local texture = ns.Plates.Try(icon, "GetTexture")
     if Secret(texture) or type(texture) ~= "string" or texture == "" then
-        texture = Try(icon, "GetAtlas")
+        texture = ns.Plates.Try(icon, "GetAtlas")
     end
     if Secret(texture) or type(texture) ~= "string" or texture == "" then return end
     return texture:lower()

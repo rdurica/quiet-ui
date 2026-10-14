@@ -144,11 +144,11 @@ for _, mode in ipairs(modes) do
         expect(dialog.level > dialog.blocker.level and dialog.blocker.level > ui.save.level
             and dialog.yes.level > dialog.level, 'reused modal stays above raised owner')
         dialog.edit:SetText('Renamed'); click(dialog.yes); click(ui.save)
-        expect(ns.ActivePreset().name == 'Renamed', 'renaming still saves through draft')
+        expect(ns.Settings.ActivePreset().name == 'Renamed', 'renaming still saves through draft')
         click(ui.deletePreset); click(dialog.no)
-        expect(ns.ActivePreset() ~= nil, 'cancel deletion preserves preset')
+        expect(ns.Settings.ActivePreset() ~= nil, 'cancel deletion preserves preset')
         click(ui.deletePreset); click(dialog.yes)
-        expect(not ns.ActivePreset(), 'confirmed deletion remains immediate')
+        expect(not ns.Settings.ActivePreset(), 'confirmed deletion remains immediate')
         ui.chat.scripts.OnClick(); ui:Hide(); ns.ShowSetup()
         expect(QuietUICharDB.chat == nil, 'closing discards changed draft')
         local escape = false

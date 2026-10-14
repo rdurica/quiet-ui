@@ -19,116 +19,6 @@ local BUTTON_PREFIX = {
     PetActionBarFrame = "PetActionButton",
 }
 
--- Same number fades together. Missing saved values use group.
--- Gamepad follows bar 1 and has no setup row.
-ns.BAR_ROWS = {
-    { id = "1", label = "Bar 1", group = 1, names = { "MainMenuBar", "MainActionBar", "GamepadMainActionBarFrame" } },
-    { id = "2", label = "Bar 2", group = 1, names = { "MultiBarBottomLeft" } },
-    { id = "3", label = "Bar 3", group = 1, names = { "MultiBarBottomRight" } },
-    { id = "4", label = "Bar 4", group = 2, names = { "MultiBarRight" } },
-    { id = "5", label = "Bar 5", group = 2, names = { "MultiBarLeft" } },
-    { id = "6", label = "Bar 6", group = 3, names = { "MultiBar5" } },
-    { id = "7", label = "Bar 7", group = 4, names = { "MultiBar6" } },
-    { id = "8", label = "Bar 8", group = 5, names = { "MultiBar7" } },
-    { id = "stance", label = "Stance bar", group = 1, names = { "StanceBar", "StanceBarFrame", "ShapeshiftBarFrame" } },
-    { id = "pet", label = "Pet bar", group = 1, names = { "PetActionBar", "PetActionBarFrame" } },
-    { id = "totem", label = "Totem bar", group = 1, names = { "MultiCastActionBarFrame", "TotemFrame" } },
-    { id = "swing", label = "Swing timer", group = 10, names = {
-        "SwingTimerFrame",
-        "SwingTimer",
-        "MainHandSwingTimer",
-        "OffHandSwingTimer",
-        "RangedSwingTimer",
-        "SwingTimerMainHand",
-        "SwingTimerOffHand",
-    } },
-}
-
--- Move legacy per-bar pins to group modes, splitting mixed groups to keep their visibility.
-function ns.MigrateVisibility(settings)
-    if type(settings) ~= "table" then return end
-    local visible = settings.visible
-    if type(visible) ~= "table" or (visible.bars == nil and visible.swing == nil) then return end
-    local buckets, used = {}, {}
-    for _, row in ipairs(ns.BAR_ROWS) do
-        local n = type(settings.groups) == "table" and settings.groups[row.id]
-        if type(n) ~= "number" or n ~= n or n < 1 or n > #ns.BAR_ROWS then n = row.group end
-        n = math.floor(n)
-        used[n] = true
-        buckets[n] = buckets[n] or { pinned = {}, normal = {} }
-        local pinned
-        if row.id == "swing" then pinned = visible.swing else pinned = visible.bars end
-        local list = pinned and buckets[n].pinned or buckets[n].normal
-        list[#list + 1] = row.id
-    end
-    settings.groupVisibility = type(settings.groupVisibility) == "table" and settings.groupVisibility or {}
-    for n = 1, #ns.BAR_ROWS do
-        local bucket = buckets[n]
-        if bucket and #bucket.pinned > 0 then
-            local pinGroup = n
-            if #bucket.normal > 0 then
-                for candidate = 1, #ns.BAR_ROWS do
-                    if not used[candidate] then pinGroup = candidate; used[candidate] = true; break end
-                end
-                settings.groups = type(settings.groups) == "table" and settings.groups or {}
-                for _, id in ipairs(bucket.pinned) do settings.groups[id] = pinGroup end
-            end
-            settings.groupVisibility[pinGroup] = "always"
-        end
-    end
-    visible.bars = nil
-    visible.swing = nil
-end
-
--- Migration runs once per visible table; a replaced table migrates again.
-local migrated = setmetatable({}, { __mode = "k" })
-
-function ns.MigrateOnce(settings)
-    if type(settings) ~= "table" then return end
-    local visible = settings.visible
-    if type(visible) ~= "table" or migrated[visible] then return end
-    migrated[visible] = true
-    ns.MigrateVisibility(settings)
-end
-
-function ns.GroupVisibility(group)
-    local settings = ns.Settings and ns.Settings() or ns.CharDB()
-    local modes = settings.groupVisibility
-    local mode = type(modes) == "table" and modes[group]
-    if mode == "always" or mode == "hover" then return mode end
-end
-
-function ns.AnyBarsAlwaysVisible()
-    for _, row in ipairs(ns.BAR_ROWS) do
-        if row.id ~= "swing" and ns.GroupVisibility(ns.BarGroup(row.id)) == "always" then return true end
-    end
-    return false
-end
-
-function ns.BarGroup(id)
-    local fallback = 1
-    for _, row in ipairs(ns.BAR_ROWS) do
-        if row.id == id then
-            fallback = row.group
-            break
-        end
-    end
-    if type(ns.CharDB) ~= "function" then return fallback end
-    local groups = (ns.Settings and ns.Settings() or ns.CharDB()).groups
-    local n = type(groups) == "table" and groups[id]
-    if type(n) ~= "number" or n ~= n then return fallback end
-    n = math.floor(n)
-    if n < 1 or n > #ns.BAR_ROWS then return fallback end
-    return n
-end
-
--- Missing means off. kind is "hostile" or "friendly".
-function ns.BarTarget(id, kind)
-    if type(ns.CharDB) ~= "function" then return false end
-    local map = (ns.Settings and ns.Settings() or ns.CharDB())[kind]
-    return type(map) == "table" and map[id] and true or false
-end
-
 local MAIN_BAR = {
     MainMenuBar = true,
     MainActionBar = true,
@@ -154,165 +44,6 @@ local BAR_ART = {
     "ActionBarDownButton",
     "MainMenuBarArtFrame",
 }
-
--- Returns fn()'s result, or false when the API is missing or throws.
-local function Safe(fn, ...)
-    local ok, result = pcall(fn, ...)
-    return ok and not ns.IsSecret(result) and result and true or false
-end
-
--- A corpse still counts as attackable. Enemy needs a living target.
-local function TargetAlive()
-    if type(UnitIsDeadOrGhost) == "function" then
-        return not Safe(UnitIsDeadOrGhost, "target")
-    end
-    if type(UnitIsDead) == "function" then
-        return not Safe(UnitIsDead, "target")
-    end
-    return true
-end
-
-local function HostileTarget()
-    if type(UnitCanAttack) ~= "function" then return false end
-    return Safe(UnitCanAttack, "player", "target") and TargetAlive()
-end
-
-local function FriendlyTarget()
-    if type(UnitIsFriend) ~= "function" then return false end
-    return Safe(UnitIsFriend, "player", "target") and TargetAlive()
-end
-
-local world = {
-    combat = false,
-    instance = false,
-    group = false,
-    vehicle = false,
-    target = false,
-    hostile = false,
-    friendly = false,
-}
-
-function ns.InEditMode()
-    local frame = EditModeManagerFrame
-    return frame and frame.IsShown and frame:IsShown() and true or false
-end
-
-function ns.RefreshWorld()
-    local combat = world.combat
-    if type(InCombatLockdown) == "function" then
-        local ok, locked = pcall(InCombatLockdown)
-        if ok then combat = locked and true or false end
-    end
-    local group = type(IsInGroup) == "function" and Safe(IsInGroup) or false
-    local vehicle = type(UnitHasVehicleUI) == "function" and Safe(UnitHasVehicleUI, "player") or false
-    local target = type(UnitExists) == "function" and Safe(UnitExists, "target") or false
-    local hostile = target and HostileTarget()
-    local friendly = target and FriendlyTarget()
-    local instance = false
-    if type(IsInInstance) == "function" then
-        instance = Safe(function()
-            local inInstance, kind = IsInInstance()
-            return inInstance and (
-                kind == "party" or kind == "raid" or kind == "pvp" or kind == "arena"
-            )
-        end)
-    end
-    if combat ~= world.combat or group ~= world.group or vehicle ~= world.vehicle
-        or target ~= world.target or instance ~= world.instance
-        or hostile ~= world.hostile or friendly ~= world.friendly then
-        world.combat, world.group, world.vehicle = combat, group, vehicle
-        world.target, world.instance = target, instance
-        world.hostile, world.friendly = hostile, friendly
-        ns.TouchHud()
-    end
-end
-
-function ns.NoteCombat(on)
-    local nextOn = on and true or false
-    if nextOn ~= world.combat then
-        world.combat = nextOn
-        ns.TouchHud()
-    end
-end
-
-function ns.InCombat()
-    return world.combat
-end
-
-function ns.InGroup()
-    return world.group
-end
-
-function ns.InForcedInstance()
-    return world.instance
-end
-
-function ns.InVehicle()
-    return world.vehicle
-end
-
-function ns.HasTarget()
-    return world.target
-end
-
--- false means this tick has not read the cursor yet. nil is a real empty cursor.
-local cursorKind = false
-local hudDirty = true
-
-function ns.TouchHud()
-    hudDirty = true
-end
-
-function ns.ConsumeHud()
-    local dirty = hudDirty
-    hudDirty = false
-    return dirty
-end
-
-function ns.ForgetCursor()
-    cursorKind = false
-end
-
-function ns.BeginTick(hover)
-    if not hover then return end
-    cursorKind = false
-    ns.RefreshMouse()
-end
-
-local function CursorKind()
-    if cursorKind ~= false then return cursorKind end
-    if type(GetCursorInfo) ~= "function" then
-        cursorKind = nil
-        return nil
-    end
-    local ok, kind = pcall(GetCursorInfo)
-    cursorKind = ok and kind or nil
-    return cursorKind
-end
-
-function ns.CursorBusy()
-    return CursorKind() ~= nil
-end
-
-function ns.CursorHasItem()
-    return CursorKind() == "item"
-end
-
-local function FlyoutOpen()
-    return SpellFlyout and SpellFlyout.IsShown and SpellFlyout:IsShown() and true or false
-end
-ns.FlyoutOpen = FlyoutOpen
-
--- Explicit HUD/bar-editing exceptions also reveal hover-only bars and XP.
-function ns.XPForced()
-    return ns.InEditMode() or FlyoutOpen() or ns.CursorBusy()
-end
-
--- Action bars are fully visible while this is true.
-function ns.ShowAll()
-    return world.combat or ns.InEditMode() or world.vehicle or world.instance
-        or FlyoutOpen() or ns.CursorBusy()
-end
 
 local function Parent(frame)
     if not ns.Usable(frame) or not frame.GetParent then return nil end
@@ -469,7 +200,7 @@ function ns.ForgetBarButtons()
     ancestorCache = {}
     ns.Wipe(hosts)
     ns.Wipe(covered)
-    ns.TouchHud()
+    ns.World.TouchHud()
     for bar in pairs(buttonCache) do
         buttonCache[bar] = nil
     end
@@ -565,27 +296,18 @@ end
 local function EnsureCatcher(bar)
     local box = catchers[bar]
     if box then return box end
-    local ok, created = pcall(CreateFrame, "Frame", nil, UIParent)
-    if not ok or not created then return end
-    ns.ArmCatcher(created)
+    local created = ns.Catcher.Create()
+    if not created then return end
     created:SetAlpha(1)
-    created:Hide()
     catchers[bar] = created
     return created
 end
 
 local function MatchLevel(box, bar)
-    local strata = bar.GetFrameStrata and bar:GetFrameStrata()
-    if type(strata) == "string" and box._quietStrata ~= strata then
-        box:SetFrameStrata(strata)
-        box._quietStrata = strata
-    end
+    ns.Catcher.Strata(box, bar)
     local level = bar.GetFrameLevel and bar:GetFrameLevel() or 1
     if type(level) ~= "number" then level = 1 end
-    if box._quietLevel ~= level then
-        box:SetFrameLevel(level)
-        box._quietLevel = level
-    end
+    ns.Catcher.Level(box, level)
 end
 
 -- MainMenuBar's own rect is wider than its slots when it hosts other bars.
@@ -920,9 +642,9 @@ local haveBarShow = false
 
 -- Hover groups skip automatic triggers; explicit HUD and bar editing still show them.
 local function RowForced(id, showAllForced)
-    local mode = ns.GroupVisibility(ns.BarGroup(id))
+    local mode = ns.Settings.GroupVisibility(ns.Settings.BarGroup(id))
     if mode == "always" then return true end
-    if mode == "hover" then return ns.XPForced() or ns.Glancing() end
+    if mode == "hover" then return ns.World.XPForced() or ns.Glancing() end
     return showAllForced
 end
 
@@ -932,7 +654,7 @@ function ns.UpdateBars(showAll, elapsed, rescan)
     -- ApplyBar reads hosts/covered, which ForgetBarButtons drops between rescans.
     Collect()
     if rescan or not haveBarShow then
-        if ns.InEditMode() or not ns.DB().enabled then
+        if ns.World.InEditMode() or not ns.DB().enabled then
             HideCatchers()
         else
             SyncCatchers()
@@ -942,10 +664,10 @@ function ns.UpdateBars(showAll, elapsed, rescan)
         end
         local hostile, friendly
         do
-            hostile = world.hostile
-            friendly = world.friendly
+            hostile = ns.World.HostileTarget()
+            friendly = ns.World.FriendlyTarget()
             for _, entry in ipairs(resolved) do
-                local group = ns.BarGroup(entry.id)
+                local group = ns.Settings.BarGroup(entry.id)
                 for _, bar in ipairs(entry.frames) do
                     if ns.Usable(bar) and bar:IsShown() and (BarHovered(bar) or BarCoversBags(bar)) then
                         showGroup[group] = true
@@ -954,11 +676,11 @@ function ns.UpdateBars(showAll, elapsed, rescan)
             end
         end
         for _, entry in ipairs(resolved) do
-            local group = ns.BarGroup(entry.id)
-            local mode = ns.GroupVisibility(group)
+            local group = ns.Settings.BarGroup(entry.id)
+            local mode = ns.Settings.GroupVisibility(group)
             barShow[entry.id] = RowForced(entry.id, showAllForced) or showGroup[group]
-                or (not mode and hostile and ns.BarTarget(entry.id, "hostile"))
-                or (not mode and friendly and ns.BarTarget(entry.id, "friendly")) or false
+                or (not mode and hostile and ns.Settings.BarTarget(entry.id, "hostile"))
+                or (not mode and friendly and ns.Settings.BarTarget(entry.id, "friendly")) or false
         end
         haveBarShow = true
     end

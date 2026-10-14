@@ -7,10 +7,10 @@ local function setup(t)
     local c = { selected = 0, quiet = 0, restored = 0, combat = false, ready = true }
     QuietUIDB = { enabled = true }
     QuietUICharDB = { previousLayout = 3, presetLayoutManaged = true }
-    local id = assert(ns.SavePreset(nil, 'Healer', { layoutName = 'Raid' }, { chatFade = 0 }))
-    ns.ActivatePreset(id)
-    ns.ForceQuietLayout = function() return c.force ~= false end
-    ns.ModernChat = function() return false end
+    local id = assert(ns.Settings.SavePreset(nil, 'Healer', { layoutName = 'Raid' }, { chatFade = 0 }))
+    ns.Settings.ActivatePreset(id)
+    ns.Settings.ForceQuietLayout = function() return c.force ~= false end
+    ns.Settings.ModernChat = function() return false end
     ns.SelectQuietLayout = function() c.quiet = c.quiet + 1; return true end
     ns.SelectPresetLayout = function()
         if c.combat or not c.ready then return false end
@@ -58,7 +58,7 @@ h.test("restore finishes while disabled even after detaching the preset", functi
     local A = t.assert
     local c = setup(t)
     c.combat = true; QuietUIDB.enabled = false; t.ns.ApplyAll()
-    t.ns.ForceQuietLayout = function() return false end
+    t.ns.Settings.ForceQuietLayout = function() return false end
     c.combat = false; t.mock:fire('PLAYER_REGEN_ENABLED')
     A.eq(c.restored, 1, 'Restore must finish while disabled, even after detaching the preset')
 end)

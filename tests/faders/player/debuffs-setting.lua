@@ -19,27 +19,27 @@ local function click(b) b._scripts.OnClick(b) end
 h.test("Always show debuffs defaults on and survives saves, presets and reset", function(t)
     local ns, mock, A = t.ns, t.mock, t.assert
     t.boot()
-    A.ok(ns.AlwaysShowDebuffs(), "Missing setting must default on")
+    A.ok(ns.Settings.AlwaysShowDebuffs(), "Missing setting must default on")
     ns.ShowSetup()
     local choice = button(mock, "Always show debuffs")
     A.eq(choice.box._checked, true, "The window must show the default as checked")
     click(choice)
     click(button(mock, "Save"))
-    A.ok(QuietUICharDB.alwaysShowDebuffs == false and not ns.AlwaysShowDebuffs(),
+    A.ok(QuietUICharDB.alwaysShowDebuffs == false and not ns.Settings.AlwaysShowDebuffs(),
         "Unchecking and saving must persist the opt-out")
-    local id = assert(ns.SavePreset(nil, "Debuffs fade", {}, { alwaysShowDebuffs = false }))
-    ns.ActivatePreset(id)
-    A.ok(not ns.AlwaysShowDebuffs(), "Preset did not retain opt-out")
-    ns.DeletePreset(id)
-    A.ok(not ns.AlwaysShowDebuffs(), "Deleting preset lost personal snapshot")
+    local id = assert(ns.Settings.SavePreset(nil, "Debuffs fade", {}, { alwaysShowDebuffs = false }))
+    ns.Settings.ActivatePreset(id)
+    A.ok(not ns.Settings.AlwaysShowDebuffs(), "Preset did not retain opt-out")
+    ns.Settings.DeletePreset(id)
+    A.ok(not ns.Settings.AlwaysShowDebuffs(), "Deleting preset lost personal snapshot")
     ns.RefreshSetup()
     click(button(mock, "Reset default"))
-    A.ok(ns.AlwaysShowDebuffs() and QuietUICharDB.alwaysShowDebuffs == nil,
+    A.ok(ns.Settings.AlwaysShowDebuffs() and QuietUICharDB.alwaysShowDebuffs == nil,
         "Reset must restore default without storing an explicit true")
     QuietUICharDB.alwaysShowDebuffs = false
     ns.RefreshSetup()
     A.eq(button(mock, "Always show debuffs").box._checked, false, "The window must show the saved opt-out")
     click(button(mock, "Always show debuffs"))
     click(button(mock, "Save"))
-    A.ok(ns.AlwaysShowDebuffs(), "Re-enabling did not clear opt-out")
+    A.ok(ns.Settings.AlwaysShowDebuffs(), "Re-enabling did not clear opt-out")
 end)

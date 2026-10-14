@@ -8,13 +8,13 @@ local function setup(t)
     QuietUIDB.enabled = true
     QuietUICharDB.autoHideParty = true
     local ctx = { ns = ns, mock = mock, grouped = false }
-    ns.InGroup = function() return ctx.grouped end
-    ns.InEditMode = function() return false end
+    ns.World.InGroup = function() return ctx.grouped end
+    ns.World.InEditMode = function() return false end
     ns.Glancing = function() return false end
-    ns.InCombat = function() return false end
-    ns.InForcedInstance = function() return false end
+    ns.World.InCombat = function() return false end
+    ns.World.InForcedInstance = function() return false end
     ns.Hit = function() return false end
-    ns.RefreshWorld = function() end
+    ns.World.RefreshWorld = function() end
     local container = CompactRaidFrameContainer
     for _ = 1, 5 do CreateFrame("Frame", nil, container) end
     ctx.container = container

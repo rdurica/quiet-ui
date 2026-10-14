@@ -47,11 +47,11 @@ h.test("Saving Top stores chatTabs top and saving Bottom stores nothing", functi
     A.eq(QuietUICharDB.chatTabs, nil, "draft is not saved yet")
     click(button(mock, "Save"))
     A.eq(QuietUICharDB.chatTabs, "top", "stored")
-    A.eq(ns.ChatTabs(), "top")
+    A.eq(ns.Settings.ChatTabs(), "top")
     click(row.minus)
     click(button(mock, "Save"))
     A.eq(QuietUICharDB.chatTabs, nil, "Bottom stores no chatTabs")
-    A.eq(ns.ChatTabs(), "bottom")
+    A.eq(ns.Settings.ChatTabs(), "bottom")
 end)
 
 h.test("Tabs stepper shows a saved Top", function(t)

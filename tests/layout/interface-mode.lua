@@ -52,22 +52,22 @@ h.test("interface-specific built-ins, custom layouts, identity, indices, preview
     InputUtil = nil
     A.eq(ns.LayoutChoices()[1].name, "Modern", "Missing mode APIs must use the keyboard layout list")
     InputUtil = { GetCurrentInterfaceStyle = function() return style end }
-    local id = ns.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { chat = false })
-    ns.ActivatePreset(id)
+    local id = ns.Settings.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { chat = false })
+    ns.Settings.ActivatePreset(id)
     style = 1
     local before = info.activeLayout
     A.ok(ns.ValidatePresetInterface() and char.presetId == nil,
         "Startup must detach a legacy keyboard preset in gamepad mode")
     A.ok(char.chat == false and info.activeLayout == before, "Detach must preserve settings and the active layout")
     A.eq(db.presets[id].layout.layoutName, "QuietUI", "Detach must not modify the shared preset")
-    ns.SavePreset(id, "Test A", { builtin = 3 }, { chatFade = 0 })
-    ns.ActivatePreset(id)
+    ns.Settings.SavePreset(id, "Test A", { builtin = 3 }, { chatFade = 0 })
+    ns.Settings.ActivatePreset(id)
     A.ok(ns.ValidatePresetInterface() and char.presetId == id, "Matching presets must remain selected")
     style = 0
     A.ok(ns.ValidatePresetInterface() and char.presetId == nil and char.chatFade == 0,
         "Gamepad built-ins must detach in keyboard mode")
-    ns.SavePreset(id, "Test A", { layoutName = "Missing", layoutType = 1 }, {})
-    ns.ActivatePreset(id)
+    ns.Settings.SavePreset(id, "Test A", { layoutName = "Missing", layoutType = 1 }, {})
+    ns.Settings.ActivatePreset(id)
     A.ok(ns.ValidatePresetInterface() and char.presetId == id, "Missing layouts retain the existing fallback behavior")
     local read = C_EditMode.GetLayouts
     C_EditMode.GetLayouts = function() return nil end

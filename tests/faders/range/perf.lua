@@ -20,7 +20,7 @@ local function setup(t, rangeSettings)
         IsSpellHelpful = function() return false end,
         IsSpellInRange = function() return true end,
     }
-    ns.ShowAll = function() return false end
+    ns.World.ShowAll = function() return false end
     ns.Glancing = function() return false end
     ns.Report = function(name, err) error(name .. ": " .. tostring(err)) end
     mock.calls.GetActionInfo = 0

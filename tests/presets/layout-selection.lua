@@ -26,8 +26,8 @@ h.test("preset layouts: combat, fallback, warn once and restore by name", functi
     local env = layoutEnv(t)
     local info = env.info
     A.type(ns.SelectPresetLayout, "function", "Preset layout selection is not implemented")
-    local id = ns.SavePreset(nil, "Healer", { layoutName = "Raid", layoutType = 1 }, {})
-    ns.ActivatePreset(id)
+    local id = ns.Settings.SavePreset(nil, "Healer", { layoutName = "Raid", layoutType = 1 }, {})
+    ns.Settings.ActivatePreset(id)
     A.ok(ns.SelectPresetLayout())
     A.ok(info.activeLayout == 4 and QuietUICharDB.previousLayout == 3)
     info.layouts[1], info.layouts[2] = info.layouts[2], info.layouts[1]
@@ -41,7 +41,7 @@ h.test("preset layouts: combat, fallback, warn once and restore by name", functi
     A.eq(#mock.printed, before + 1)
     A.ok(mock.printed[#mock.printed]:find("missing", 1, true))
     A.ok(ns.SelectPresetLayout() and #mock.printed == before + 1, "Warn once per session")
-    A.eq(ns.Presets()[id].layout.layoutName, "Raid", "Keep invalid reference for repair")
+    A.eq(ns.Settings.Presets()[id].layout.layoutName, "Raid", "Keep invalid reference for repair")
     A.ok(ns.RestorePreviousLayout() and info.activeLayout == 4, "Restore original by name after reorder")
     info.layouts[3] = nil
     A.ok(ns.SelectPresetLayout())

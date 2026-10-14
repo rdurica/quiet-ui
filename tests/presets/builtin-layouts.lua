@@ -23,8 +23,8 @@ h.test("third built-in layout: name, one-time selection, cached copy, restore, m
         ConvertStringToLayoutInfo = function() return {} end,
     }
     A.eq(ns.LayoutChoices()[3].name, "Controller", "Read the actual name of the third built-in layout")
-    local id = ns.SavePreset(nil, "Test A", { builtin = 3 }, { chat = false })
-    ns.ActivatePreset(id)
+    local id = ns.Settings.SavePreset(nil, "Test A", { builtin = 3 }, { chat = false })
+    ns.Settings.ActivatePreset(id)
     for _ = 1, 600 do A.ok(ns.SelectPresetLayout()) end
     A.ok(switches == 1 and info.activeLayout == 3, "A settled third layout must not be switched again")
     A.eq(copies, 1, "Repeated layout checks must not deep-copy the full built-in layouts")

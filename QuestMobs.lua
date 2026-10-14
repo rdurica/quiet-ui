@@ -17,13 +17,6 @@ local pending, generation = false, 0
 local stopped = false
 local broken = false -- frames cannot be destroyed, so stop creating after a failure
 
-local function Try(obj, method, ...)
-    local fn = obj and obj[method]
-    if type(fn) ~= "function" then return end
-    local ok, a, b = pcall(fn, obj, ...)
-    if ok then return a, b end
-end
-
 local function True(value)
     return not ns.IsSecret(value) and value == true
 end
@@ -33,7 +26,7 @@ local function Active()
     local db = ns.DB and ns.DB()
     if not (db and db.enabled) then return false end
     -- The setting accessor lives in Setup.lua; missing means on.
-    if type(ns.QuestMobs) == "function" then return ns.QuestMobs() ~= false end
+    if type(ns.Settings.QuestMobs) == "function" then return ns.Settings.QuestMobs() ~= false end
     return true
 end
 
@@ -49,15 +42,15 @@ local function Acquire()
         ns.Report("quest mobs frame", frame)
         return
     end
-    Try(frame, "EnableMouse", false)
-    local tex = Try(frame, "CreateTexture", nil, "ARTWORK")
+    ns.Plates.Try(frame, "EnableMouse", false)
+    local tex = ns.Plates.Try(frame, "CreateTexture", nil, "ARTWORK")
     if type(tex) ~= "table" then
         broken = true
         frame:Hide()
         ns.Report("quest mobs texture", "Textures are not available on this client.")
         return
     end
-    Try(tex, "SetPoint", "CENTER", frame, "CENTER")
+    ns.Plates.Try(tex, "SetPoint", "CENTER", frame, "CENTER")
     frame.icon = tex
     frame:Hide()
     return frame
@@ -68,8 +61,8 @@ local function Release(token)
     if not icon then return end
     icons[token] = nil
     icon:Hide()
-    Try(icon, "ClearAllPoints")
-    Try(icon, "SetParent", UIParent)
+    ns.Plates.Try(icon, "ClearAllPoints")
+    ns.Plates.Try(icon, "SetParent", UIParent)
     pool[#pool + 1] = icon
 end
 
@@ -88,17 +81,17 @@ local function Show(token, plate, kind)
     local bar = type(unitFrame) == "table" and (unitFrame.healthBar or unitFrame.HealthBar)
     local anchor = type(bar) == "table" and bar or unitFrame
     if type(anchor) ~= "table" or not ns.Usable(anchor) then anchor = plate end
-    local height = Try(anchor, "GetHeight")
+    local height = ns.Plates.Try(anchor, "GetHeight")
     local size = MIN_SIZE
     if type(height) == "number" and not ns.IsSecret(height) and height > 0 then
         size = math.min(MAX_SIZE, math.max(MIN_SIZE, height))
     end
-    Try(icon, "SetParent", plate)
-    Try(icon, "ClearAllPoints")
-    Try(icon, "SetPoint", "RIGHT", anchor, "LEFT", -GAP, 0)
-    Try(icon, "SetSize", size, size)
-    Try(icon.icon, "SetSize", size * SCALE[kind], size * SCALE[kind])
-    Try(icon.icon, "SetTexture", ICONS[kind])
+    ns.Plates.Try(icon, "SetParent", plate)
+    ns.Plates.Try(icon, "ClearAllPoints")
+    ns.Plates.Try(icon, "SetPoint", "RIGHT", anchor, "LEFT", -GAP, 0)
+    ns.Plates.Try(icon, "SetSize", size, size)
+    ns.Plates.Try(icon.icon, "SetSize", size * SCALE[kind], size * SCALE[kind])
+    ns.Plates.Try(icon.icon, "SetTexture", ICONS[kind])
     icon:Show()
 end
 
@@ -187,14 +180,6 @@ end
 
 -- Nameplates --------------------------------------------------------------------------
 
-local function PlateToken(plate)
-    local unitFrame = plate.UnitFrame
-    local token = type(unitFrame) == "table" and unitFrame.unit
-    if type(token) == "string" and not ns.IsSecret(token) then return token end
-    token = plate.namePlateUnitToken
-    if type(token) == "string" and not ns.IsSecret(token) then return token end
-end
-
 local function Evaluate(token, plate, cache)
     local kind = Kind(token, cache)
     if kind then Show(token, plate, kind) else Release(token) end
@@ -225,7 +210,7 @@ local function Recalculate()
     if ok and type(plates) == "table" then
         for _, plate in ipairs(plates) do
             if ns.Usable(plate) then
-                local token = PlateToken(plate)
+                local token = ns.Plates.Token(plate)
                 if token then
                     seen[token] = true
                     Evaluate(token, plate, cache)

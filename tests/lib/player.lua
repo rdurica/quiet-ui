@@ -99,7 +99,7 @@ function P.env(t, opts)
     end
     for _, key in ipairs({ "InEditMode", "InCombat", "InForcedInstance", "InGroup", "InVehicle",
         "HasTarget", "Glancing", "ShowAll", "XPForced" }) do
-        ns[key] = function() return s[key] == true end
+        (key == "Glancing" and ns or ns.World)[key] = function() return s[key] == true end
     end
     ns.Hit = function(obj) return obj and obj.hot == true end
     if opts.preset then
@@ -107,7 +107,7 @@ function P.env(t, opts)
             settings = { playerThresholdKind = "health", playerThresholdPercent = 70 },
             layout = { name = "Existing", layoutType = 1, interfaceStyle = 0 } } }
         QuietUICharDB.presetId = 1
-        ns.Settings() -- establish the existing personal snapshot before testing transitions
+        ns.Settings.Effective() -- establish the existing personal snapshot before testing transitions
     end
     ns.FindFaders(false)
     for i = #mock.printed, 1, -1 do mock.printed[i] = nil end

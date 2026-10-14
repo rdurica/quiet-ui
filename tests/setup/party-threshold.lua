@@ -17,8 +17,8 @@ local function fixture(t, activate)
     ns.PreviewLayout = function() end
     ns.CommitLayoutPreview = function() end
     ns.CancelLayoutPreview = function() end
-    local id = ns.SavePreset(nil, "Healer", ns.CurrentLayoutRef(), { chat = false, chatFade = 0, groupAuras = false, player = "resource" })
-    if activate then ns.ActivatePreset(id) end
+    local id = ns.Settings.SavePreset(nil, "Healer", ns.CurrentLayoutRef(), { chat = false, chatFade = 0, groupAuras = false, player = "resource" })
+    if activate then ns.Settings.ActivatePreset(id) end
     ns.ShowSetup()
     return t.mock:findByName("QuietUISetup"), id
 end
@@ -40,20 +40,20 @@ h.test("Party frames: defaults, disabled hover, draft, save, presets, snapshot a
     ui:Hide(); ns.ShowSetup()
     A.ok(partyRow.always.box._checked, "Closing must cancel party autohide edits")
     click(partyRow.always); click(ui.save)
-    A.ok(QuietUICharDB.autoHideParty and ns.AutoHideParty(), "Save must enable party autohide")
-    local partyPreset = ns.SavePreset(nil, "Party fade", ns.CurrentLayoutRef(), QuietUICharDB)
-    ns.ActivatePreset(partyPreset)
-    A.ok(ns.AutoHideParty(), "Preset must retain party autohide")
+    A.ok(QuietUICharDB.autoHideParty and ns.Settings.AutoHideParty(), "Save must enable party autohide")
+    local partyPreset = ns.Settings.SavePreset(nil, "Party fade", ns.CurrentLayoutRef(), QuietUICharDB)
+    ns.Settings.ActivatePreset(partyPreset)
+    A.ok(ns.Settings.AutoHideParty(), "Preset must retain party autohide")
     ns.ShowSetup(); click(partyRow.always); click(ui.save)
-    A.ok(not ns.AutoHideParty() and ns.Presets()[partyPreset].settings.autoHideParty == nil,
+    A.ok(not ns.Settings.AutoHideParty() and ns.Settings.Presets()[partyPreset].settings.autoHideParty == nil,
         "Saving Always visible must update the active preset")
     ns.ShowSetup(); click(partyRow.always); click(ui.save)
-    ns.DeletePreset(partyPreset)
-    A.ok(ns.AutoHideParty(), "Deleting a preset must retain the personal autohide snapshot")
-    ns.ActivatePreset(nil, {}); ns.ShowSetup()
+    ns.Settings.DeletePreset(partyPreset)
+    A.ok(ns.Settings.AutoHideParty(), "Deleting a preset must retain the personal autohide snapshot")
+    ns.Settings.ActivatePreset(nil, {}); ns.ShowSetup()
     click(partyRow.always); click(ui.save)
     click(ui.reset)
-    A.ok(not ns.AutoHideParty() and partyRow.always.box._checked, "Reset must restore Always visible")
+    A.ok(not ns.Settings.AutoHideParty() and partyRow.always.box._checked, "Reset must restore Always visible")
 end)
 
 h.test("Player threshold: selector, drafts, validation, presets and snapshots", function(t)
@@ -70,8 +70,8 @@ h.test("Player threshold: selector, drafts, validation, presets and snapshots", 
     A.eq(ui.playerThresholdPercent.edit:GetText(), "45", "Painting another control lost threshold edits")
     click(ui.save)
     A.ok(QuietUICharDB.playerThresholdPercent == 45 and QuietUICharDB.playerThresholdKind == "resource")
-    A.ok(ns.Presets()[id].settings.playerThresholdPercent == 45
-        and ns.Presets()[id].settings.playerThresholdKind == "resource")
+    A.ok(ns.Settings.Presets()[id].settings.playerThresholdPercent == 45
+        and ns.Settings.Presets()[id].settings.playerThresholdKind == "resource")
     for _, invalid in ipairs({ "0", "101", "-1", "45.5", "no", "1e1" }) do
         typeInto(ui.playerThresholdPercent.edit, invalid)
         local out = A.capture(mock, click, ui.save)
@@ -90,20 +90,20 @@ h.test("Player threshold: selector, drafts, validation, presets and snapshots", 
     typeInto(ui.playerThresholdPercent.edit, "1"); click(ui.save)
     A.eq(QuietUICharDB.playerThresholdPercent, 1)
     typeInto(ui.playerThresholdPercent.edit, " "); click(ui.save)
-    local kind, percent = ns.PlayerThreshold()
-    A.ok(kind == "resource" and percent == nil and ns.Presets()[id].settings.playerThresholdPercent == false)
+    local kind, percent = ns.Settings.PlayerThreshold()
+    A.ok(kind == "resource" and percent == nil and ns.Settings.Presets()[id].settings.playerThresholdPercent == false)
     click(ui.reset)
-    kind, percent = ns.PlayerThreshold()
+    kind, percent = ns.Settings.PlayerThreshold()
     A.ok(kind == "health" and percent == 70)
     A.ok(ui.playerThresholdPercent.edit:GetText() == "70" and ui.playerThresholdKind.value._text == "Health")
-    A.eq(ns.Presets()[id].settings.playerThresholdPercent, false, "Reset changed the shared threshold")
+    A.eq(ns.Settings.Presets()[id].settings.playerThresholdPercent, false, "Reset changed the shared threshold")
     click(ui.newPreset); ui.presetDialog.edit:SetText("Threshold"); click(ui.presetDialog.yes)
     typeInto(ui.playerThresholdPercent.edit, "55"); click(ui.save)
     local threshold = QuietUICharDB.presetId
-    ns.ActivatePreset(id); ns.ShowSetup()
+    ns.Settings.ActivatePreset(id); ns.ShowSetup()
     A.ok(ui.playerThresholdPercent.edit:GetText() == "" and ui.playerThresholdKind.value._text == "Resource")
-    ns.ActivatePreset(threshold); ns.ShowSetup()
+    ns.Settings.ActivatePreset(threshold); ns.ShowSetup()
     A.ok(ui.playerThresholdPercent.edit:GetText() == "55" and ui.playerThresholdKind.value._text == "Health")
-    ns.DeletePreset(threshold)
+    ns.Settings.DeletePreset(threshold)
     A.ok(QuietUICharDB.playerThresholdPercent == 55 and QuietUICharDB.playerThresholdKind == nil)
 end)

@@ -18,14 +18,14 @@ h.test("target death invalidates cached bars without pointer movement", function
     UnitIsFriend = function() return true end
     UnitCanAttack = function() return false end
     UnitIsDeadOrGhost = function() return dead end
-    ns.RefreshWorld()
-    ns.ConsumeHud()
+    ns.World.RefreshWorld()
+    ns.World.ConsumeHud()
     ns.NextFadeTick()
     ns.UpdateBars(false, 1, true)
     A.alpha(bar, 1, 'Living friendly target did not show its bar')
     dead = true
-    ns.RefreshWorld()
-    A.ok(ns.ConsumeHud(), 'Target death did not invalidate cached bar visibility')
+    ns.World.RefreshWorld()
+    A.ok(ns.World.ConsumeHud(), 'Target death did not invalidate cached bar visibility')
     ns.NextFadeTick()
     ns.UpdateBars(false, 1, true)
     A.alpha(bar, 0, 'Dead friendly target kept its bar visible')
@@ -42,7 +42,7 @@ h.test("show-all transitions recalculate bars even with a stationary pointer", f
         return update(showAll, dt, rescan, ...)
     end
     local force = false
-    ns.ShowAll = function() return force end
+    ns.World.ShowAll = function() return force end
     mock:tick(0.01)
     scans = 0
     force = true
@@ -77,7 +77,7 @@ h.test("show-all transitions recalculate bars even with a stationary pointer", f
     A.falsy(QuietUIDB.enabled, 'Glance command enabled the addon')
     QuietUIDB.enabled = true
     SlashCmdList.QUIETUI('glance')
-    ns.ForceQuietLayout = function() return false end
+    ns.Settings.ForceQuietLayout = function() return false end
     SlashCmdList.QUIETUI('off')
     A.falsy(ns.Glancing(), 'Disabling the addon did not clear command Glance')
     A.falsy(QuietUIDB.enabled, 'Off command did not disable the addon')
@@ -93,14 +93,14 @@ h.test("group visibility overrides automatic triggers and keeps hover exceptions
     ns.Hit = function(obj) return hot[obj] == true end
     ns.Glancing = function() return false end
     local explicit = false
-    ns.XPForced = function() return explicit end
+    ns.World.XPForced = function() return explicit end
     QuietUICharDB.groups = { swing = 1 }
     QuietUICharDB.groupVisibility = { [1] = 'hover' }
     QuietUICharDB.friendly = { ['1'] = true }
     UnitExists = function() return true end
     UnitIsFriend = function() return true end
     UnitIsDeadOrGhost = function() return false end
-    ns.RefreshWorld()
+    ns.World.RefreshWorld()
     local function tick(showAll)
         ns.NextFadeTick(); ns.UpdateBars(showAll, 1, true)
     end
@@ -133,24 +133,24 @@ h.test("legacy pins split mixed groups without changing which bars stay up", fun
     local ns = t.ns
     QuietUIDB = { enabled = true }
     local source = { visible = { bars = true, quests = true }, groups = { swing = 1 } }
-    ns.MigrateVisibility(source)
+    ns.Settings.MigrateVisibility(source)
     A.ok(source.visible.quests and not source.visible.bars and not source.visible.swing)
     QuietUICharDB = source
-    A.eq(ns.GroupVisibility(ns.BarGroup('1')), 'always')
-    A.falsy(ns.GroupVisibility(ns.BarGroup('swing')), 'Migration pinned the unpinned swing timer')
+    A.eq(ns.Settings.GroupVisibility(ns.Settings.BarGroup('1')), 'always')
+    A.falsy(ns.Settings.GroupVisibility(ns.Settings.BarGroup('swing')), 'Migration pinned the unpinned swing timer')
     local oldGroup = source.groups['1']
-    ns.MigrateVisibility(source)
+    ns.Settings.MigrateVisibility(source)
     A.eq(source.groups['1'], oldGroup, 'Migration must be idempotent')
     source = { visible = { swing = true }, groups = { swing = 1 } }
-    ns.MigrateVisibility(source); QuietUICharDB = source
-    A.eq(ns.GroupVisibility(ns.BarGroup('swing')), 'always')
-    A.falsy(ns.GroupVisibility(ns.BarGroup('1')), 'Migration pinned unpinned action bars')
+    ns.Settings.MigrateVisibility(source); QuietUICharDB = source
+    A.eq(ns.Settings.GroupVisibility(ns.Settings.BarGroup('swing')), 'always')
+    A.falsy(ns.Settings.GroupVisibility(ns.Settings.BarGroup('1')), 'Migration pinned unpinned action bars')
     source.hoverOnly = { meter = true }
-    local id = assert(ns.SavePreset(nil, 'Hover', {}, source))
-    ns.ActivatePreset(id)
-    A.ok(ns.OnlyOnHover('meter') and ns.GroupVisibility(ns.BarGroup('swing')) == 'always')
-    ns.DeletePreset(id)
-    A.ok(ns.OnlyOnHover('meter'), 'Deleting preset lost hover snapshot')
+    local id = assert(ns.Settings.SavePreset(nil, 'Hover', {}, source))
+    ns.Settings.ActivatePreset(id)
+    A.ok(ns.Settings.OnlyOnHover('meter') and ns.Settings.GroupVisibility(ns.Settings.BarGroup('swing')) == 'always')
+    ns.Settings.DeletePreset(id)
+    A.ok(ns.Settings.OnlyOnHover('meter'), 'Deleting preset lost hover snapshot')
 end)
 
 h.test("bar ancestry cache preserves nesting, reparenting, replacement and disable", function(t)
@@ -173,7 +173,7 @@ h.test("bar ancestry cache preserves nesting, reparenting, replacement and disab
     for _ = 1, 100 do tick() end
     A.eq(parentReads, 0, 'Stable bars repeated ancestor walks: ' .. parentReads)
     left:SetParent(main)
-    A.ok(ns.ConsumeHud(), 'Reparenting did not invalidate hover visibility')
+    A.ok(ns.World.ConsumeHud(), 'Reparenting did not invalidate hover visibility')
     tick()
     A.ok(main._alpha == 1 and left._alpha == 0,
         'Hosting bar must stay opaque so the child fades independently')

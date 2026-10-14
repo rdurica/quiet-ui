@@ -134,7 +134,7 @@ function ns.FindFaders(deep)
     RefreshKids(resourceFrames)
     RefreshKids(auraFrames)
     FindMeters(deep)
-    local active = ns.AutoHideParty and ns.AutoHideParty() or false
+    local active = ns.Settings.AutoHideParty and ns.Settings.AutoHideParty() or false
     if active and (deep or not partyActive or PartyChanged()) then
         FindPartyFrames()
     end
@@ -143,7 +143,7 @@ end
 
 -- A roster change can swap members without changing the container counts.
 function ns.ScanParty()
-    if ns.AutoHideParty and ns.AutoHideParty() then
+    if ns.Settings.AutoHideParty and ns.Settings.AutoHideParty() then
         FindPartyFrames()
         partyActive = true
     end
@@ -153,7 +153,7 @@ function ns.MarkCombatEnd()
     if type(GetTime) == "function" then
         lastCombat = GetTime()
     end
-    ns.TouchHud()
+    ns.World.TouchHud()
 end
 
 function ns.MarkQuestXP(xp)
@@ -161,11 +161,11 @@ function ns.MarkQuestXP(xp)
     if type(GetTime) == "function" then
         lastQuestXP = GetTime()
     end
-    ns.TouchHud()
+    ns.World.TouchHud()
 end
 
 local function XPShouldShow()
-    if ns.ShowAll() then return true end
+    if ns.World.ShowAll() then return true end
     if lastQuestXP and type(GetTime) == "function" then
         return GetTime() - lastQuestXP < XP_AFTER_QUEST
     end
@@ -173,7 +173,7 @@ local function XPShouldShow()
 end
 
 local function MeterShouldShow()
-    if ns.InCombat() or ns.InForcedInstance() or ns.InGroup() or ns.InEditMode() then return true end
+    if ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InGroup() or ns.World.InEditMode() then return true end
     if lastCombat and type(GetTime) == "function" then
         return GetTime() - lastCombat < METER_AFTER_COMBAT
     end
@@ -196,7 +196,7 @@ end
 local function HoverFrames(name, frames, active)
     local catchers = hoverCatchers[name]
     if not catchers then catchers = {}; hoverCatchers[name] = catchers end
-    if active == nil then active = ns.OnlyOnHover(name) end
+    if active == nil then active = ns.Settings.OnlyOnHover(name) end
     if not active then
         ParkHover(name)
         return false
@@ -205,15 +205,11 @@ local function HoverFrames(name, frames, active)
     local hovered = false
     for i, target in ipairs(frames) do
         local box = catchers[i]
-        if ns.DB().enabled and not ns.InEditMode()
+        if ns.DB().enabled and not ns.World.InEditMode()
             and ns.Usable(target) and target:IsShown() then
             if not box then
-                local ok, created = pcall(CreateFrame, "Frame", nil, UIParent)
-                if ok and created then
-                    box = created
-                    catchers[i] = box
-                    ns.ArmCatcher(box)
-                end
+                box = ns.Catcher.Create()
+                if box then catchers[i] = box end
             end
             if box then
                 if box._quietHoverTarget ~= target then
@@ -221,18 +217,10 @@ local function HoverFrames(name, frames, active)
                     box:SetAllPoints(target)
                     box._quietHoverTarget = target
                 end
-                local strata = target.GetFrameStrata and target:GetFrameStrata()
-                if type(strata) == "string" and not ns.IsSecret(strata) and box._quietStrata ~= strata then
-                    box:SetFrameStrata(strata)
-                    box._quietStrata = strata
-                end
+                ns.Catcher.Strata(box, target)
                 local level = target.GetFrameLevel and target:GetFrameLevel() or 1
                 if type(level) ~= "number" or ns.IsSecret(level) then level = 1 end
-                level = math.max(0, level - 1)
-                if box._quietLevel ~= level then
-                    box:SetFrameLevel(level)
-                    box._quietLevel = level
-                end
+                ns.Catcher.Level(box, math.max(0, level - 1))
                 if not box:IsShown() then box:Show() end
                 if ns.Hit(box) then hovered = true end
             end
@@ -326,7 +314,7 @@ local powerWeights, powerAlphas = {}, {}
 local powerSampleCount = 0
 
 local function DeadTargetBlocked()
-    if not ns.RequireLivingTarget() or ns.InEditMode() or ns.Glancing() then return false end
+    if not ns.Settings.RequireLivingTarget() or ns.World.InEditMode() or ns.Glancing() then return false end
     local fn = type(UnitIsDeadOrGhost) == "function" and UnitIsDeadOrGhost
         or (type(UnitIsDead) == "function" and UnitIsDead)
     if not fn then return false end
@@ -340,7 +328,7 @@ local function DeadTargetBlocked()
 end
 
 local function PlayerDeathBlocked()
-    if ns.InEditMode() or ns.Glancing() then return false end
+    if ns.World.InEditMode() or ns.Glancing() then return false end
     if type(UnitIsDeadOrGhost) ~= "function" then return false end
     local ok, dead = pcall(UnitIsDeadOrGhost, "player")
     if not ok then ns.Report("player life", dead); return false end
@@ -350,7 +338,7 @@ end
 
 local function ReadPlayerStyle()
     if samplingPower and sampledPlayerStyle ~= nil then return sampledPlayerStyle end
-    local style = ns.PlayerStyle()
+    local style = ns.Settings.PlayerStyle()
     if samplingPower then sampledPlayerStyle = style end
     return style
 end
@@ -359,22 +347,22 @@ end
 -- Edit mode shows it even when the player frame is off.
 local function PlayerShouldShow(blocked)
     if samplingPower and sampledPlayerShow ~= nil then return sampledPlayerShow end
-    if ns.InEditMode() then return true end
+    if ns.World.InEditMode() then return true end
     if blocked == nil then blocked = DeadTargetBlocked() end
     if blocked then return false end
     if ReadPlayerStyle() ~= "classic" then return false end
     return ns.Glancing()
-        or ns.InCombat()
-        or ns.InForcedInstance()
-        or ns.InGroup()
-        or ns.InVehicle()
-        or ns.HasTarget()
+        or ns.World.InCombat()
+        or ns.World.InForcedInstance()
+        or ns.World.InGroup()
+        or ns.World.InVehicle()
+        or ns.World.HasTarget()
         or ns.Hit(PlayerFrame)
         or ns.Hit(PetFrame)
 end
 
 local function ResourceForced()
-    return ns.InCombat() or ns.InForcedInstance() or ns.InEditMode() or ns.Pinned("resource")
+    return ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InEditMode() or ns.Settings.Pinned("resource")
         or ns.Glancing()
 end
 
@@ -555,7 +543,7 @@ end
 local function ReadThreshold()
     if samplingPower and thresholdRead then return sampledThresholdKind, sampledThresholdPercent end
     local kind, percent = "health", 70
-    if ns.PlayerThreshold then kind, percent = ns.PlayerThreshold() end
+    if ns.Settings.PlayerThreshold then kind, percent = ns.Settings.PlayerThreshold() end
     if samplingPower then
         sampledThresholdKind, sampledThresholdPercent = kind, percent
         thresholdRead = true
@@ -670,7 +658,7 @@ local function PaintResource(frame, show, elapsed, powerAlpha, healthAlpha)
 end
 
 local function UpdateResource(elapsed)
-    if ns.OnlyOnHover("resource") then
+    if ns.Settings.OnlyOnHover("resource") then
         local hovered = HoverFrames("resource", resourceFrames)
         for _, frame in ipairs(resourceFrames) do
             if ns.Hit(frame) then hovered = true; break end
@@ -678,7 +666,7 @@ local function UpdateResource(elapsed)
                 if ns.Usable(child) and ns.Hit(child) then hovered = true; break end
             end
         end
-        local show = ns.VisibilityShow("resource", false, hovered)
+        local show = ns.Settings.VisibilityShow("resource", false, hovered)
         resourceWeight = show and 1 or 0
         for _, frame in ipairs(resourceFrames) do
             if IsFadeable(frame) and frame:IsShown() then
@@ -818,7 +806,7 @@ end
 
 -- Cooldowns matter only when fighting or grouped, so hover does not count.
 local function CooldownsShouldShow()
-    return ns.InCombat() or ns.InForcedInstance() or ns.InGroup() or ns.InEditMode()
+    return ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InGroup() or ns.World.InEditMode()
 end
 
 -- Aura buttons can sit outside their container's bounds, so children count too.
@@ -837,10 +825,10 @@ local function AurasShouldShow(hoverOnly, grouped)
         for _, frame in ipairs(auraFrames) do
             if MouseOverAny(frame) then hovered = true; break end
         end
-        return ns.VisibilityShow("auras", false, hovered)
+        return ns.Settings.VisibilityShow("auras", false, hovered)
     end
-    local show = ns.InCombat() or ns.InForcedInstance() or ns.InGroup() or ns.InEditMode()
-        or ns.Pinned("auras") or ns.Glancing()
+    local show = ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InGroup() or ns.World.InEditMode()
+        or ns.Settings.Pinned("auras") or ns.Glancing()
     if not show and grouped and PlayerShouldShow() then
         show = true
     end
@@ -856,13 +844,13 @@ local function AurasShouldShow(hoverOnly, grouped)
 end
 
 local function UpdateAuras(elapsed)
-    local hoverOnly = ns.OnlyOnHover("auras")
-    local grouped = not hoverOnly and ns.GroupAuras()
+    local hoverOnly = ns.Settings.OnlyOnHover("auras")
+    local grouped = not hoverOnly and ns.Settings.GroupAuras()
     local show = AurasShouldShow(hoverOnly, grouped) and true or false
     local useCurve = grouped and PlayerUsesThresholds()
     aurasCurved, auraWeight = TakeWeight(aurasCurved, auraWeight, show, elapsed, useCurve)
     local alpha = useCurve and EvalPlayerThresholds(auraWeight) or nil
-    local keepDebuffs = not hoverOnly and ns.AlwaysShowDebuffs()
+    local keepDebuffs = not hoverOnly and ns.Settings.AlwaysShowDebuffs()
     for _, frame in ipairs(auraFrames) do
         if keepDebuffs and frame == _G.DebuffFrame then
             if frame._quietSecret ~= nil or frame._quietAlpha ~= 1 then
@@ -892,10 +880,8 @@ end
 
 local function EnsureQuestCatcher()
     if questCatcher then return questCatcher end
-    local ok, created = pcall(CreateFrame, "Frame", nil, UIParent)
-    if not ok or not created then return end
-    ns.ArmCatcher(created)
-    created:Hide()
+    local created = ns.Catcher.Create()
+    if not created then return end
     questCatcher = created
     return created
 end
@@ -904,7 +890,7 @@ local function PlaceQuestCatcher()
     local box = EnsureQuestCatcher()
     if not box then return end
     local target = ShownQuest()
-    if not target or ns.InEditMode() or not ns.DB().enabled then
+    if not target or ns.World.InEditMode() or not ns.DB().enabled then
         box:Hide()
         questCatcherTarget = nil
         return
@@ -917,18 +903,10 @@ local function PlaceQuestCatcher()
         -- SetParent can move strata and level, so write them again.
         box._quietStrata, box._quietLevel = nil, nil
     end
-    local strata = target.GetFrameStrata and target:GetFrameStrata()
-    if type(strata) == "string" and not ns.IsSecret(strata) and box._quietStrata ~= strata then
-        box:SetFrameStrata(strata)
-        box._quietStrata = strata
-    end
+    ns.Catcher.Strata(box, target)
     local level = target.GetFrameLevel and target:GetFrameLevel() or 1
     if type(level) ~= "number" or ns.IsSecret(level) then level = 1 end
-    level = math.max(level - 1, 0)
-    if box._quietLevel ~= level then
-        box:SetFrameLevel(level)
-        box._quietLevel = level
-    end
+    ns.Catcher.Level(box, math.max(level - 1, 0))
     if not box:IsShown() then box:Show() end
 end
 
@@ -1036,7 +1014,7 @@ FindPartyFrames = function()
 end
 
 function ns.UpdateParty(elapsed)
-    local active = ns.DB().enabled and ns.AutoHideParty and ns.AutoHideParty() or false
+    local active = ns.DB().enabled and ns.Settings.AutoHideParty and ns.Settings.AutoHideParty() or false
     if not active then
         -- Roster events stop while off; the next FindFaders scans in full.
         partyActive = false
@@ -1047,13 +1025,13 @@ function ns.UpdateParty(elapsed)
         end
         return
     end
-    if not ns.InGroup() and not ns.InCombat() and not ns.InForcedInstance()
-        and not ns.InEditMode() and not ns.Glancing() then
+    if not ns.World.InGroup() and not ns.World.InCombat() and not ns.World.InForcedInstance()
+        and not ns.World.InEditMode() and not ns.Glancing() then
         ParkHover("party")
         return
     end
     local hovered = HoverFrames("party", partyFrames, true)
-    local show = ns.InCombat() or ns.InForcedInstance() or ns.InEditMode() or ns.Glancing() or hovered
+    local show = ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InEditMode() or ns.Glancing() or hovered
     local target = show and 1 or 0
     for root, block in pairs(partyAlphaBlocks) do
         if ns.Usable(root) and root:IsShown() then
@@ -1261,10 +1239,10 @@ end
 
 -- "show", "hide", or "hold". Automatic bar triggers and Glance suppress the indicator.
 local function RangeDecision()
-    if type(ns.Range) ~= "function" then return "hide" end
-    local yards, kind, spellName = ns.Range()
+    if type(ns.Settings.Range) ~= "function" then return "hide" end
+    local yards, kind, spellName = ns.Settings.Range()
     if not yards then return "hide" end
-    if ns.ShowAll() or ns.Glancing() then return "hide" end
+    if ns.World.ShowAll() or ns.Glancing() then return "hide" end
     local life = TargetLife()
     if life ~= "alive" then return life end
     if kind == "friendly" then
@@ -1492,20 +1470,20 @@ end
 
 local function UpdateVisible(name, frames, usual, noHover, exception, glance, elapsed)
     local hovered = HoverFrames(name, frames)
-    if ns.OnlyOnHover(name) then
-        UpdateGroup(frames, ns.InEditMode() or glance or exception or hovered, elapsed)
+    if ns.Settings.OnlyOnHover(name) then
+        UpdateGroup(frames, ns.World.InEditMode() or glance or exception or hovered, elapsed)
     else
-        UpdateGroup(frames, usual or ns.Pinned(name) or glance, elapsed, noHover)
+        UpdateGroup(frames, usual or ns.Settings.Pinned(name) or glance, elapsed, noHover)
     end
 end
 
 function ns.UpdateFaders(elapsed)
     local glance = ns.Glancing()
-    ns.Run("xp bar", UpdateVisible, "xp", statusFrames, XPShouldShow(), false, ns.XPForced(), glance, elapsed)
+    ns.Run("xp bar", UpdateVisible, "xp", statusFrames, XPShouldShow(), false, ns.World.XPForced(), glance, elapsed)
     ns.Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true, nil,
         glance, elapsed)
     ns.Run("damage meter", UpdateVisible, "meter", meterFrames, MeterShouldShow(), true, nil, glance, elapsed)
     ns.Run("quest catcher", PlaceQuestCatcher)
     local questHot = questCatcher and ns.Hit(questCatcher)
-    ns.Run("quest tracker", UpdateGroup, questFrames, ns.VisibilityShow("quests", false, questHot), elapsed)
+    ns.Run("quest tracker", UpdateGroup, questFrames, ns.Settings.VisibilityShow("quests", false, questHot), elapsed)
 end

@@ -15,80 +15,16 @@ local settleToken = 0
 local settleArmed = false
 local rescanPending = false
 local rescanMissed = false
-local cpuProfile
-
-local function StartCPUProfile()
-    if type(debugprofilestop) ~= "function" then
-        ns.Print("CPU timing is not available on this client.")
-        return
-    end
-    cpuProfile = { started = GetTime(), sections = {}, smooth = {}, frames = 0 }
-    ns.Print("Measuring QuietUI for 10 seconds. Keep playing in the same situation.")
-end
-
-local function ProfileRows(sections)
-    local rows = {}
-    for name, section in pairs(sections) do
-        rows[#rows + 1] = { name = name, ms = section.ms, calls = section.calls }
-    end
-    table.sort(rows, function(a, b) return a.ms > b.ms end)
-    return rows
-end
-
-local function PrintProfileRow(row, duration, prefix)
-    ns.Print(string.format("%s%s: %.3f ms/s, %.3f ms/call (%d calls).",
-        prefix or "", row.name, row.ms / duration, row.ms / row.calls, row.calls))
-end
-
-local function FinishCPUProfile()
-    if not cpuProfile then return end
-    cpuProfile.frames = cpuProfile.frames + 1
-    local duration = GetTime() - cpuProfile.started
-    if duration < 10 then return end
-    local rows = ProfileRows(cpuProfile.sections)
-    ns.Print(string.format("CPU timing: %.1f seconds, %d frames, preset %s; pending layout: %s.", duration,
-        cpuProfile.frames, ns.ActivePreset and ns.ActivePreset() and ns.ActivePreset().name or "<no preset>",
-        tostring(layoutPending or "none")))
-    if ns.LayoutStatus then ns.Print(ns.LayoutStatus()) end
-    for i = 1, math.min(8, #rows) do
-        PrintProfileRow(rows[i], duration)
-    end
-    -- Details are included in the smooth total and do not consume the top-eight slots.
-    for _, row in ipairs(ProfileRows(cpuProfile.smooth)) do
-        PrintProfileRow(row, duration, "smooth / ")
-    end
-    cpuProfile = nil
-end
-
-local function RecordCPU(sections, label, started)
-    local ms = math.max(0, debugprofilestop() - started)
-    local section = sections[label]
-    if not section then section = { ms = 0, calls = 0 }; sections[label] = section end
-    section.ms, section.calls = section.ms + ms, section.calls + 1
-end
 
 local function Run(label, fn, ...)
-    local profile = label and cpuProfile
-    local started = profile and debugprofilestop()
-    ns.Run(label or "fades", fn, ...)
-    if profile then
-        RecordCPU(profile.sections, label, started)
-    end
-end
-
-local function ProfileSmooth(label, fn, ...)
-    local profile = cpuProfile
-    local started = debugprofilestop()
-    local ok, err = pcall(fn, ...)
-    RecordCPU(profile.smooth, label, started)
-    if not ok then ns.Report(label, err) end
+    ns.Profiler.Run(label, fn, ...)
 end
 
 local function UpdateFades(elapsed, rescan)
     if not ns.DB().enabled then return end
     ns.NextFadeTick()
-    ns.BeginTick(rescan)
-    local showAll = ns.ShowAll()
+    ns.World.BeginTick(rescan)
+    local showAll = ns.World.ShowAll()
     Run("bar visibility", ns.UpdateBars, showAll, elapsed, rescan)
     Run("faders", ns.UpdateFaders, elapsed)
     Run("menu", ns.UpdateMenuButton, elapsed)
@@ -107,14 +43,14 @@ local function FinishLayout()
     if not CheckStartupPreset() then return end
     if finishingLayout then return end
     if ns.UpdateLayoutPreview and ns.UpdateLayoutPreview() then return end
-    if layoutPending == "select" and not ns.ForceQuietLayout() then
+    if layoutPending == "select" and not ns.Settings.ForceQuietLayout() then
         layoutPending = nil
         return
     end
     if layoutPending ~= "select" and layoutPending ~= "restore" then return end
     finishingLayout = true
     local job = layoutPending
-    local select = ns.ActivePreset and ns.ActivePreset() and ns.SelectPresetLayout or ns.SelectQuietLayout
+    local select = ns.Settings.ActivePreset and ns.Settings.ActivePreset() and ns.SelectPresetLayout or ns.SelectQuietLayout
     local fn = job == "select" and select or ns.RestorePreviousLayout
     local ok, done = pcall(fn)
     finishingLayout = false
@@ -130,7 +66,7 @@ end
 
 -- A new character applies the default preset after login. Keep selecting until that settles.
 local function ArmLayoutSettle()
-    if not ns.DB().enabled or not ns.ForceQuietLayout() then return end
+    if not ns.DB().enabled or not ns.Settings.ForceQuietLayout() then return end
     settleToken = settleToken + 1
     local token = settleToken
     layoutChosen = false
@@ -141,7 +77,7 @@ local function ArmLayoutSettle()
     if not (C_Timer and C_Timer.After) then return end
     for _, delay in ipairs({ 1, 3, 6 }) do
         C_Timer.After(delay, function()
-            if token ~= settleToken or not ns.DB().enabled or not ns.ForceQuietLayout() then return end
+            if token ~= settleToken or not ns.DB().enabled or not ns.Settings.ForceQuietLayout() then return end
             if type(GetTime) == "function" and GetTime() > settleUntil then return end
             layoutChosen = false
             layoutPending = "select"
@@ -171,7 +107,7 @@ local function RestoreAll()
     settleToken = settleToken + 1
     settleUntil = 0
     layoutChosen = false
-    if ns.ForceQuietLayout() or ns.CharDB().presetLayoutManaged then
+    if ns.Settings.ForceQuietLayout() or ns.Settings.CharDB().presetLayoutManaged then
         layoutPending = "restore"
         FinishLayout()
     else
@@ -186,11 +122,11 @@ local function ApplyAll()
         return
     end
     if ns.ForgetBarButtons then ns.ForgetBarButtons() end
-    ns.RefreshWorld()
+    ns.World.RefreshWorld()
     if type(ns.ApplyQuestNotice) == "function" then ns.ApplyQuestNotice() end
     if type(ns.ApplyHighlights) == "function" then ns.ApplyHighlights() end
     if type(ns.ApplyQuestMobs) == "function" then ns.ApplyQuestMobs() end
-    if ns.ForceQuietLayout() then
+    if ns.Settings.ForceQuietLayout() then
         if not layoutChosen then
             layoutPending = "select"
             FinishLayout()
@@ -202,7 +138,7 @@ local function ApplyAll()
     end
     ns.EnsureLayout()
     ns.RefreshChrome()
-    if ns.ModernChat() then
+    if ns.Settings.ModernChat() then
         ns.StripAllChat()
     else
         ns.RestoreChat()
@@ -223,7 +159,7 @@ function ns.LayoutSettingsChanged()
 end
 
 local function Rescan()
-    ns.RefreshWorld()
+    ns.World.RefreshWorld()
     ns.FindFaders(true)
     ns.ScanSwing()
     ApplyAll()
@@ -276,8 +212,8 @@ local function Boot()
     local first = not booted
     booted = true
     if first then presetCheckPending = true end
-    ns.CharDB()
-    if ns.Settings then ns.Settings() end
+    ns.Settings.CharDB()
+    ns.Settings.Effective()
     if first then
         local state = ns.DB().enabled and "on, enjoy the quiet" or "off for now"
         ns.Print("is " .. state .. ".")
@@ -360,14 +296,14 @@ function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloading)
 end
 
 function handlers.PLAYER_REGEN_DISABLED()
-    ns.NoteCombat(true)
+    ns.World.NoteCombat(true)
     ns.UpdateParty(0)
     UpdateFades(0)
     Highlights("PLAYER_REGEN_DISABLED")
 end
 
 function handlers.PLAYER_REGEN_ENABLED()
-    ns.NoteCombat(false)
+    ns.World.NoteCombat(false)
     ns.MarkCombatEnd()
     UpdateFades(0)
     ns.RefreshChrome()
@@ -408,7 +344,7 @@ end
 function handlers.EDIT_MODE_LAYOUTS_UPDATED()
     if ns.ForgetBarButtons then ns.ForgetBarButtons() end
     ns.EnsureLayout()
-    if not ns.DB().enabled or not ns.ForceQuietLayout() then return end
+    if not ns.DB().enabled or not ns.Settings.ForceQuietLayout() then return end
     if type(GetTime) == "function" and GetTime() > settleUntil then return end
     layoutChosen = false
     layoutPending = "select"
@@ -421,13 +357,13 @@ end
 handlers.UPDATE_FLOATING_CHAT_WINDOWS = handlers.UPDATE_CHAT_WINDOWS
 
 function handlers.GROUP_ROSTER_UPDATE()
-    ns.RefreshWorld()
+    ns.World.RefreshWorld()
     ns.ScanParty()
     ns.UpdateParty(0)
 end
 
 function handlers.PLAYER_TARGET_CHANGED()
-    ns.RefreshWorld()
+    ns.World.RefreshWorld()
     ns.ForgetRangePlate()
 end
 
@@ -444,13 +380,13 @@ end
 handlers.SPELLS_CHANGED = handlers.ACTIONBAR_SLOT_CHANGED
 
 function handlers.UNIT_FLAGS(unit)
-    if unit == "target" then ns.RefreshWorld() end
+    if unit == "target" then ns.World.RefreshWorld() end
 end
 
 handlers.UNIT_FACTION = handlers.UNIT_FLAGS
 
 function handlers.UNIT_ENTERED_VEHICLE()
-    ns.RefreshWorld()
+    ns.World.RefreshWorld()
 end
 
 handlers.UNIT_EXITED_VEHICLE = handlers.UNIT_ENTERED_VEHICLE
@@ -511,7 +447,7 @@ local disabledLayoutAcc = 0
 
 events:SetScript("OnUpdate", function(_, elapsed)
     if not booted then return end
-    FinishCPUProfile()
+    ns.Profiler.Finish(layoutPending)
     if not ns.DB().enabled then
         disabledLayoutAcc = disabledLayoutAcc + (elapsed or 0)
         if disabledLayoutAcc >= 0.1 then
@@ -521,10 +457,10 @@ events:SetScript("OnUpdate", function(_, elapsed)
         return
     end
     elapsed = elapsed or 0
-    local flyout = ns.FlyoutOpen and ns.FlyoutOpen() or false
+    local flyout = ns.World.FlyoutOpen and ns.World.FlyoutOpen() or false
     local glance = ns.Glancing() and true or false
     local moved = PointerMoved()
-    local hud = ns.ConsumeHud()
+    local hud = ns.World.ConsumeHud()
     slowAcc = slowAcc + elapsed
     local slow = slowAcc >= 0.1
     if slow then
@@ -532,9 +468,9 @@ events:SetScript("OnUpdate", function(_, elapsed)
             Run("layout", FinishLayout)
         end
         slowAcc = 0
-        ns.ForgetCursor()
+        ns.World.ForgetCursor()
     end
-    local showAll = ns.ShowAll()
+    local showAll = ns.World.ShowAll()
     local focusChanged = false
     if moved or slow then
         local changed = ns.FocusChanged()
@@ -568,17 +504,17 @@ events:SetScript("OnUpdate", function(_, elapsed)
             if ns.FrameHot() then wasHot = true end
         end
         Run("bags", ns.UpdateBagSlots)
-        if ns.ModernChat() then
+        if ns.Settings.ModernChat() then
             Run("input", ns.SyncVisibleEdits)
         end
     end
-    if ns.ModernChat() then
+    if ns.Settings.ModernChat() then
         Run("bubbles", ns.UpdateChat, elapsed)
     end
     if type(ns.UpdateQuestNotice) == "function" then Run("quest notice", ns.UpdateQuestNotice, elapsed) end
     -- Range changes while you walk, with no focus or cursor change, so it cannot wait for a rescan.
     Run("range", ns.UpdateRange, elapsed)
-    Run("smooth", ns.UpdateSmooth, elapsed, cpuProfile and ProfileSmooth or nil)
+    Run("smooth", ns.UpdateSmooth, elapsed, ns.Profiler.Active() and ns.Profiler.Smooth or nil)
     chromeAcc = chromeAcc + elapsed
     if chromeAcc < 1 then return end
     chromeAcc = 0
@@ -587,9 +523,9 @@ events:SetScript("OnUpdate", function(_, elapsed)
     if ns.BarChildrenChanged and ns.BarChildrenChanged() then
         Run("bar buttons", ns.ForgetBarButtons)
     end
-    Run("world", ns.RefreshWorld)
+    Run("world", ns.World.RefreshWorld)
     Run("menu", ns.RefreshChrome)
-    if ns.ModernChat() then
+    if ns.Settings.ModernChat() then
         Run("chat", ns.StripAllChat)
     end
 end)
@@ -639,12 +575,12 @@ SlashCmdList["QUIETUI"] = function(msg)
     msg = (msg or ""):match("^%s*(.-)%s*$")
     local command, argument = msg:match("^(%S+)%s*(.-)$")
     if command and command:lower() == "preset" then
-        ns.PresetCommand(argument)
+        ns.Settings.PresetCommand(argument)
         return
     end
     msg = msg:lower()
     if msg == "profile" then
-        StartCPUProfile()
+        ns.Profiler.Start()
         return
     end
     if msg == "setup" then

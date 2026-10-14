@@ -167,15 +167,15 @@ function ns.LayoutInterfaceStyle(ref)
 end
 
 function ns.ValidatePresetInterface()
-    local preset = ns.ActivePreset and ns.ActivePreset()
+    local preset = ns.Settings.ActivePreset and ns.Settings.ActivePreset()
     if not preset then return true end
     if not EditModeReady() then return false end
     local info = LoadLayouts()
     if not info then return false end
-    local style = ns.PresetInterfaceStyle(preset)
+    local style = ns.Settings.PresetInterfaceStyle(preset)
     if style == nil then return false end
     if style ~= CurrentStyle() then
-        ns.ActivatePreset(nil)
+        ns.Settings.ActivatePreset(nil)
         if ns.LayoutSettingsChanged then ns.LayoutSettingsChanged() end
         if ns.RefreshSetup then ns.RefreshSetup() end
         ns.Print('Preset "' .. preset.name .. '" uses a layout for another interface mode. '
@@ -190,7 +190,7 @@ function ns.LayoutStatus()
     if not EditModeReady() then return "Edit Mode is not available." end
     local info = LoadLayouts()
     if not info then return "Edit Mode layouts are not loaded." end
-    local preset = ns.ActivePreset and ns.ActivePreset()
+    local preset = ns.Settings.ActivePreset and ns.Settings.ActivePreset()
     local linked = preset and ResolveLayout(info, preset.layout)
     return string.format("Active layout: %s; preset layout: %s; preview: %s.",
         tostring(info.activeLayout), tostring(linked or "none"),
@@ -249,7 +249,7 @@ end
 
 function ns.CommitLayoutPreview(managed)
     if managed and previewOriginal and ns.DB().enabled then
-        local char = ns.CharDB()
+        local char = ns.Settings.CharDB()
         if char.previousLayout == nil then
             local info = LoadLayouts()
             local absolute = info and ResolveLayout(info, previewOriginal)
@@ -299,7 +299,7 @@ end
 -- Remember the original identity; switching between presets must not replace it.
 local function Remember(active, absolute)
     if type(active) ~= "number" or active < 1 or active == absolute then return end
-    local char = ns.CharDB()
+    local char = ns.Settings.CharDB()
     if char.previousLayout == nil then
         char.previousLayout = active
         local info = LoadLayouts()
@@ -360,15 +360,15 @@ end
 
 function ns.SelectPresetLayout()
     if InCombatLockdown() or not EditModeReady() then return false end
-    local preset = ns.ActivePreset()
+    local preset = ns.Settings.ActivePreset()
     if not preset then return ns.SelectQuietLayout() end
     local info = LoadLayouts()
     if not info then return false end
     local absolute = ResolveLayout(info, preset.layout)
     if not absolute then
         if not ns.SelectQuietLayout() then return false end
-        if ns.CharDB().previousLayout then ns.CharDB().presetLayoutManaged = true end
-        local id = ns.CharDB().presetId
+        if ns.Settings.CharDB().previousLayout then ns.Settings.CharDB().presetLayoutManaged = true end
+        local id = ns.Settings.CharDB().presetId
         if not missingWarned[id] then
             ns.Print('Preset "' .. preset.name .. '" refers to missing Edit Mode layout "'
                 .. (preset.layout and preset.layout.layoutName or "Unknown") .. '". Using "QuietUI" instead.')
@@ -377,14 +377,14 @@ function ns.SelectPresetLayout()
         return true
     end
     Remember(info.activeLayout, absolute)
-    if ns.CharDB().previousLayout then ns.CharDB().presetLayoutManaged = true end
+    if ns.Settings.CharDB().previousLayout then ns.Settings.CharDB().presetLayoutManaged = true end
     if info.activeLayout ~= absolute then C_EditMode.SetActiveLayout(absolute) end
     local after = LoadLayouts()
     return after and after.activeLayout == absolute or false
 end
 
 function ns.RestorePreviousLayout()
-    local char = ns.CharDB()
+    local char = ns.Settings.CharDB()
     local previous = char.previousLayout
     if previous == nil then char.presetLayoutManaged = nil; return true end
     if InCombatLockdown() or not EditModeReady() then return false end
@@ -590,7 +590,7 @@ end
 -- Layouts are not loaded right at login and are locked in combat, so this
 -- retries on every apply until it has run once per session.
 function ns.EnsureLayout()
-    if ns.ActivePreset and ns.ActivePreset() then return end
+    if ns.Settings.ActivePreset and ns.Settings.ActivePreset() then return end
     if done or InCombatLockdown() or not EditModeReady() then return end
     local ok, finished = pcall(Check)
     if not ok then
