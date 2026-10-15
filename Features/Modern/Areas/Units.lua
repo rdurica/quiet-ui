@@ -7,16 +7,17 @@ local _, ns = ...
 
 local Modern = ns.Modern
 
+-- The third field: Blizzard draws the portrait right of the bars.
 local FRAMES = {
-    { "PlayerFrame", "player" }, { "PetFrame", "pet" }, { "TargetFrame", "target" },
-    { "TargetFrameToT", "targettarget" }, { "FocusFrame", "focus" },
+    { "PlayerFrame", "player" }, { "PetFrame", "pet" }, { "TargetFrame", "target", true },
+    { "TargetFrameToT", "targettarget" }, { "FocusFrame", "focus", true },
 }
 
 -- Places a part can live, relative to the unit frame.
 local ART_ROOTS = { "", "PlayerFrameContainer", "TargetFrameContainer",
     "PlayerFrameContent.PlayerFrameContentMain", "TargetFrameContent.TargetFrameContentMain" }
 local ART_NAMES = { "FrameTexture", "AlternatePowerFrameTexture", "VehicleFrameTexture", "FrameFlash", "Flash",
-    "BossPortraitFrameTexture", "ReputationColor", "Border", "EliteTexture", "PortraitFrame" }
+    "BossPortraitFrameTexture", "ReputationColor", "Border", "EliteTexture", "PortraitFrame", "StatusTexture" }
 local ART_GLOBALS = { "Texture", "Flash" }
 local HEALTH_PATHS = { "healthbar", "HealthBar", "healthBar",
     "PlayerFrameContent.PlayerFrameContentMain.HealthBarsContainer.HealthBar",
@@ -25,6 +26,10 @@ local POWER_PATHS = { "manabar", "ManaBar", "manaBar", "PowerBar", "powerBar",
     "PlayerFrameContent.PlayerFrameContentMain.ManaBarArea.ManaBar",
     "TargetFrameContent.TargetFrameContentMain.ManaBar" }
 local PORTRAIT_PATHS = { "portrait", "Portrait", "PlayerFrameContainer.PlayerPortrait", "TargetFrameContainer.Portrait" }
+local LEVEL_PATHS = { "PlayerFrameContent.PlayerFrameContentMain.PlayerLevelText",
+    "TargetFrameContent.TargetFrameContentMain.LevelText", "levelText", "LevelText" }
+local NAME_PATHS = { "name", "Name", "TargetFrameContent.TargetFrameContentMain.Name" }
+local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
 
 local GREEN = { 0.2, 0.8, 0.2 }
 local RARE = { 0.85, 0.85, 0.85, 1 }
@@ -126,7 +131,7 @@ local function HookUpdate()
     end
 end
 
-local function Bar(skin, bar, unit, kind)
+local function Bar(skin, bar, unit, kind, border)
     if not ns.Usable(bar) or type(bar.SetStatusBarTexture) ~= "function" or type(bar.GetStatusBarTexture) ~= "function"
         or type(bar.SetStatusBarColor) ~= "function" then return end
     if type(bar.GetStatusBarColor) == "function" then
@@ -137,7 +142,7 @@ local function Bar(skin, bar, unit, kind)
     if old then skin:Remember(bar, "status texture", function() pcall(bar.SetStatusBarTexture, bar, old) end) end
     tracked[bar] = { unit = unit, kind = kind, texture = Modern.Theme().bar }
     skin:Panel(bar)
-    skin:Border(bar)
+    skin:Border(bar, border)
     Hook(bar)
     Paint(bar, true)
 end
@@ -158,11 +163,8 @@ local function Art(skin, frame, name)
     end
 end
 
-local function Portrait(skin, frame, unit, name)
-    local portrait = Find(frame, PORTRAIT_PATHS, name == "PetFrame" and "PetPortrait" or nil)
-    if not portrait then return end
-    skin:Icon(portrait)
-    Modern.NoMask(skin, portrait)
+-- The portrait is gone, so the target's rarity moves to its health bar border.
+local function RarityColour(unit)
     local color = Modern.Theme().border
     if unit == "target" and type(UnitClassification) == "function" then
         local kind = UnitClassification(unit)
@@ -171,7 +173,7 @@ local function Portrait(skin, frame, unit, name)
         elseif kind == "rare" or kind == "rareelite" then color = RARE
         elseif kind == "worldboss" or kind == "boss" then color = BOSS end
     end
-    skin:Border(portrait, color, portrait)
+    return color
 end
 
 local function Unit(skin, spec)
@@ -179,9 +181,17 @@ local function Unit(skin, spec)
     local frame = _G[name]
     if not ns.Usable(frame) then return end
     Art(skin, frame, name)
-    Bar(skin, Find(frame, HEALTH_PATHS, name .. "HealthBar"), unit, "health")
-    Bar(skin, Find(frame, POWER_PATHS, name .. "ManaBar"), unit, "power")
-    Portrait(skin, frame, unit, name)
+    local health, mana = Find(frame, HEALTH_PATHS, name .. "HealthBar"), Find(frame, POWER_PATHS, name .. "ManaBar")
+    Bar(skin, health, unit, "health", RarityColour(unit))
+    Bar(skin, mana, unit, "power")
+    -- No portrait: Blizzard's stays in place, held at alpha 0, and the bars take its space.
+    local portrait = Find(frame, PORTRAIT_PATHS, name == "PetFrame" and "PetPortrait" or nil)
+    if not portrait then return end
+    skin:Hold(portrait)
+    Modern.UnitLayout(skin, frame, { health = health, mana = mana, portrait = portrait, right = spec[3],
+        level = Find(frame, LEVEL_PATHS, name == "PlayerFrame" and "PlayerLevelText" or name .. "TextureFrameLevelText"),
+        skull = Find(frame, SKULL_PATHS, name .. "TextureFrameHighLevelTexture"),
+        name = Find(frame, NAME_PATHS, name == "PlayerFrame" and "PlayerName" or name .. "TextureFrameName") })
 end
 
 local function Apply(skin)
@@ -202,7 +212,9 @@ end
 
 Modern.Register{
     key = "units", label = "Unit frames",
-    events = { "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "UNIT_FACTION", "UNIT_CLASSIFICATION_CHANGED" },
+    -- Combat end and vehicle changes lay the bars out again (Blizzard re-anchors them for vehicles).
+    events = { "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "UNIT_FACTION", "UNIT_CLASSIFICATION_CHANGED",
+        "PLAYER_REGEN_ENABLED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" },
     apply = Apply, onEvent = OnEvent,
     -- Untrack first: the journal's undo then restores texture and colour without the hooks answering.
     restore = function() for bar in pairs(tracked) do tracked[bar] = nil end end,

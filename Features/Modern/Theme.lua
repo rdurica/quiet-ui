@@ -8,7 +8,8 @@ local ORDER = { "dark" }
 local THEMES = {
     dark = {
         bg = { 0.05, 0.05, 0.05 },
-        border = { 0.85, 0.85, 0.85, 0.35 },
+        -- Opaque: a translucent border over a translucent fill lets the world tint it.
+        border = { 0.33, 0.33, 0.33, 1 },
         accent = { 0.95, 0.75, 0.25 },
         bar = "Interface\\Buttons\\WHITE8X8",
     },

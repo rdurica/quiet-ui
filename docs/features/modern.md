@@ -15,7 +15,7 @@ Modernize skins action bars, unit frames, windows, map, minimap, tooltips, auras
 
 ## Theme
 
-`dark` is background `0.05, 0.05, 0.05` with the chosen background alpha, border `0.85, 0.85, 0.85, 0.35`, accent `0.95, 0.75, 0.25` and the flat bar texture `Interface\Buttons\WHITE8X8`. A theme is one entry of data; `ns.Modern.Theme()` returns a copy of the active theme with the background alpha applied.
+`dark` is background `0.05, 0.05, 0.05` with the chosen background alpha, opaque border `0.33, 0.33, 0.33, 1` (a translucent one is tinted by the world behind a translucent fill), accent `0.95, 0.75, 0.25` and the flat bar texture `Interface\Buttons\WHITE8X8`. A theme is one entry of data; `ns.Modern.Theme()` returns a copy of the active theme with the background alpha applied.
 
 ## Areas
 
@@ -41,14 +41,15 @@ Restore: release held art and restore button textures, crops, icon masks, fonts 
 ## Unit frames
 
 Apply: skin player, pet, target, target of target and focus in place. The retail 12.0 structure (`PlayerFrameContainer`, `TargetFrameContainer`, their content parts, `PetFrame` globals) is resolved at run time with the older flat names as fallbacks; missing or forbidden parts are skipped quietly.
-- Frame art (frame texture, alternate power and vehicle textures, combat flash, boss portrait frame, reputation colour strip) is held at alpha 0 against Blizzard's `SetAlpha`.
+- Frame art (frame texture, alternate power and vehicle textures, combat flash, resting glow `StatusTexture`, boss portrait frame, reputation colour strip) is held at alpha 0 against Blizzard's `SetAlpha`.
 - Health and power bars get the theme flat texture, a themed background and a 1 px border. Blizzard retexturing a bar (`SetStatusBarTexture`) puts the theme texture back.
 - Health colour: player units use their class colour and NPCs their reaction colour (class colours on); class colours off, or a secret `UnitIsPlayer` / `UnitClass` / `UnitReaction` result (never used as a branch or table key), give a flat green, because the flat texture would otherwise be white. The colour is reapplied after every Blizzard `SetStatusBarColor` / `SetStatusBarTexture` and on target and focus changes and on faction and classification events for the skinned units (events for nameplates or party members do no work).
 - Power colour follows the power type (`PowerBarColor`) and is reapplied after `UnitFrameManaBar_UpdateType` (hooked with `hooksecurefunc`, no script replacement).
-- Standard 2D portrait with square crop; supported portrait masks are removed. Portrait borders are gold for elite, silver for rare/rareelite, red for bosses and themed otherwise (target only). If the portrait source is itself round, it is retained inside the square border for later in-game tuning.
-- Health and power values are never read. Frame points, size and every existing fade rule stay.
+- No portraits: Blizzard's portrait is held at alpha 0 in place (points and size unchanged). The target's health bar border carries its rarity: gold for elite, silver for rare/rareelite, red for bosses; every other border is themed.
+- The bars take the portrait's space. Where the frame has a level text (player, target, focus), a square box as tall as health top to power bottom sits at the portrait's outer edge (left for player, right for target and focus) with a theme fill and border; the level text and the target's high-level skull are centred in it, and the textures anchored to the level text (its ring art) are held at alpha 0. The name of those frames is left-aligned 2 px above the health bar's left edge. Health and power bars keep their inner edge and reach to 2 px from the box, or to the portrait's outer edge for pet and target of target. Each rect is read once per apply, before anything moves, so laying out again gives the same points; a Blizzard `SetPoint` / `SetAllPoints` on a laid-out bar or text (target classification, vehicle art) is answered by putting the layout back (hooked with `hooksecurefunc`). The bar fill's fixed-size mask is removed, and the value texts (`TextString`, `LeftText`, `RightText`) are anchored to the bar: centre, left +2 px, right -2 px. A region the client reports as protected is not moved in combat; combat end lays it out.
+- Health and power values are never read. The unit frames' own points, size and every existing fade rule stay.
 
-Restore: restore textures, bar colours, crops and masks, release held art and hide own regions. The hooks stay installed but do nothing while the area is off.
+Restore: restore bar textures, colours, masks and points, the value text, name (and its justification), level text and skull points, release held art (portraits and level ring included) and hide own regions. The hooks stay installed but do nothing while the area is off.
 
 ## Windows and parchment
 
@@ -74,7 +75,7 @@ Restore: exact original mask (the round `Textures\MinimapMask` when the client c
 
 ## Tooltips
 
-Apply: themed background and a 1 px border on GameTooltip, item-reference and shopping tooltips. A tooltip with a `NineSlice` (all 12.0 tooltips) has that art held at alpha 0 and gets own regions; an older backdrop tooltip keeps `SetBackdropColor` / `SetBackdropBorderColor`. The unit health bar uses the theme texture; health values are never read. The border of an item follows its quality colour (`ITEM_QUALITY_COLORS`) and returns to the theme border when the tooltip is shown with anything else.
+Apply: themed background and a 1 px border on GameTooltip, item-reference and shopping tooltips. A tooltip with a `NineSlice` (all 12.0 tooltips) has that art held at alpha 0 and gets own regions; an older backdrop tooltip keeps `SetBackdropColor` / `SetBackdropBorderColor`. The unit health bar uses the theme texture; health values are never read. The border of an item follows its quality colour (`ITEM_QUALITY_COLORS`) and returns to the theme border when the tooltip is shown with anything else. Limit: the aura tooltip of the target frame (WoW Forever beta) lives in a frame that `EnumerateFrames` does not return and whose text no scan finds, so addons cannot reach it; it keeps Blizzard's border.
 
 Scripts are never replaced on a `NineSlice` tooltip and `OnTooltipSetItem` is never touched (it throws on 12.0). The quality comes from one `TooltipDataProcessor.AddTooltipPostCall` for items, registered once when the addon loads, and a `Show` hook. Both do nothing while the area is off and ignore a tooltip the area did not skin. An old backdrop tooltip without a `NineSlice` gets exactly one `HookScript("OnShow")` for the session (a repeated apply adds none) that repaints the quality border while the area is on and does nothing once it is off. `SetScript` is never called on any tooltip and Blizzard's own `OnShow` keeps running.
 
