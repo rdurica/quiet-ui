@@ -98,4 +98,4 @@ Restore: stop animation, hide reusable own bars and release the stock art. Conta
 
 ## Reset positions
 
-While Modernize is checked, Reset positions clears character `windowPoints` immediately, independently of Save, and restores tracked original window positions. It stops dragging and waits for combat end before positioning when necessary, including after `/quiet off`. Other settings remain. This explicit action differs from Reset default, which preserves saved positions.
+While Modernize is checked, Reset positions clears character `windowPoints` immediately, independently of Save, and restores tracked original window positions. It stops dragging and waits for combat end before positioning when necessary, including after `/quiet off`. A window that is hidden when combat ends also gets Blizzard's point back, so it does not open displaced. Other settings remain. This explicit action differs from Reset default, which preserves saved positions.
