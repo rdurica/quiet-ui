@@ -136,9 +136,7 @@ local function SkinWindow(def)
             state.layer = layer
         end
     end
-    Parchment.HookScript(win, "OnShow", function()
-        if Parchment.Active() then ApplyWindow(def) end
-    end)
+    Parchment.HookScript(win, "OnShow", function() ApplyWindow(def) end)
     Try(state.layer, "Show")
 
     for _, key in ipairs(CHROME_KEYS) do
@@ -196,7 +194,6 @@ function Parchment.Restore()
         for b, s in pairs(st.skins) do Parchment.RestoreButton(b, s) end
         Parchment.RestoreLifts()
         Parchment.RestoreTitles()
-        Parchment.RestoreScripts()
     end)
     if not ok then ns.Report("parchment restore", err) end
 end

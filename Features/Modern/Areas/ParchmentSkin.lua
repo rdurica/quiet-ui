@@ -4,8 +4,6 @@ local Modern = ns.Modern
 Modern.Parchment = Modern.Parchment or {}
 local Parchment = Modern.Parchment
 
-local NO_PRIOR = "quiet-parchment-no-script"
-
 local COLORS = {
     primary = { 0.50, 0.11, 0.09 },
     primaryHover = { 0.64, 0.17, 0.13 },
@@ -28,7 +26,7 @@ function Parchment.State()
     if not Parchment._state then
         Parchment._state = {
             held = {}, saved = {}, skins = {}, lifts = {}, titles = {},
-            scriptPrior = {}, active = false,
+            hooked = setmetatable({}, { __mode = "k" }), active = false,
         }
     end
     return Parchment._state
@@ -105,32 +103,20 @@ function Parchment.ReleaseAll()
     end
 end
 
+-- One HookScript per frame and script for the whole session; the bodies check Parchment.Active(),
+-- so a restore leaves them inert and never touches Blizzard's scripts.
 function Parchment.HookScript(frame, name, fn)
-    local st = Parchment.State()
-    local byFrame = st.scriptPrior[frame]
+    local hooked = Parchment.State().hooked
+    local byFrame = hooked[frame]
     if not byFrame then
-        byFrame = { installed = {} }
-        st.scriptPrior[frame] = byFrame
+        byFrame = {}
+        hooked[frame] = byFrame
     end
-    if not byFrame.installed[name] then
-        local prior = Try(frame, "GetScript", name)
-        byFrame[name] = prior == nil and NO_PRIOR or prior
-        Try(frame, "HookScript", name, fn)
-        byFrame.installed[name] = true
-    end
-end
-
-function Parchment.RestoreScripts()
-    local st = Parchment.State()
-    for frame, byFrame in pairs(st.scriptPrior) do
-        for name, prior in pairs(byFrame) do
-            if name ~= "installed" then
-                if prior == NO_PRIOR then Try(frame, "SetScript", name, nil)
-                else Try(frame, "SetScript", name, prior) end
-            end
-        end
-        st.scriptPrior[frame] = nil
-    end
+    if byFrame[name] then return end
+    byFrame[name] = true
+    Try(frame, "HookScript", name, function()
+        if Parchment.Active() then fn() end
+    end)
 end
 
 function Parchment.DimScrollBar(owner)

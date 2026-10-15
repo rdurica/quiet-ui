@@ -57,17 +57,22 @@ local function Colours(color)
     return color.r or color[1], color.g or color[2], color.b or color[3]
 end
 
+-- Identity can be secret on 12.0: it is never a branch or a table key, health falls back to flat green.
 local function HealthColour(unit)
     if not ns.Settings.ModernClassColors() then return unpack(GREEN) end
     local r, g, b
-    if type(UnitIsPlayer) == "function" and UnitIsPlayer(unit) then
+    local player = type(UnitIsPlayer) == "function" and UnitIsPlayer(unit)
+    if ns.IsSecret(player) then return unpack(GREEN) end
+    if player then
         local token
         if type(UnitClass) == "function" then token = select(2, UnitClass(unit)) end
+        if ns.IsSecret(token) then return unpack(GREEN) end
         local c = type(C_ClassColor) == "table" and type(C_ClassColor.GetClassColor) == "function"
             and C_ClassColor.GetClassColor(token)
         r, g, b = Colours(c or (type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[token]))
     elseif type(UnitReaction) == "function" and type(FACTION_BAR_COLORS) == "table" then
         local reaction = UnitReaction(unit, "player") or UnitReaction(unit)
+        if ns.IsSecret(reaction) then return unpack(GREEN) end
         r, g, b = Colours(FACTION_BAR_COLORS[reaction])
     end
     if r and g and b then return r, g, b end

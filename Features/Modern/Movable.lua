@@ -85,14 +85,14 @@ function Modern.MakeMovable(frame, key)
         entry.handle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
         entry.handle:SetHeight(HEIGHT)
         windows[frame] = entry
-        entry.onShow = frame:GetScript("OnShow")
     end
     entry.key = key
     entry.active = true
-    frame:SetScript("OnShow", function(self, ...)
-        if entry.onShow then entry.onShow(self, ...) end
-        Place(self, entry)
-    end)
+    -- One hook per frame, never SetScript on a Blizzard window; it is inert once released.
+    if not entry.hooked and type(frame.HookScript) == "function" then
+        entry.hooked = true
+        frame:HookScript("OnShow", function(self) Place(self, entry) end)
+    end
     frame:SetMovable(true)
     Arm(frame, entry)
     if frame:IsShown() then Place(frame, entry) end
@@ -109,7 +109,6 @@ function Modern.ReleaseMovable(frame)
     entry.handle:SetScript("OnDragStop", nil)
     entry.handle:EnableMouse(false)
     entry.handle:Hide()
-    frame:SetScript("OnShow", entry.onShow)
     frame:SetMovable(entry.wasMovable)
     RestoreOriginal(frame, entry)
 end
@@ -121,8 +120,10 @@ function Modern.ResetPositions()
     for frame, entry in pairs(windows) do
         if entry.dragging then frame:StopMovingOrSizing() end
         entry.dragging = false
-        entry.reset = true
-        RestoreOriginal(frame, entry)
+        if entry.active then
+            entry.reset = true
+            RestoreOriginal(frame, entry)
+        end
     end
 end
 

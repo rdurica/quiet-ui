@@ -10,8 +10,10 @@ local BAG_EVENTS = { BAG_UPDATE_DELAYED = true, BAG_NEW_ITEMS_UPDATED = true }
 local function Character(skin)
     Modern.Window(skin, _G.CharacterFrame, "CharacterFrame")
     for index = 1, 5 do Modern.TabChrome(skin, _G["CharacterFrameTab" .. index]) end
-    Modern.Window(skin, _G.CharacterFrameReputationFrame)
-    Modern.Window(skin, _G.CharacterFrameCurrencyFrame)
+    -- 12.0 names first, the classic ones as fallback; both are skinned when the client has both.
+    for _, name in ipairs({ "ReputationFrame", "TokenFrame", "CharacterFrameReputationFrame", "CharacterFrameCurrencyFrame" }) do
+        Modern.Window(skin, _G[name])
+    end
 end
 
 -- The first frame the client has, so a classic and a newer window are never both moved.

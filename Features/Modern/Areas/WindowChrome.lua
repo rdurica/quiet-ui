@@ -49,6 +49,7 @@ function Modern.WindowChrome(skin, frame)
     HoldKeys(skin, frame, TEXTURE_KEYS)
     Slice(skin, frame.NineSlice)
     Inset(skin, frame.Inset)
+    Inset(skin, frame.InsetRight)    -- the character window's stats pane
     local container = frame.PortraitContainer
     if ns.Usable(container) then HoldKeys(skin, container, { "portrait", "Portrait" }) end
 end

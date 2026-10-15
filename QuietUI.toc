@@ -71,6 +71,7 @@ Features\Modern\Modern.lua
 Features\Modern\Theme.lua
 Features\Modern\Skin.lua
 Features\Modern\Movable.lua
+Features\Modern\Areas\BarFeedback.lua
 Features\Modern\Areas\Bars.lua
 Features\Modern\Areas\Units.lua
 Features\Modern\Areas\ParchmentSkin.lua

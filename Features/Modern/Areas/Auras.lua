@@ -100,7 +100,7 @@ local function Watch()
 end
 
 Modern.Register{
-    key = "auras", label = "Auras", events = { "PLAYER_ENTERING_WORLD", "UNIT_AURA" },
+    key = "auras", label = "Buffs and debuffs", events = { "PLAYER_ENTERING_WORLD", "UNIT_AURA" },
     apply = function(skin)
         active = true
         Watch()

@@ -15,12 +15,29 @@ local function Texture(button, ...)
     end
 end
 
+-- The 12.0 IconMask is a rounded clip on the icon; the square crop needs it off.
+local function NoMask(skin, icon)
+    if type(icon.GetNumMaskTextures) ~= "function" or type(icon.GetMaskTexture) ~= "function"
+        or type(icon.RemoveMaskTexture) ~= "function" or type(icon.AddMaskTexture) ~= "function" then return end
+    local count = icon:GetNumMaskTextures()
+    if type(count) ~= "number" then return end
+    local masks = {}
+    for i = 1, count do masks[#masks + 1] = icon:GetMaskTexture(i) end
+    if #masks == 0 then return end
+    if skin:Remember(icon, "masks", function()
+        for _, mask in ipairs(masks) do pcall(icon.AddMaskTexture, icon, mask) end
+    end) then
+        for _, mask in ipairs(masks) do pcall(icon.RemoveMaskTexture, icon, mask) end
+    end
+end
+
 local function Button(skin, button)
     if not ns.Usable(button) then return end
     local icon = Texture(button, "Icon", "icon", "IconTexture")
     if not icon then return end
     skin:Icon(icon)
-    for _, name in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "CheckedTexture", "Border", "SlotBackground" }) do
+    NoMask(skin, icon)
+    for _, name in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "CheckedTexture", "Border", "SlotBackground", "SlotArt" }) do
         local art = button[name]
         local getter = button["Get" .. name]
         if not ns.Usable(art) and type(getter) == "function" then
@@ -31,6 +48,7 @@ local function Button(skin, button)
     end
     skin:Panel(button)
     skin:Border(button)
+    Modern.BarFeedback(skin, button, icon)
     Font(skin, button.HotKey)
     Font(skin, button.Count)
 end
@@ -40,6 +58,16 @@ local function BarArt(skin)
         "MainMenuBarPageNumber", "MainMenuBarArtFrame", "MainActionBarArtFrame" }) do
         local art = _G[name]
         if ns.Usable(art) and type(art.SetAlpha) == "function" then skin:Hold(art) end
+    end
+    -- 12.0: BorderArt and the gryphon end caps live on the bar itself.
+    for _, name in ipairs({ "MainActionBar", "MainMenuBar" }) do
+        local bar = _G[name]
+        if ns.Usable(bar) then
+            for _, art in ipairs({ bar.BorderArt, bar.EndCaps and bar.EndCaps.LeftEndCap,
+                bar.EndCaps and bar.EndCaps.RightEndCap }) do
+                if ns.Usable(art) and type(art.SetAlpha) == "function" then skin:Hold(art) end
+            end
+        end
     end
 end
 
