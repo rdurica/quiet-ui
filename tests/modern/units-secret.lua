@@ -54,3 +54,13 @@ h.test("a secret UnitReaction gives flat green health without an error", functio
         UnitReaction = function() return secret(2) end
     end)
 end)
+
+h.test("a secret first UnitReaction result is never tested before the secret check", function(t)
+    run(t, function(secret)
+        t.mock:setUnit("target", { exists = true, player = false })
+        UnitReaction = function(_, other)
+            if other == nil then error("fallback UnitReaction call after a secret value") end
+            return secret(2)
+        end
+    end)
+end)

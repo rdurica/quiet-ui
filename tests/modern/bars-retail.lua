@@ -154,3 +154,45 @@ h.test("12.0 bars skin without Hide, Show or state drivers and in combat", funct
     A.eq(drivers, 0, "no state driver")
     A.eq(#mock.printed, 0, "nothing reported")
 end)
+
+h.test("12.0 hover feedback is shown again after apply, restore, apply", function(t)
+    local A, ns = t.assert, t.ns
+    local _, buttons = fixture()
+    local button = buttons[1]
+    local seen = known(button)
+    enable(ns)
+    QuietUICharDB.modernize.enabled = nil
+    ns.Modern.Apply()
+    QuietUICharDB.modernize.enabled = true
+    ns.Modern.Apply()
+    local hover = false
+    for region in pairs(B.visibleOwn(button, ns.Modern.Theme(), seen)) do
+        if region._layer == "HIGHLIGHT" then hover = true end
+    end
+    A.ok(hover, "own HIGHLIGHT region is visible after re-apply")
+end)
+
+h.test("12.0 pressed feedback does not stick after leave, drag start or a NORMAL state", function(t)
+    local A, ns = t.assert, t.ns
+    local _, buttons = fixture()
+    local button = buttons[1]
+    local seen = known(button)
+    enable(ns)
+    local theme = ns.Modern.Theme()
+    local idle = B.visibleOwn(button, theme, seen)
+    local function stuck()
+        for region in pairs(B.visibleOwn(button, theme, seen)) do
+            if not idle[region] then return true end
+        end
+        return false
+    end
+    for _, script in ipairs({ "OnLeave", "OnDragStart" }) do
+        if button._scripts.OnMouseDown then button._scripts.OnMouseDown(button, "LeftButton") end
+        A.ok(stuck(), "pressed region visible after mouse down")
+        if button._scripts[script] then button._scripts[script](button) end
+        A.ok(not stuck(), "pressed region gone after " .. script)
+    end
+    if button._scripts.OnMouseDown then button._scripts.OnMouseDown(button, "LeftButton") end
+    button:SetButtonState("NORMAL")
+    A.ok(not stuck(), "pressed region gone after SetButtonState NORMAL")
+end)
