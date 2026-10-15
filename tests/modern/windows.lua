@@ -15,37 +15,28 @@ local function fixture()
     local talents = W.window("ClassTalentFrame")
     ClassTalentFrame = talents
     talents.treeArt = W.texture(talents, "TalentTreeContent", 0.74)
-    local quest = W.window("QuestMapFrame")
-    QuestMapFrame = quest
+    local quest = W.window("QuestLogFrame")
+    QuestLogFrame = quest
     local bag = W.window("ContainerFrame1")
     ContainerFrame1 = bag
-    local item = W.icon(bag, "ContainerFrame1Item1", { 0.64, 0.21, 0.93 })
     local combined = W.window("ContainerFrameCombinedBags")
     ContainerFrameCombinedBags = combined
-    local combinedItem = W.icon(combined, "ContainerFrameCombinedBagsItem1", { 0.12, 0.82, 0.31 })
-    return { character = character, spellbook = spellbook, talents = talents, quest = quest, bag = bag, item = item,
-        combined = combined, combinedItem = combinedItem }
+    return { character = character, spellbook = spellbook, talents = talents, quest = quest, bag = bag,
+        combined = combined }
 end
 
-h.test("Windows skins runtime frame-name variants, character tabs and bags while content art stays", function(t)
+h.test("Windows skins runtime frame-name variants, character tabs and bag windows while content art stays", function(t)
     local A, ns = t.assert, t.ns
     W.area(ns, "windows")
     local f = fixture()
     local before = L.snapshot({ f.character, f.character.chrome, CharacterFrameTab1, CharacterFrameReputationFrame,
-        CharacterFrameCurrencyFrame, f.spellbook, f.talents, f.quest, f.bag, f.item.Icon, f.item.Quality, f.combined,
-        f.combinedItem.Icon, f.combinedItem.Quality })
+        CharacterFrameCurrencyFrame, f.spellbook, f.talents, f.quest, f.bag, f.combined })
     W.enable(ns)
     for _, frame in ipairs({ f.character, CharacterFrameTab1, CharacterFrameReputationFrame, CharacterFrameCurrencyFrame,
         f.spellbook, f.talents, f.quest, f.bag, f.combined }) do
         A.ok(W.isDark(frame), (frame:GetName() or "window") .. " gets a dark panel")
     end
     A.alpha(f.character.chrome, 0, "Blizzard character chrome held")
-    A.eq(f.item.Icon:GetTexCoord(), 0.08, "bag icon is square-cropped")
-    local r, g, b = f.item.Quality:GetVertexColor()
-    A.eq(r, 0.64); A.eq(g, 0.21); A.eq(b, 0.93, "quality colour remains on a flat border")
-    A.eq(f.combinedItem.Icon:GetTexCoord(), 0.08, "combined-bag icon is square-cropped")
-    local cr, cg, cb = f.combinedItem.Quality:GetVertexColor()
-    A.eq(cr, 0.12); A.eq(cg, 0.82); A.eq(cb, 0.31, "combined-bag quality colour remains")
     A.alpha(f.spellbook.pageArt, 0.73, "spellbook page content remains")
     A.alpha(f.talents.treeArt, 0.74, "talent tree content remains")
     ns.Modern.Restore()

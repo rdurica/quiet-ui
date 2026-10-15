@@ -47,6 +47,18 @@ local function playedGlow(mock, xp)
     end
 end
 
+-- The rested bar is any other 6 px StatusBar below the container (child of the XP bar or a sibling).
+local function restedBar(xp)
+    local function walk(frame)
+        for _, child in ipairs(frame._children) do
+            if child ~= xp and child._kind == "StatusBar" and child._h == 6 then return child end
+            local found = walk(child)
+            if found then return found end
+        end
+    end
+    return walk(MainStatusTrackingBarContainer)
+end
+
 local function installStatusData(mock)
     mock.xp, mock.rested = 0.25, 0.1
     mock.reputation = 0.7
@@ -88,12 +100,9 @@ h.test("Status creates thin XP and watched-reputation bars under Blizzard's cont
     A.alpha(MainStatusTrackingBarContainer, 0.37, "the fader still owns the container alpha")
     A.ok(MainStatusTrackingBarContainer:IsMouseEnabled(), "Blizzard mouse behaviour remains")
     A.eq(text:GetText(), "Blizzard XP", "Blizzard text remains")
-    local rested
-    for _, child in ipairs(xp._children) do
-        if child._h == 6 then rested = child; break end
-    end
-    A.type(rested, "table", "a rested overlay follows the XP bar")
-    A.eq(rested:GetValue(), 0.1, "rested fill uses the watched exhaustion value")
+    local rested = restedBar(xp)
+    A.type(rested, "table", "a rested bar follows the XP bar")
+    A.near(rested:GetValue(), 0.35, 1e-6, "rested fill covers xp..xp+exhaustion (0.25 + 0.1)")
 end)
 
 h.test("Status updates on every XP and faction event and animates a normal XP gain for 0.4 seconds", function(t)
@@ -144,7 +153,7 @@ h.test("Status passes secret XP straight to its widget without arithmetic, compa
     A.falsy(xp:GetScript("OnUpdate"), "secret values never animate")
 end)
 
-h.test("Status passes a secret rested value straight to its overlay without arithmetic or comparison", function(t)
+h.test("Status never does arithmetic or comparison on a secret rested value", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     installStatusData(mock)
     local secret = setmetatable({}, {
@@ -158,12 +167,8 @@ h.test("Status passes a secret rested value straight to its overlay without arit
     enable(); ns.Modern.Apply()
     local xp = byHeight(bars(mock, 0), 6)
     A.type(xp, "table", "the XP visual bar")
-    local rested
-    for _, child in ipairs(xp._children) do
-        if child._h == 6 then rested = child; break end
-    end
-    A.type(rested, "table", "the rested overlay")
-    A.eq(rested:GetValue(), secret, "the overlay receives the secret rested value itself")
+    A.eq(L.errors(mock), 0, "a secret rested value is never added to or compared with the XP value")
+    A.eq(xp:GetValue(), 0.25, "the XP fill is unaffected by a secret rested value")
 end)
 
 h.test("Status restores original art and reuses its own bars across Modernize and addon off/on", function(t)
