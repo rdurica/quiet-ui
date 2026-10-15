@@ -97,8 +97,8 @@ function Modern.TabSystemChrome(skin, frame)
     end
 end
 
--- A window: dark fill and border, Blizzard chrome held, optionally a title drag handle.
-function Modern.Window(skin, frame, key)
+-- A window: dark fill and border, Blizzard chrome held, optionally a title drag handle (above `over`).
+function Modern.Window(skin, frame, key, over)
     if not ns.Usable(frame) then return end
     skin:Panel(frame)
     skin:Border(frame)
@@ -106,6 +106,6 @@ function Modern.Window(skin, frame, key)
     Modern.TabSystemChrome(skin, frame)
     if key then
         skin:Remember(frame, "modern movable", function() Modern.ReleaseMovable(frame) end)
-        Modern.MakeMovable(frame, key)
+        Modern.MakeMovable(frame, key, over)
     end
 end

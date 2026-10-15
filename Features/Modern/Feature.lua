@@ -14,5 +14,7 @@ ns.Feature{
     always = { "PLAYER_REGEN_ENABLED" },
     hooks = {
         UpdateUIPanelPositions = function() ns.Modern.PlaceWindows(false) end,
+        -- Blizzard re-anchors the bags each time one opens.
+        UpdateContainerFrameAnchors = function() ns.Modern.PlaceWindows(false) end,
     },
 }

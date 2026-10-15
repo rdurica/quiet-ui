@@ -73,7 +73,8 @@ local function Arm(frame, entry)
     end)
 end
 
-function Modern.MakeMovable(frame, key)
+-- `over`: a title frame that sits above the window's other children; the handle covers it and lies above it.
+function Modern.MakeMovable(frame, key, over)
     if not ns.Usable(frame) or type(key) ~= "string" or type(frame.CreateTexture) ~= "function" then return end
     local entry = windows[frame]
     if not entry then
@@ -81,9 +82,14 @@ function Modern.MakeMovable(frame, key)
         -- ReleaseMovable and ResetPositions must put back.
         entry = { key = key, wasMovable = frame.IsMovable and frame:IsMovable() or false, original = Points(frame) }
         entry.handle = CreateFrame("Frame", nil, frame)
-        entry.handle:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-        entry.handle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-        entry.handle:SetHeight(HEIGHT)
+        if ns.Usable(over) and type(over.GetFrameLevel) == "function" then
+            entry.handle:SetAllPoints(over)
+            entry.handle:SetFrameLevel(over:GetFrameLevel() + 1)
+        else
+            entry.handle:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+            entry.handle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+            entry.handle:SetHeight(HEIGHT)
+        end
         windows[frame] = entry
     end
     entry.key = key
