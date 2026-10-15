@@ -10,6 +10,7 @@ local BAG_EVENTS = { BAG_UPDATE_DELAYED = true, BAG_NEW_ITEMS_UPDATED = true }
 local function Character(skin)
     Modern.Window(skin, _G.CharacterFrame, "CharacterFrame")
     for index = 1, 5 do Modern.TabChrome(skin, _G["CharacterFrameTab" .. index]) end
+    Modern.Character.Apply(skin, _G.CharacterFrame)
     -- 12.0 names first, the classic ones as fallback; both are skinned when the client has both.
     for _, name in ipairs({ "ReputationFrame", "TokenFrame", "CharacterFrameReputationFrame", "CharacterFrameCurrencyFrame" }) do
         Modern.Window(skin, _G[name])

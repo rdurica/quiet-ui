@@ -11,8 +11,9 @@ local TEXTURE_KEYS = { "chrome", "Bg", "Background", "Border", "Portrait", "port
     "TopTileStreaks", "InsetBorderTop", "BtnCornerLeft", "BtnCornerRight", "ButtonBottomBorder" }
 local NINE_KEYS = { "art", "Center", "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "TopLeftCorner",
     "TopRightCorner", "BottomLeftCorner", "BottomRightCorner" }
+-- Panel tabs (PanelTabButtonTemplate) and the character window's side tabs (common-sidetab art).
 local TAB_KEYS = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive", "LeftDisabled",
-    "MiddleDisabled", "RightDisabled" }
+    "MiddleDisabled", "RightDisabled", "Background", "SelectedTexture", "TabGlow", "HighlightTexture" }
 
 local tabs = setmetatable({}, { __mode = "k" })    -- tab -> true while its area is applied
 local hooked = setmetatable({}, { __mode = "k" })
@@ -54,9 +55,9 @@ function Modern.WindowChrome(skin, frame)
     if ns.Usable(container) then HoldKeys(skin, container, { "portrait", "Portrait" }) end
 end
 
--- The accent border marks the selected tab: Blizzard shows the Active art for it.
+-- The accent border marks the selected tab: Blizzard shows the Active (side tab: Selected) art for it.
 local function Selected(tab)
-    local active = tab.LeftActive
+    local active = tab.LeftActive or tab.SelectedTexture
     if ns.Usable(active) and type(active.IsShown) == "function" then return active:IsShown() and true or false end
     return false
 end
@@ -75,7 +76,7 @@ function Modern.TabChrome(skin, tab)
     skin:Remember(tab, "modern tab", function() tabs[tab] = nil end)
     if hooked[tab] then return end
     hooked[tab] = true
-    for _, key in ipairs({ "LeftActive", "Left" }) do
+    for _, key in ipairs({ "LeftActive", "Left", "SelectedTexture" }) do
         local piece = tab[key]
         for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
             if ns.Usable(piece) and type(piece[method]) == "function" then

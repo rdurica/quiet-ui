@@ -114,7 +114,8 @@ local function NormalOf(button)
     return ok and ns.Usable(texture) and texture or nil
 end
 
-local function Item(skin, button)
+-- One square slot; the character window's equipment slots use it too.
+function Bags.Item(skin, button)
     if styled[button] then return end
     styled[button] = skin
     skin:Remember(button, "modern bag item", function()
@@ -141,7 +142,7 @@ local function Item(skin, button)
 end
 
 local function SkinItems(skin, bag)
-    for _, button in ipairs(Items(bag)) do Item(skin, button) end
+    for _, button in ipairs(Items(bag)) do Bags.Item(skin, button) end
 end
 
 -- A bag acquires its buttons when it opens and re-fills them when it updates; new buttons are skinned then.

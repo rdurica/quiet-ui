@@ -79,6 +79,8 @@ Features\Modern\Areas\ParchmentSkin.lua
 Features\Modern\Areas\Parchment.lua
 Features\Modern\Areas\WindowChrome.lua
 Features\Modern\Areas\Bags.lua
+Features\Modern\Areas\Character.lua
+Features\Modern\Areas\CharacterLists.lua
 Features\Modern\Areas\Windows.lua
 Features\Modern\Areas\Map.lua
 Features\Modern\Areas\Minimap.lua
