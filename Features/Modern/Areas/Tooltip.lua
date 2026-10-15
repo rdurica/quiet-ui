@@ -81,7 +81,7 @@ local function Backdrop(skin, tip)
 end
 
 -- Repaints when the tooltip is shown, so a tooltip that no longer shows an item loses the quality colour.
-local function Watch(skin, tip, nine)
+local function Watch(tip, nine)
     if nine then
         if not hooked[tip] and pcall(hooksecurefunc, tip, "Show", Safe) then hooked[tip] = true end
     elseif not hooked[tip] and type(tip.HookScript) == "function" then
@@ -97,7 +97,7 @@ local function ApplyTip(skin, tip)
     if nine then skin:Hold(nine) else Backdrop(skin, tip) end
     Bar(skin, tip)
     skinned[tip] = { skin = skin, nine = nine ~= nil }
-    Watch(skin, tip, nine ~= nil)
+    Watch(tip, nine ~= nil)
 end
 
 if TooltipDataProcessor and type(TooltipDataProcessor.AddTooltipPostCall) == "function"
