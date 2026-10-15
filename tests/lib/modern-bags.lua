@@ -41,6 +41,48 @@ function B.item(bag, name, color)
     return button
 end
 
+-- The rest of ContainerFrameItemButtonTemplate's slot art: the bevelled NormalTexture (through GetNormalTexture),
+-- the empty-slot wing ItemSlotBackground, the thick quest border IconQuestTexture, and the search box and
+-- money bar with their Left / Middle / Right pieces.
+function B.slotArt(button)
+    local normal = button:CreateTexture(nil, "ARTWORK")
+    normal:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+    function button:GetNormalTexture() return normal end
+    button.ItemSlotBackground = button:CreateTexture(nil, "BACKGROUND")
+    button.ItemSlotBackground:SetTexture("Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+    button.IconQuestTexture = button:CreateTexture(nil, "OVERLAY")
+    button.IconQuestTexture:SetTexture("Interface\\ContainerFrame\\UI-Icon-QuestBorder")
+    button.IconQuestTexture:Hide()
+    return { normal, button.ItemSlotBackground, button.IconQuestTexture }
+end
+
+function B.field(name, parent)
+    local frame = CreateFrame("EditBox", name, parent)
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do
+        frame[key] = frame:CreateTexture(nil, "BACKGROUND")
+        frame[key]:SetTexture("Interface\\Common\\Common-Input-Border")
+    end
+    return frame
+end
+
+-- 12.0 icons take an atlas: Blizzard puts bags-item-slot64 (the wing) on the icon of an empty slot and an item
+-- texture on a filled one.
+function B.atlas(button)
+    local icon = button.icon
+    function icon:SetAtlas(atlas) self._atlas = atlas; self._texture = nil end
+    function icon:GetAtlas() return self._atlas end
+    local setTexture = icon.SetTexture
+    function icon:SetTexture(...) self._atlas = nil; return setTexture(self, ...) end
+end
+
+function B.empty(button) button.icon:SetAtlas("bags-item-slot64") end
+function B.fill(button, texture) button.icon:SetTexture(texture) end
+
+-- Blizzard marks (or unmarks) an item as a quest item.
+function B.quest(button, shown)
+    button.IconQuestTexture:SetShown(shown)
+end
+
 -- Blizzard sets (or clears, with nil) the quality of one item.
 function B.quality(button, color)
     _G.SetItemButtonQuality(button, color)

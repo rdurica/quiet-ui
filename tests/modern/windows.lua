@@ -56,7 +56,7 @@ h.test("Windows skins late spellbook and talent frames after their load-on-deman
     A.ok(W.isDark(talents), "late talent window is skinned")
 end)
 
-h.test("Windows makes character, spellbook, talents and quest log movable but keeps Blizzard bag stacking", function(t)
+h.test("Windows makes character, spellbook, talents, quest log and the combined bag movable; separate bags keep stacking", function(t)
     local A, ns = t.assert, t.ns
     W.area(ns, "windows")
     local f = fixture()
@@ -64,7 +64,8 @@ h.test("Windows makes character, spellbook, talents and quest log movable but ke
     for _, frame in ipairs({ f.character, f.spellbook, f.talents, f.quest }) do
         A.ok(L.handle(frame), (frame:GetName() or "window") .. " has a title drag handle")
     end
-    A.eq(L.handle(f.bag), nil, "bags keep Blizzard stacking")
+    A.eq(L.handle(f.bag), nil, "separate bags keep Blizzard stacking")
+    A.ok(L.handle(f.combined), "the combined bag has a title drag handle")
     L.drag(f.character, "CENTER", "CENTER", 8, 9)
     A.deep(QuietUICharDB.windowPoints.CharacterFrame, { "CENTER", "CENTER", 8, 9 })
     QuietUICharDB.modernize.windows = false
