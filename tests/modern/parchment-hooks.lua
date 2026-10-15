@@ -107,3 +107,71 @@ h.test("parchment works again when the area is re-enabled after a restore", func
     local accept = QuestFrameAcceptButton
     A.eq(accept:GetPoint(), "BOTTOMLEFT", "buttons are in the band again")
 end)
+
+-- One alpha hold per texture: Blizzard art on parchment windows is held only through the skin journal
+-- (ns.HoldAlpha), so each texture carries at most the one shared SetAlpha hook.
+local function alphaHooks(mock, tex)
+    local n = 0
+    for _, hook in ipairs(mock.hooks) do
+        if hook.obj == tex and hook.method == "SetAlpha" then n = n + 1 end
+    end
+    return n
+end
+
+local function textures(mock, all)
+    local list = {}
+    for _, object in ipairs(mock.frames) do
+        if object._kind == "Texture" then list[#list + 1] = object end
+    end
+    return list
+end
+
+h.test("parchment windows hold each Blizzard texture once, however often the area is applied", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    W.area(ns, "windows")
+    local quest, _, _, all = fixture()
+    W.enable(ns)
+    ns.Modern.Apply()
+    ns.Modern.Restore()
+    W.enable(ns)
+    quest:Hide(); quest:Show()
+    t.mock:fire("QUEST_DETAIL")
+    local held = 0
+    for _, tex in ipairs(textures(mock, all)) do
+        local n = alphaHooks(mock, tex)
+        A.ok(n <= 1, (tex._name or "texture") .. " has " .. n .. " SetAlpha hooks, expected at most 1")
+        if tex._quietAlphaHook then held = held + 1 end
+    end
+    A.ok(held > 0, "the shared alpha hold is on the Blizzard art")
+    A.ok(alphaHooks(mock, quest.chrome) == 1, "quest chrome has exactly the shared hold")
+end)
+
+h.test("parchment art stays at alpha 0 after Blizzard repaints, and restore returns the alpha from before the hold", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local quest, _, _, all = fixture()
+    local normal = QuestFrameAcceptButton.normal
+    W.enable(ns)
+    A.alpha(quest.chrome, 0, "chrome held")
+    A.alpha(normal, 0, "button art held")
+    quest.chrome:SetAlpha(0.9)
+    normal:SetAlpha(0.5)
+    A.alpha(quest.chrome, 0, "repaint is put back")
+    A.alpha(normal, 0, "button repaint is put back")
+    quest:Hide(); quest:Show()
+    A.alpha(quest.chrome, 0, "still held after show")
+    ns.Modern.Restore()
+    A.alpha(quest.chrome, 0.61, "chrome returns to the alpha it had when first held")
+    A.alpha(normal, 0.7, "button art returns to its baseline")
+end)
+
+h.test("parchment holds never error or compare a secret alpha", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    W.area(ns, "windows")
+    local quest = fixture()
+    W.enable(ns)
+    local secret = mock:secret(0.4)
+    A.noThrow(function() quest.chrome:SetAlpha(secret) end)
+    A.noThrow(function() ns.Modern.Restore() end)
+    A.eq(#mock.printed, 0, "nothing reported")
+end)

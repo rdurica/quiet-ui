@@ -53,3 +53,54 @@ h.test("Tooltip skin never reads secret health values and safely skips missing o
     A.eq(GameTooltipStatusBar:GetStatusBarTexture():GetTexture(), ns.Modern.Theme().bar)
     ns.Modern.Restore()
 end)
+
+-- An old backdrop tooltip (no NineSlice): OnShow is hooked once per session, never replaced.
+local function oldTip(ns)
+    F.area(ns, "tooltip")
+    GameTooltip, GameTooltipStatusBar = F.tooltip("GameTooltip", false)
+    GameTooltip._native, GameTooltip._setScript, GameTooltip._hookScript = 0, 0, {}
+    GameTooltip:SetScript("OnShow", function(self) self._native = self._native + 1 end)
+    local set, hook = GameTooltip.SetScript, GameTooltip.HookScript
+    GameTooltip.SetScript = function(self, ...) self._setScript = self._setScript + 1; return set(self, ...) end
+    GameTooltip.HookScript = function(self, name, fn)
+        self._hookScript[name] = (self._hookScript[name] or 0) + 1
+        return hook(self, name, fn)
+    end
+    GameTooltip.GetItem = function(self) if self._item then return self._item[1], self._item[2] end end
+    C_Item = { GetItemQualityByID = function() return 4 end }
+    ITEM_QUALITY_COLORS = { [4] = { r = EPIC[1], g = EPIC[2], b = EPIC[3] } }
+    ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2 = nil, nil, nil
+    return GameTooltip
+end
+
+h.test("old backdrop tooltip gets exactly one OnShow hook for the session and SetScript is never called", function(t)
+    local A, ns = t.assert, t.ns
+    local tip = oldTip(ns)
+    F.enable(ns)
+    ns.Modern.Apply()
+    ns.Modern.Restore()
+    F.enable(ns)
+    A.eq(tip._hookScript.OnShow, 1, "OnShow hooked once across apply, restore and re-apply")
+    A.eq(tip._setScript, 0, "SetScript was never called by the area")
+end)
+
+h.test("old backdrop tooltip OnShow hook repaints the quality border while on and is inert once off", function(t)
+    local A, ns = t.assert, t.ns
+    local tip = oldTip(ns)
+    tip:SetBackdropBorderColor(0.1, 0.2, 0.3, 0.4)
+    F.enable(ns)
+    tip._item = { "Epic Item", "item:12345" }
+    tip:Hide(); tip:Show()
+    F.sameColor(A, F.borderColor(tip), EPIC, "epic border after show")
+    A.eq(tip._native, 1, "Blizzard's own OnShow ran")
+    tip._item = nil
+    tip:Hide(); tip:Show()
+    F.sameColor(A, F.borderColor(tip), ns.Modern.Theme().border, "theme border for a non-item")
+    ns.Modern.Restore()
+    F.sameColor(A, tip._backdropBorder, { 0.1, 0.2, 0.3, 0.4 }, "Blizzard border after restore")
+    tip._item = { "Epic Item", "item:12345" }
+    tip:Hide(); tip:Show()
+    F.sameColor(A, tip._backdropBorder, { 0.1, 0.2, 0.3, 0.4 }, "hook does nothing once off")
+    A.eq(tip._native, 3, "Blizzard's OnShow still runs after restore")
+    A.eq(tip._setScript, 0, "SetScript never called")
+end)
