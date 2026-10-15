@@ -83,3 +83,14 @@ h.test("Minimap safely skips missing optional art and forbidden controls", funct
     A.eq(map:GetMaskTexture() ~= "Textures\\MinimapMask", true, "other minimap work still applies")
     ns.Modern.Restore()
 end)
+
+h.test("Minimap finds its parts by name and never scans its children", function(t)
+    local A, ns = t.assert, t.ns
+    F.area(ns, "minimap")
+    local map, p = F.minimap(t.mock)
+    map.GetChildren = function() error("the minimap children were scanned", 0) end
+    A.noThrow(function() F.enable(ns) end)
+    A.eq(#t.mock.printed, 0, "nothing reported")
+    A.eq(p.ring:GetAlpha(), 0, "the named border art is still held")
+    ns.Modern.Restore()
+end)

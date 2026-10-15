@@ -102,3 +102,15 @@ h.test("Bags restore icons, IconBorder and chrome when the area turns off or Mod
     B.quality(item, EPIC)
     A.eq(B.border(item), nil, "no addon border after Restore either")
 end)
+
+h.test("Bags skin the buttons of a pool style iterator that yields (button, true)", function(t)
+    local A, ns = t.assert, t.ns
+    local bag = setup(ns)
+    local epic = B.item(bag, "ContainerFrame1Item1", EPIC)
+    local pool = { [epic] = true }
+    function bag:EnumerateValidItems() return pairs(pool) end
+    bag.Items = {}
+    W.enable(ns)
+    A.ok(L.zoomed(epic.icon), "the pooled button icon is square-cropped")
+    A.ok(B.same(B.border(epic), EPIC), "the pooled button gets its quality border")
+end)
