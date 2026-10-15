@@ -120,11 +120,36 @@ end
 local FIELDS = { "_texCoord", "_texture", "_color", "_vertex", "_points", "_alpha", "_backdropColor",
     "_backdropBorder", "_text", "_textColor", "_font", "_w", "_h", "_shown", "_mouse", "_wheel",
     "_mask", "_scripts", "_statusColor" }
+-- HookScript (hooksecurefunc-style) is allowed to leave a wrapper on a script name; the mock records
+-- those names in f._hooks. Hooked names are left out of the _scripts comparison, because hooks are
+-- installed once and stay inert; SetScript on a Blizzard frame is asserted with L.watchScripts instead.
+local function scripts(f, extra)
+    local list = copy(rawget(f, "_scripts")) or {}
+    for name in pairs(rawget(f, "_hooks") or {}) do list[name] = nil end
+    for name in pairs(extra or {}) do list[name] = nil end
+    return list
+end
+
+-- Counts SetScript calls on a frame while it still works: { n = calls, names = { script names } }.
+function L.watchScripts(frame)
+    local c = { n = 0, names = {} }
+    local original = frame.SetScript
+    frame.SetScript = function(self, name, fn)
+        c.n = c.n + 1
+        c.names[#c.names + 1] = tostring(name)
+        return original(self, name, fn)
+    end
+    return c
+end
+
 function L.snapshot(frames)
     local snap = {}
     for i, f in ipairs(frames) do
         local s = {}
         for _, k in ipairs(FIELDS) do s[k] = copy(rawget(f, k)) end
+        s._scripts = scripts(f)
+        s._hooked = {}
+        for name in pairs(rawget(f, "_hooks") or {}) do s._hooked[name] = true end
         s._quietLabel = f._name or (f._kind .. "#" .. i)
         snap[f] = s
     end
@@ -141,6 +166,12 @@ function L.diff(snap)
     for f, s in pairs(snap) do
         for _, k in ipairs(FIELDS) do
             local a, b = s[k], rawget(f, k)
+            if k == "_scripts" then
+                local now = rawget(f, "_hooks") or {}
+                a = copy(s._scripts)
+                for name in pairs(now) do a[name] = nil end
+                b = scripts(f, s._hooked)
+            end
             local function same(x, y)
                 if type(x) ~= type(y) then return false end
                 if type(x) ~= "table" or x == y then return x == y end
