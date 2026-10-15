@@ -241,6 +241,10 @@ function Frame:GetFont()
 end
 function Frame:SetFontObject(v) self._fontObject = v end
 function Frame:SetTextColor(...) self._textColor = { ... } end
+function Frame:GetTextColor()
+    local c = self._textColor or { 1, 1, 1, 1 }
+    return c[1], c[2], c[3], c[4] or 1
+end
 function Frame:SetJustifyH(v) self._justifyH = v end
 function Frame:GetJustifyH() return self._justifyH end
 function Frame:SetJustifyV(v) self._justifyV = v end

@@ -11,9 +11,13 @@ local TEXTURE_KEYS = { "chrome", "Bg", "Background", "Border", "Portrait", "port
     "TopTileStreaks", "InsetBorderTop", "BtnCornerLeft", "BtnCornerRight", "ButtonBottomBorder" }
 local NINE_KEYS = { "art", "Center", "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "TopLeftCorner",
     "TopRightCorner", "BottomLeftCorner", "BottomRightCorner" }
--- Panel tabs (PanelTabButtonTemplate) and the character window's side tabs (common-sidetab art).
+-- Panel tabs (PanelTabButtonTemplate), the character window's side tabs (common-sidetab art) and the
+-- spellbook's icon tabs (spellbook-Tab-Frame art).
 local TAB_KEYS = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive", "LeftDisabled",
-    "MiddleDisabled", "RightDisabled", "Background", "SelectedTexture", "TabGlow", "HighlightTexture" }
+    "MiddleDisabled", "RightDisabled", "Background", "SelectedTexture", "TabGlow", "HighlightTexture",
+    "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow" }
+-- The art Blizzard shows on the selected tab, first match wins.
+local SELECTED_KEYS = { "SquareBackgroundActive", "LeftActive", "SelectedTexture" }
 
 local tabs = setmetatable({}, { __mode = "k" })    -- tab -> true while its area is applied
 local hooked = setmetatable({}, { __mode = "k" })
@@ -57,8 +61,10 @@ end
 
 -- The accent border marks the selected tab: Blizzard shows the Active (side tab: Selected) art for it.
 local function Selected(tab)
-    local active = tab.LeftActive or tab.SelectedTexture
-    if ns.Usable(active) and type(active.IsShown) == "function" then return active:IsShown() and true or false end
+    for _, key in ipairs(SELECTED_KEYS) do
+        local active = tab[key]
+        if ns.Usable(active) and type(active.IsShown) == "function" then return active:IsShown() and true or false end
+    end
     return false
 end
 
@@ -76,7 +82,7 @@ function Modern.TabChrome(skin, tab)
     skin:Remember(tab, "modern tab", function() tabs[tab] = nil end)
     if hooked[tab] then return end
     hooked[tab] = true
-    for _, key in ipairs({ "LeftActive", "Left", "SelectedTexture" }) do
+    for _, key in ipairs({ "SquareBackgroundActive", "LeftActive", "Left", "SelectedTexture" }) do
         local piece = tab[key]
         for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
             if ns.Usable(piece) and type(piece[method]) == "function" then
@@ -89,13 +95,26 @@ function Modern.TabChrome(skin, tab)
     end
 end
 
--- Tab buttons of the 12.0 TabSystem (spellbook / talents window) are children of TabSystem.
+-- Tab buttons of the 12.0 TabSystem (spellbook / talents window) are children of TabSystem
+-- (PlayerSpellsFrame and its spellbook name it tabSystem).
 function Modern.TabSystemChrome(skin, frame)
-    local system = ns.Usable(frame) and frame.TabSystem
+    local system = ns.Usable(frame) and (frame.TabSystem or frame.tabSystem)
     if not ns.Usable(system) or type(system.GetChildren) ~= "function" then return end
     for _, tab in ipairs({ system:GetChildren() }) do
         if ns.Usable(tab) and (tab.Left or tab.LeftActive) then Modern.TabChrome(skin, tab) end
     end
+end
+
+-- Three-piece art (Left, Middle or Center, Right) of a search box, a money bar or a panel button is held. The
+-- field becomes a dark fill with a thin border; a bare one keeps only its content.
+function Modern.Field(skin, frame, bare)
+    if not ns.Usable(frame) then return end
+    for _, key in ipairs({ "Left", "Middle", "Center", "Right" }) do
+        if ns.Usable(frame[key]) then skin:Hold(frame[key]) end
+    end
+    if bare then return end
+    skin:Panel(frame)
+    skin:Border(frame)
 end
 
 -- A window: dark fill and border, Blizzard chrome held, optionally a title drag handle (above `over`).

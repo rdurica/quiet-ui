@@ -157,18 +157,6 @@ local function Watch(bag)
     if type(bag.HookScript) == "function" then pcall(bag.HookScript, bag, "OnShow", Refresh) end
 end
 
--- Search box and money bar: their three-piece art (Left, Middle, Right) is held; the search box becomes a
--- flat field, the money stays as bare text on the bag background.
-local function Field(skin, frame, bare)
-    if not ns.Usable(frame) then return end
-    for _, key in ipairs({ "Left", "Middle", "Right" }) do
-        if ns.Usable(frame[key]) then skin:Hold(frame[key]) end
-    end
-    if bare then return end
-    skin:Panel(frame)
-    skin:Border(frame)
-end
-
 local function SkinBag(skin, bag)
     if not ns.Usable(bag) then return end
     if not styled[bag] then
@@ -182,7 +170,8 @@ local function SkinBag(skin, bag)
         end
         Watch(bag)
         local money = bag.MoneyFrame
-        if ns.Usable(money) then Field(skin, money.Border, true) end
+        -- The money stays as bare text on the bag background.
+        if ns.Usable(money) then Modern.Field(skin, money.Border, true) end
     end
     SkinItems(skin, bag)
 end
@@ -205,7 +194,7 @@ end
 function Bags.Apply(skin)
     for index = 1, MAX_BAGS do SkinBag(skin, _G["ContainerFrame" .. index]) end
     SkinBag(skin, _G.ContainerFrameCombinedBags)
-    Field(skin, _G.BagItemSearchBox)
+    Modern.Field(skin, _G.BagItemSearchBox)
     -- In gamepad mode Blizzard docks its bag bar at the open bag's corner, over the sort button. It is held
     -- invisible and lets the mouse through; Blizzard re-parents the sort button, so its level cannot be raised.
     local bar = _G.GamepadBagBar
