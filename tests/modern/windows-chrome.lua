@@ -97,6 +97,8 @@ h.test("Windows never makes or panels QuestMapFrame inside WorldMapFrame", funct
     local quest = map.QuestMapFrame
     local questBefore = L.snapshot(R.all(quest))
     W.enable(ns, { windows = true, map = true })
+    A.eq(quest:GetParent(), map, "the quest log sits inside the map")
+    A.ok(R.dark(map), "the map around the quest log has the dark panel")
     A.eq(L.handle(quest), nil, "no drag handle on the embedded quest log")
     A.falsy(R.dark(quest), "no panel on the embedded quest log")
     A.deep(L.diff(questBefore), {}, "its art and points are untouched")
