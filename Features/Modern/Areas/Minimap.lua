@@ -80,7 +80,6 @@ Modern.Register{
             return frame
         end)
         if ns.Usable(strip) then
-            skin:Remember(strip, "shown", function() strip:Hide() end)
             skin:Panel(strip); skin:Border(strip); strip:Show()
             local zone = _G.MinimapZoneText
             if ns.Usable(zone) and zone.SetPoint then skin:Set(zone, "SetPoint", "CENTER", strip, "CENTER", 0, 0) end

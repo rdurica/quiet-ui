@@ -39,7 +39,7 @@ local function Apply(skin)
     for _, name in ipairs({ "QuestFrame", "GossipFrame", "ItemTextFrame" }) do
         Modern.WindowChrome(skin, _G[name])
     end
-    if Modern.Parchment then Modern.Parchment.Apply() end
+    Modern.Parchment.Apply()
 end
 
 Modern.Register{
@@ -47,7 +47,7 @@ Modern.Register{
     label = "Windows",
     apply = Apply,
     restore = function()
-        if Modern.Parchment then Modern.Parchment.Restore() end
+        Modern.Parchment.Restore()
     end,
     addons = { "Blizzard_TalentUI", "Blizzard_PlayerSpells", "Blizzard_SpellBookUI", "Blizzard_QuestUI" },
     events = { "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "ITEM_TEXT_READY",
@@ -55,7 +55,7 @@ Modern.Register{
     onEvent = function(skin, event)
         if BAG_EVENTS[event] then
             Modern.Bags.Apply(skin)
-        elseif Modern.Parchment then
+        else
             Modern.Parchment.Event(event)
         end
     end,

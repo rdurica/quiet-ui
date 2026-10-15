@@ -71,7 +71,9 @@ local function HealthColour(unit)
             and C_ClassColor.GetClassColor(token)
         r, g, b = Colours(c or (type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[token]))
     elseif type(UnitReaction) == "function" and type(FACTION_BAR_COLORS) == "table" then
-        local reaction = UnitReaction(unit, "player") or UnitReaction(unit)
+        local reaction = UnitReaction(unit, "player")
+        if ns.IsSecret(reaction) then return unpack(GREEN) end
+        if reaction == nil then reaction = UnitReaction(unit) end
         if ns.IsSecret(reaction) then return unpack(GREEN) end
         r, g, b = Colours(FACTION_BAR_COLORS[reaction])
     end
@@ -175,6 +177,7 @@ local function Portrait(skin, frame, unit, name)
     local color = Modern.Theme().border
     if unit == "target" and type(UnitClassification) == "function" then
         local kind = UnitClassification(unit)
+        if ns.IsSecret(kind) then kind = nil end
         if kind == "elite" then color = Modern.Theme().accent
         elseif kind == "rare" or kind == "rareelite" then color = RARE
         elseif kind == "worldboss" or kind == "boss" then color = BOSS end

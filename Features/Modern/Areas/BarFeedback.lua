@@ -10,11 +10,14 @@ local Modern = ns.Modern
 local tracked = setmetatable({}, { __mode = "k" })   -- button -> { skin, down, pushed, checked }
 local hooked = setmetatable({}, { __mode = "k" })
 
-local function Flat(button, layer, sublevel, colour, alpha, anchor)
+local function Flat(button, layer, sublevel, anchor)
     local texture = button:CreateTexture(nil, layer, nil, sublevel)
     texture:SetAllPoints(anchor)
-    texture:SetColorTexture(colour[1], colour[2], colour[3], alpha)
     return texture
+end
+
+local function Colour(texture, colour, alpha)
+    texture:SetColorTexture(colour[1], colour[2], colour[3], alpha)
 end
 
 local function Show(region, on)
@@ -34,28 +37,38 @@ local function Watch(button)
     if hooked[button] then return end
     hooked[button] = true
     local function Update() ns.Run("modern bar feedback", Refresh, button) end
-    for _, method in ipairs({ "SetButtonState", "SetChecked" }) do
-        if type(button[method]) == "function" then pcall(hooksecurefunc, button, method, Update) end
+    local function Release()
+        local info = tracked[button]
+        if info then info.down = nil; Update() end
     end
+    if type(button.SetButtonState) == "function" then
+        pcall(hooksecurefunc, button, "SetButtonState", function(_, state)
+            if state == "NORMAL" then Release() else Update() end
+        end)
+    end
+    if type(button.SetChecked) == "function" then pcall(hooksecurefunc, button, "SetChecked", Update) end
     if type(button.HookScript) == "function" then
         pcall(button.HookScript, button, "OnMouseDown", function()
             local info = tracked[button]
             if info then info.down = true; Update() end
         end)
-        pcall(button.HookScript, button, "OnMouseUp", function()
-            local info = tracked[button]
-            if info then info.down = nil; Update() end
-        end)
+        for _, script in ipairs({ "OnMouseUp", "OnLeave", "OnDragStart" }) do
+            pcall(button.HookScript, button, script, Release)
+        end
     end
 end
 
 function Modern.BarFeedback(skin, button, anchor)
     if not ns.Usable(button) or not ns.Usable(anchor) or type(button.CreateTexture) ~= "function" then return end
     local theme = Modern.Theme()
-    skin:Own(button, "hover", function() return Flat(button, "HIGHLIGHT", 0, theme.border, 0.25, anchor) end)
-    local pushed = skin:Own(button, "pushed", function() return Flat(button, "OVERLAY", 5, theme.bg, 0.55, anchor) end)
-    local checked = skin:Own(button, "checked", function() return Flat(button, "OVERLAY", 4, theme.accent, 0.35, anchor) end)
-    if not pushed or not checked then return end
+    local hover = skin:Own(button, "hover", function() return Flat(button, "HIGHLIGHT", 0, anchor) end)
+    local pushed = skin:Own(button, "pushed", function() return Flat(button, "OVERLAY", 5, anchor) end)
+    local checked = skin:Own(button, "checked", function() return Flat(button, "OVERLAY", 4, anchor) end)
+    if not hover or not pushed or not checked then return end
+    -- Regions are cached across applies and hidden by undo: show and re-colour them every time.
+    Colour(hover, theme.border, 0.25); hover:Show()
+    Colour(pushed, theme.bg, 0.55)
+    Colour(checked, theme.accent, 0.35)
     tracked[button] = { pushed = pushed, checked = checked }
     skin:Remember(button, "bar feedback", function() tracked[button] = nil end)
     Watch(button)

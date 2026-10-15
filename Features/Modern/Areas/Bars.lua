@@ -2,12 +2,6 @@ local _, ns = ...
 
 local Modern = ns.Modern
 
-local function Font(skin, font)
-    if not ns.Usable(font) or type(font.GetFont) ~= "function" or type(font.SetFont) ~= "function" then return end
-    local ok, face, size, flags = pcall(font.GetFont, font)
-    if ok then skin:Set(font, "SetFont", face, size, (flags or "") .. "OUTLINE") end
-end
-
 local function Texture(button, ...)
     for i = 1, select("#", ...) do
         local value = button[select(i, ...)]
@@ -49,8 +43,8 @@ local function Button(skin, button)
     skin:Panel(button)
     skin:Border(button)
     Modern.BarFeedback(skin, button, icon)
-    Font(skin, button.HotKey)
-    Font(skin, button.Count)
+    skin:Outline(button.HotKey)
+    skin:Outline(button.Count)
 end
 
 local function BarArt(skin)

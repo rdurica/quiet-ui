@@ -9,7 +9,6 @@ local Modern = ns.Modern
 
 local active = false
 local hooked = setmetatable({}, { __mode = "k" })
-local OUTLINE = "OUTLINE"
 
 local function Texture(region)
     return ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
@@ -17,12 +16,7 @@ end
 
 local function Font(skin, font, icon)
     if not ns.Usable(font) or type(font.GetFont) ~= "function" or type(font.SetFont) ~= "function" then return end
-    local ok, face, size, flags = pcall(font.GetFont, font)
-    if not ok then return end
-    flags = type(flags) == "string" and flags or ""
-    if not flags:find(OUTLINE, 1, true) then
-        skin:Set(font, "SetFont", face, size, flags == "" and OUTLINE or (flags .. "," .. OUTLINE))
-    end
+    skin:Outline(font)
     skin:Set(font, "SetPoint", "TOP", icon, "BOTTOM", 0, -1)
 end
 
@@ -44,7 +38,8 @@ local function Dispel(button)
     if kind == nil or ns.IsSecret(kind) then return end
     if type(AuraUtil) == "table" and type(AuraUtil.GetAuraBorderColor) == "function" then
         local ok, color = pcall(AuraUtil.GetAuraBorderColor, kind)
-        if ok and Rgb(color) then return Rgb(color) end
+        local rgb = ok and Rgb(color)
+        if rgb then return rgb end
     end
     local colours = _G.DebuffTypeColor
     return Rgb(type(colours) == "table" and colours[kind])

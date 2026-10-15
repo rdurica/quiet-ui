@@ -58,9 +58,8 @@ end
 function Modern.Skin(key)
     local skin = journals[key]
     if not skin then
-        skin = setmetatable({ key = key, entries = {}, seen = {}, regions = {} }, Skin)
-        skin.seen = setmetatable({}, { __mode = "k" })
-        skin.regions = setmetatable({}, { __mode = "k" })
+        skin = setmetatable({ key = key, entries = {}, seen = setmetatable({}, { __mode = "k" }),
+            regions = setmetatable({}, { __mode = "k" }) }, Skin)
         journals[key] = skin
     end
     return skin
@@ -103,6 +102,16 @@ function Skin:Set(obj, method, ...)
         Push(self, function() obj[method](obj, unpack(prev, 1, prev.n)) end)
     end
     obj[method](obj, ...)
+end
+
+-- Adds the outline flag to a font object's flags, keeping face and size.
+function Skin:Outline(font)
+    if not ns.Usable(font) or type(font.GetFont) ~= "function" or type(font.SetFont) ~= "function" then return end
+    local ok, face, size, flags = pcall(font.GetFont, font)
+    if not ok then return end
+    flags = type(flags) == "string" and flags or ""
+    if flags:find("OUTLINE", 1, true) then return end
+    self:Set(font, "SetFont", face, size, flags == "" and "OUTLINE" or (flags .. ",OUTLINE"))
 end
 
 -- Art held at alpha 0 against Blizzard's SetAlpha, released by Undo.
