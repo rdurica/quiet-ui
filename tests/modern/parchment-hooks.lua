@@ -118,7 +118,7 @@ local function alphaHooks(mock, tex)
     return n
 end
 
-local function textures(mock, all)
+local function textures(mock)
     local list = {}
     for _, object in ipairs(mock.frames) do
         if object._kind == "Texture" then list[#list + 1] = object end
@@ -137,10 +137,10 @@ h.test("parchment windows hold each Blizzard texture once, however often the are
     quest:Hide(); quest:Show()
     t.mock:fire("QUEST_DETAIL")
     local held = 0
-    for _, tex in ipairs(textures(mock, all)) do
+    for _, tex in ipairs(textures(mock)) do
         local n = alphaHooks(mock, tex)
         A.ok(n <= 1, (tex._name or "texture") .. " has " .. n .. " SetAlpha hooks, expected at most 1")
-        if tex._quietAlphaHook then held = held + 1 end
+        if n == 1 then held = held + 1 end
     end
     A.ok(held > 0, "the shared alpha hold is on the Blizzard art")
     A.ok(alphaHooks(mock, quest.chrome) == 1, "quest chrome has exactly the shared hold")
@@ -174,4 +174,34 @@ h.test("parchment holds never error or compare a secret alpha", function(t)
     A.noThrow(function() quest.chrome:SetAlpha(secret) end)
     A.noThrow(function() ns.Modern.Restore() end)
     A.eq(#mock.printed, 0, "nothing reported")
+end)
+
+h.test("a texture held then dimmed takes the later alpha and restore returns the original", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local quest = fixture()
+    local skin = ns.Modern.Skin("windows")
+    W.enable(ns)
+    quest.chrome:SetAlpha(1)
+    skin:Hold(quest.chrome)
+    A.alpha(quest.chrome, 0, "held at 0")
+    skin:Hold(quest.chrome, 0.3)
+    A.alpha(quest.chrome, 0.3, "the later dim still applies")
+    quest.chrome:SetAlpha(1)
+    A.alpha(quest.chrome, 0.3, "Blizzard repaint is put back to the dim")
+    ns.Modern.Restore()
+    A.alpha(quest.chrome, 0.61, "restore returns the baseline captured at the first hold")
+end)
+
+h.test("a Blizzard repaint after restore is not held again while the area is off", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local quest = fixture()
+    W.enable(ns)
+    ns.Modern.Restore()
+    t.mock:fire("QUEST_DETAIL")
+    quest.chrome:SetAlpha(0.8)
+    A.alpha(quest.chrome, 0.8, "not re-held")
+    quest:Hide(); quest:Show()
+    A.alpha(quest.chrome, 0.8, "show does not re-hold")
 end)
