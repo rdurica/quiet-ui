@@ -11,7 +11,7 @@ h.test("unit events for other units do no work, events for skinned units skin ag
     QuietUICharDB = { modernize = { enabled = true } }
     ns.Modern.Apply()
     local applied = calls
-    A.ok(applied > 0, "the target portrait border reads the classification")
+    A.ok(applied > 0, "the target health border reads the classification")
     mock:fire("UNIT_CLASSIFICATION_CHANGED", "nameplate3")
     mock:fire("UNIT_FACTION", "party2")
     A.eq(calls, applied, "other units cause no re-skin")

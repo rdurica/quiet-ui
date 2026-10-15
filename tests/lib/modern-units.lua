@@ -1,10 +1,11 @@
 -- Unit-frame fixtures shaped like the retail 12.0 (Midnight) Blizzard_UnitFrame XML and Lua:
 --   PlayerFrame.PlayerFrameContainer.{FrameTexture, AlternatePowerFrameTexture, VehicleFrameTexture,
 --     PlayerPortrait, PlayerPortraitMask, FrameFlash}; PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
---     .HealthBarsContainer.HealthBar and .ManaBarArea.ManaBar
+--     .{StatusTexture, PlayerLevelText, HealthBarsContainer.HealthBar, ManaBarArea.ManaBar}
 --   TargetFrame / FocusFrame .TargetFrameContainer.{FrameTexture, Portrait, PortraitMask, Flash,
 --     BossPortraitFrameTexture}; .TargetFrameContent.TargetFrameContentMain.{HealthBarsContainer.HealthBar,
---     ManaBar, ReputationColor}
+--     ManaBar, ReputationColor, LevelText}
+-- The level text sits in a ring texture anchored to it (WoW Forever art, name unknown).
 --   TargetFrameToT: Portrait, PortraitMask, FrameTexture, HealthBar, ManaBar directly on the frame
 --   PetFrame: Portrait / PortraitMask keys; PetFrameTexture, PetFrameFlash, PetFrameHealthBar,
 --     PetFrameManaBar as named globals
@@ -23,11 +24,36 @@ local function texture(parent, atlas, hidden)
     return art
 end
 
+-- Gives a texture one mask with the client's mask API; returns the mask.
+local function masked(tex, parent, file)
+    local mask = parent:CreateTexture(nil, "ARTWORK")
+    mask._kind = "MaskTexture"
+    mask:SetTexture(file)
+    local masks = { mask }
+    function tex:GetNumMaskTextures() return #masks end
+    function tex:GetMaskTexture(index) return masks[index] end
+    function tex:AddMaskTexture(m) masks[#masks + 1] = m end
+    function tex:RemoveMaskTexture(m)
+        for i, current in ipairs(masks) do
+            if current == m then table.remove(masks, i); return end
+        end
+    end
+    return mask
+end
+
+-- 12.0 bars: the fill is clipped by a fixed-size mask (HealthBarMask / ManaBarMask), and the value
+-- texts (TextString, LeftText, RightText) belong to the bar's container, anchored to it, not to the bar.
 local function bar(parent, atlas, colour)
     local value = CreateFrame("StatusBar", nil, parent)
     value:SetSize(91, 11)
     local fill = value:CreateTexture(nil, "ARTWORK")
     fill:SetTexture(atlas)
+    masked(fill, value, atlas .. "-Mask")
+    for _, spec in ipairs({ { "TextString", "CENTER" }, { "LeftText", "LEFT" }, { "RightText", "RIGHT" } }) do
+        local text = parent:CreateFontString(nil, "OVERLAY")
+        text:SetPoint(spec[2], parent, spec[2], 0, 0)
+        value[spec[1]] = text
+    end
     value._statusColor = colour
     function value:SetStatusBarTexture(v) fill:SetTexture(v); self._statusColor = { 1, 1, 1, 1 } end
     function value:GetStatusBarTexture() return fill end
@@ -39,22 +65,20 @@ end
 local function portrait(parent, name)
     local icon = texture(parent, "Interface\\Portrait\\" .. name)
     icon.CreateTexture = nil -- a texture cannot own regions
-    local mask = parent:CreateTexture(nil, "ARTWORK")
-    mask._kind = "MaskTexture"
-    mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-    local masks = { mask }
-    function icon:GetNumMaskTextures() return #masks end
-    function icon:GetMaskTexture(index) return masks[index] end
-    function icon:AddMaskTexture(m) masks[#masks + 1] = m end
-    function icon:RemoveMaskTexture(m)
-        for i, current in ipairs(masks) do
-            if current == m then table.remove(masks, i); return end
-        end
-    end
-    return icon, mask
+    return icon, masked(icon, parent, "Interface\\CharacterFrame\\TempPortraitAlphaMask")
 end
 
 local function sub(parent) return CreateFrame("Frame", nil, parent) end
+
+local function level(parent, text)
+    local label = parent:CreateFontString(nil, "OVERLAY")
+    label:SetText(text)
+    label:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 4, 4)
+    local ring = parent:CreateTexture(nil, "BORDER")
+    ring:SetTexture("Interface\\LevelRing")
+    ring:SetPoint("CENTER", label, "CENTER", 0, 0)
+    return label, ring
+end
 
 -- Registry of the pieces of each fixture frame, for assertions only.
 local parts = setmetatable({}, { __mode = "k" })
@@ -82,13 +106,17 @@ local function player()
     c.FrameFlash = texture(c, ATLAS .. "Player-PortraitOn-InCombat", true)
     local content = sub(f); f.PlayerFrameContent = content
     local main = sub(content); content.PlayerFrameContentMain = main
+    main.StatusTexture = texture(main, ATLAS .. "Player-PortraitOn-Status")
+    local lvl, ring = level(main, "20"); main.PlayerLevelText = lvl
     local hb = sub(main); main.HealthBarsContainer = hb
     hb.HealthBar = bar(hb, ATLAS .. "Player-PortraitOn-Bar-Health", { 0, 1, 0, 1 })
+    hb.HealthBar:SetPoint("TOPLEFT", hb, "TOPLEFT", 85, -26)
     local area = sub(main); main.ManaBarArea = area
     area.ManaBar = bar(area, ATLAS .. "Player-PortraitOn-Bar-Mana", { 1, 1, 1, 1 })
+    area.ManaBar:SetPoint("TOPLEFT", area, "TOPLEFT", 85, -47)
     return finish(f, "player", "Player", { portrait = icon, mask = mask, health = hb.HealthBar, mana = area.ManaBar,
-        art = { c.FrameTexture, c.AlternatePowerFrameTexture, c.VehicleFrameTexture, c.FrameFlash },
-        flash = c.FrameFlash })
+        art = { c.FrameTexture, c.AlternatePowerFrameTexture, c.VehicleFrameTexture, c.FrameFlash, main.StatusTexture },
+        flash = c.FrameFlash, status = main.StatusTexture, level = lvl, ring = ring })
 end
 
 local function target(name, unit)
@@ -102,12 +130,13 @@ local function target(name, unit)
     local content = sub(f); f.TargetFrameContent = content
     local main = sub(content); content.TargetFrameContentMain = main
     main.ReputationColor = texture(main, ATLAS .. "Target-PortraitOn-Type")
+    local lvl, ring = level(main, "21"); main.LevelText = lvl
     local hb = sub(main); main.HealthBarsContainer = hb
     hb.HealthBar = bar(hb, ATLAS .. "Target-PortraitOn-Bar-Health", { 0, 1, 0, 1 })
     main.ManaBar = bar(main, ATLAS .. "Target-PortraitOn-Bar-Mana", { 1, 1, 1, 1 })
     return finish(f, unit, "Target", { portrait = icon, mask = mask, health = hb.HealthBar, mana = main.ManaBar,
         art = { c.FrameTexture, c.Flash, c.BossPortraitFrameTexture, main.ReputationColor },
-        flash = c.Flash, boss = c.BossPortraitFrameTexture })
+        flash = c.Flash, boss = c.BossPortraitFrameTexture, level = lvl, ring = ring })
 end
 
 local function tot()
@@ -204,14 +233,18 @@ function U.onePixel(bar)
     return #list >= 4
 end
 
-function U.portraitBorder(frame)
-    return #edges(frame._frame or frame, U.parts(frame).portrait) >= 4
-end
-
-function U.portraitBorderColor(frame)
-    for _, r in ipairs(edges(frame._frame or frame, U.parts(frame).portrait)) do
+-- Colour of the border drawn on a bar's edges.
+function U.borderColor(bar)
+    for _, r in ipairs(edges(bar, bar)) do
         if r._color then return r._color end
     end
+end
+
+-- A copy of a region's anchor list, for comparing before and after.
+function U.points(region)
+    local list = {}
+    for i = 1, region:GetNumPoints() do list[i] = { region:GetPoint(i) } end
+    return list
 end
 
 function U.panel(bar)

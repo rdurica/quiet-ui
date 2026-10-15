@@ -240,6 +240,7 @@ end
 function Frame:SetFontObject(v) self._fontObject = v end
 function Frame:SetTextColor(...) self._textColor = { ... } end
 function Frame:SetJustifyH(v) self._justifyH = v end
+function Frame:GetJustifyH() return self._justifyH end
 function Frame:SetJustifyV(v) self._justifyV = v end
 -- Deterministic text: width = chars * CHAR_W, one fixed line, no wrapping.
 function Frame:GetStringWidth()

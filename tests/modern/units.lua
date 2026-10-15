@@ -105,7 +105,7 @@ h.test("units restore every treatment when their area or Modernize turns off, th
     A.eq(U.statusTexture(p.health), original, "bar texture restored")
     A.deep({ p.portrait:GetTexCoord() }, { 0, 1, 0, 1 }, "portrait crop restored")
     A.eq(p.portrait:GetMaskTexture(1), p.mask, "mask restored")
-    A.ok(not U.portraitBorder(player), "own portrait border hidden")
+    A.alpha(p.portrait, 1, "portrait released")
     QuietUICharDB.modernize.units = nil
     ns.Modern.Apply()
     A.eq(U.statusTexture(p.health), ns.Modern.Theme().bar, "area reapplied")
