@@ -26,7 +26,7 @@ end
 local function coloured(frame, rgb)
     for _, region in ipairs(frame._regions) do
         local c = region._color
-        if region._layer == "BORDER" and region._shown and c and c[1] == rgb[1] and c[2] == rgb[2] and c[3] == rgb[3] then
+        if (region._layer == "BORDER" or region._layer == "OVERLAY") and region._shown and c and c[1] == rgb[1] and c[2] == rgb[2] and c[3] == rgb[3] then
             return true
         end
     end

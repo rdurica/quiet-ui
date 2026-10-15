@@ -58,7 +58,7 @@ end
 -- Colour {r, g, b} of the visible 1 px border lines the addon drew on the button, or nil.
 function B.border(button)
     for _, region in ipairs(button._regions) do
-        if region._layer == "BORDER" and region._color and region._shown then
+        if (region._layer == "BORDER" or region._layer == "OVERLAY") and region._color and region._shown then
             return { region._color[1], region._color[2], region._color[3] }
         end
     end

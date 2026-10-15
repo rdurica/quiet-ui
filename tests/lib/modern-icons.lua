@@ -61,7 +61,7 @@ end
 function I.border(frame)
     local n = 0
     for _, child in ipairs(frame._regions) do
-        if child._layer == "BORDER" and child._shown then n = n + 1 end
+        if (child._layer == "BORDER" or child._layer == "OVERLAY") and child._shown then n = n + 1 end
     end
     return n >= 4
 end

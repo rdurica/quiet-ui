@@ -185,7 +185,7 @@ end
 local function edges(owner, anchor)
     local list = {}
     walk(owner, function(r)
-        if r._layer == "BORDER" and r._shown then
+        if (r._layer == "BORDER" or r._layer == "OVERLAY") and r._shown then
             for _, point in ipairs(r._points) do
                 if anchor == nil or point[2] == anchor then list[#list + 1] = r; break end
             end
