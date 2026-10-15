@@ -24,7 +24,7 @@ An area is one file under `Features/Modern/Areas/` that calls `ns.Modern.Registe
 - Apply: when Modernize and the area are on, `apply` runs once per area. Unchecking an area, or Modernize, restores only what changed. Changing the theme, background or class colours restores and applies the applied areas again.
 - Restore: `/quiet off` or Reset restores every applied area in reverse registration order. Each area has a journal (`skin`) of what it changed; restore undoes it in reverse, so one area never touches another's frames, and held art alpha is released.
 - Events: the events an area lists reach its `onEvent` only while the area is applied. Each event is registered on its own and a client that does not know it is skipped. `ADDON_LOADED` for an addon the area lists runs its `apply` again, so load-on-demand frames get skinned.
-- Skin helpers: `Icon` (crop `0.08, 0.92, 0.08, 0.92`), `Border` and `Panel` (own regions, hidden on undo and reused), `Button` (flat fill, original art held hidden), `Hold` (art held at alpha 0 against Blizzard through the alpha hook), and `Set` (any other `SetX` with its previous `GetX` value). A missing frame is skipped; a missing method is reported once.
+- Skin helpers: `Icon` (crop `0.08, 0.92, 0.08, 0.92`), `Border` and `Panel` (own regions, hidden on undo and reused), `Button` (flat fill, original art held hidden), `Hold` (art held at alpha 0, or a given alpha, against Blizzard through the alpha hook), and `Set` (any other `SetX` with its previous `GetX` value). A missing frame is skipped; a missing method is reported once.
 
 ## Movable windows
 

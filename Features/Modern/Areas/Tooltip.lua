@@ -3,8 +3,9 @@ local _, ns = ...
 -- Tooltip chrome. Tooltips are secure frames: a tooltip with a NineSlice (every 12.0 tooltip) never
 -- gets a script replaced, and OnTooltipSetItem is never touched (it throws on 12.0). Item quality
 -- arrives through one TooltipDataProcessor post call registered at load; a hook on Show returns a
--- tooltip to the theme border. Both do nothing for a tooltip this area did not skin. Only an old
--- backdrop tooltip without a NineSlice gets an OnShow wrapper, put back by restore.
+-- tooltip to the theme border. Both do nothing for a tooltip this area did not skin. An old
+-- backdrop tooltip without a NineSlice gets one OnShow HookScript for the session; Safe ignores it
+-- while the area is off.
 
 local Modern = ns.Modern
 
@@ -83,13 +84,8 @@ end
 local function Watch(skin, tip, nine)
     if nine then
         if not hooked[tip] and pcall(hooksecurefunc, tip, "Show", Safe) then hooked[tip] = true end
-    elseif type(tip.SetScript) == "function" and type(tip.GetScript) == "function" then
-        local old = tip:GetScript("OnShow")
-        skin:Remember(tip, "onshow", function() tip:SetScript("OnShow", old) end)
-        tip:SetScript("OnShow", function(self, ...)
-            if old then old(self, ...) end
-            Safe(self)
-        end)
+    elseif not hooked[tip] and type(tip.HookScript) == "function" then
+        if pcall(tip.HookScript, tip, "OnShow", function(self) Safe(self) end) then hooked[tip] = true end
     end
 end
 

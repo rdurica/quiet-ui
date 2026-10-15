@@ -84,12 +84,12 @@ end
 
 local function HideChrome(obj, depth)
     if Parchment.IsTexture(obj) then
-        Parchment.Hold(obj, 0)
+        Parchment.Hide(obj)
         return
     end
     if not Parchment.Usable(obj) or (depth or 0) > 2 then return end
     for _, region in ipairs(Parchment.Regions(obj)) do
-        if Parchment.IsTexture(region) then Parchment.Hold(region, 0) end
+        if Parchment.IsTexture(region) then Parchment.Hide(region) end
     end
     for _, key in ipairs({ "NineSlice", "Bg" }) do
         local child = obj[key]
@@ -126,12 +126,12 @@ local function SkinWindow(def)
         if type(obj) == "table" then HideChrome(obj) end
     end
     for _, name in ipairs(def.extra or {}) do
-        Parchment.Hold(_G[name], 0)
+        Parchment.Hide(_G[name])
     end
     for _, name in ipairs(def.panels) do
         local panel = _G[name]
         if Parchment.Usable(panel) then
-            for _, key in ipairs(PANEL_KEYS) do Parchment.Hold(panel[key], 0) end
+            for _, key in ipairs(PANEL_KEYS) do Parchment.Hide(panel[key]) end
         end
     end
     for _, ref in ipairs(def.scrolls) do
@@ -166,7 +166,7 @@ end
 function Parchment.Restore()
     Parchment.State().active = false
     local ok, err = pcall(function()
-        Parchment.ReleaseAll()
+        Parchment.State().skin = nil
         for _, state in pairs(windows) do Parchment.Try(state.layer, "Hide") end
         local st = Parchment.State()
         for b, s in pairs(st.skins) do Parchment.RestoreButton(b, s) end
@@ -176,13 +176,16 @@ function Parchment.Restore()
     if not ok then ns.Report("parchment restore", err) end
 end
 
-function Parchment.Apply()
-    Parchment.State().active = true
+function Parchment.Apply(skin)
+    local st = Parchment.State()
+    st.active = true
+    st.skin = skin
     for _, def in ipairs(WINDOWS) do ApplyWindow(def) end
 end
 
-function Parchment.Event(event)
+function Parchment.Event(event, skin)
     if not Parchment.Active() then return end
+    if skin then Parchment.State().skin = skin end
     local name = EVENT_WINDOW[event]
     for _, def in ipairs(WINDOWS) do
         if def.name == name then ApplyWindow(def) end

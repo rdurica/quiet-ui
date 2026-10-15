@@ -114,13 +114,13 @@ function Skin:Outline(font)
     self:Set(font, "SetFont", face, size, flags == "" and "OUTLINE" or (flags .. ",OUTLINE"))
 end
 
--- Art held at alpha 0 against Blizzard's SetAlpha, released by Undo.
-function Skin:Hold(texture)
+-- Art held at alpha 0 (or the given alpha) against Blizzard's SetAlpha, released by Undo.
+function Skin:Hold(texture, alpha)
     if not Ready("Hold", texture, "SetAlpha", "GetAlpha") then return end
     if First(self, texture, "hold") then
         Push(self, function() ns.ReleaseAlpha(texture, true) end)
     end
-    ns.HoldAlpha(texture, 0)
+    ns.HoldAlpha(texture, alpha or 0)
 end
 
 -- Own regions are created once per frame, hidden by Undo and reused.

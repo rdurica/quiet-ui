@@ -26,7 +26,7 @@ local FILL_ALPHA, DISABLED_ALPHA = 0.95, 0.35
 function Parchment.State()
     if not Parchment._state then
         Parchment._state = {
-            held = {}, saved = {}, skins = {}, lifts = {}, titles = {},
+            skins = {}, lifts = {}, titles = {},
             hooked = setmetatable({}, { __mode = "k" }), active = false,
         }
     end
@@ -60,49 +60,15 @@ function Parchment.Regions(frame)
     return ok and list or {}
 end
 
-local function SetHeldAlpha(tex, alpha)
-    tex._quietApplying = true
-    pcall(tex.SetAlpha, tex, alpha)
-    tex._quietApplying = false
+-- Blizzard art is held only through the Windows skin journal, so each texture has one shared alpha hold.
+function Parchment.Hide(tex)
+    local skin = Parchment.State().skin
+    if skin and Parchment.IsTexture(tex) then skin:Hold(tex) end
 end
 
-local function Hook(tex)
-    if tex._quietParchmentHook then return end
-    tex._quietParchmentHook = true
-    local st = Parchment.State()
-    pcall(hooksecurefunc, tex, "SetAlpha", function(self, alpha)
-        local want = st.held[self]
-        if want == nil or self._quietApplying then return end
-        local plain = not ns.IsSecret(alpha) and type(alpha) == "number"
-        if plain and st.saved[self] ~= nil then st.saved[self] = alpha end
-        if not Parchment.Active() then return end
-        if plain and math.abs(alpha - want) < 0.01 then return end
-        SetHeldAlpha(self, want)
-    end)
-end
-
-function Parchment.Hold(tex, want)
-    if not Parchment.IsTexture(tex) or type(tex.SetAlpha) ~= "function" then return end
-    local st = Parchment.State()
-    local alpha = Parchment.Try(tex, "GetAlpha")
-    local secret = ns.IsSecret(alpha)
-    if st.saved[tex] == nil then
-        st.saved[tex] = (not secret and type(alpha) == "number") and alpha or 1
-    end
-    st.held[tex] = want
-    Hook(tex)
-    if secret or type(alpha) ~= "number" or math.abs(alpha - want) >= 0.01 then
-        SetHeldAlpha(tex, want)
-    end
-end
-
-function Parchment.ReleaseAll()
-    local st = Parchment.State()
-    for tex, alpha in pairs(st.saved) do
-        st.held[tex] = nil
-        st.saved[tex] = nil
-        SetHeldAlpha(tex, alpha)
-    end
+function Parchment.Dim(tex, alpha)
+    local skin = Parchment.State().skin
+    if skin and Parchment.IsTexture(tex) then skin:Hold(tex, alpha) end
 end
 
 -- One HookScript per frame and script for the whole session; the bodies check Parchment.Active(),
@@ -132,11 +98,11 @@ function Parchment.DimScrollBar(owner)
     local thumb = Parchment.Try(bar, "GetThumbTexture")
     local function dim(obj, skip)
         if Parchment.IsTexture(obj) then
-            if obj ~= skip then Parchment.Hold(obj, TRACK_ALPHA) end
+            if obj ~= skip then Parchment.Dim(obj, TRACK_ALPHA) end
             return
         end
         for _, region in ipairs(Parchment.Regions(obj)) do
-            if Parchment.IsTexture(region) and region ~= skip then Parchment.Hold(region, TRACK_ALPHA) end
+            if Parchment.IsTexture(region) and region ~= skip then Parchment.Dim(region, TRACK_ALPHA) end
         end
     end
     dim(bar, thumb)
@@ -255,7 +221,7 @@ function Parchment.SkinButton(win, b, role, side, glyph)
     local st = Parchment.State()
     local s = st.skins[b]
     if not s then s = NewSkin(b, role, glyph) end
-    for _, tex in ipairs(ButtonTextures(b)) do Parchment.Hold(tex, 0) end
+    for _, tex in ipairs(ButtonTextures(b)) do Parchment.Hide(tex) end
     RememberPoints(b, s, role == "close")
     if role == "close" then
         Parchment.Try(b, "SetSize", CLOSE_SIZE, CLOSE_SIZE)

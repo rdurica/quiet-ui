@@ -39,7 +39,7 @@ local function Apply(skin)
     for _, name in ipairs({ "QuestFrame", "GossipFrame", "ItemTextFrame" }) do
         Modern.WindowChrome(skin, _G[name])
     end
-    Modern.Parchment.Apply()
+    Modern.Parchment.Apply(skin)
 end
 
 Modern.Register{
@@ -56,7 +56,7 @@ Modern.Register{
         if BAG_EVENTS[event] then
             Modern.Bags.Apply(skin)
         else
-            Modern.Parchment.Event(event)
+            Modern.Parchment.Event(event, skin)
         end
     end,
 }
