@@ -38,47 +38,61 @@ Restore: release held art and restore button textures, crops, fonts and colours;
 
 ## Unit frames
 
-Apply: skin player, pet, target, target of target and focus in place. Hold frame art hidden, theme health/power bar textures, and add their backgrounds and borders. Use the standard 2D portrait with square crop; remove supported portrait masks. Portrait borders are gold for elite, silver for rare/rareelite, red for bosses and themed otherwise. If the portrait source is itself round, retain it inside the square border for later in-game tuning. Player health colours follow class colours; NPC health follows reaction colours, reapplied after Blizzard changes them. Class colours off keeps Blizzard colours. Never read health or power values. Keep frame points, size and every existing fade rule.
+Apply: skin player, pet, target, target of target and focus in place. The retail 12.0 structure (`PlayerFrameContainer`, `TargetFrameContainer`, their content parts, `PetFrame` globals) is resolved at run time with the older flat names as fallbacks; missing or forbidden parts are skipped quietly.
+- Frame art (frame texture, alternate power and vehicle textures, combat flash, boss portrait frame, reputation colour strip) is held at alpha 0 against Blizzard's `SetAlpha`.
+- Health and power bars get the theme flat texture, a themed background and a 1 px border. Blizzard retexturing a bar (`SetStatusBarTexture`) puts the theme texture back.
+- Health colour: player units use their class colour and NPCs their reaction colour (class colours on); class colours off give a flat green, because the flat texture would otherwise be white. The colour is reapplied after every Blizzard `SetStatusBarColor` / `SetStatusBarTexture` and on target, focus, faction and classification events.
+- Power colour follows the power type (`PowerBarColor`) and is reapplied after `UnitFrameManaBar_UpdateType` (hooked with `hooksecurefunc`, no script replacement).
+- Standard 2D portrait with square crop; supported portrait masks are removed. Portrait borders are gold for elite, silver for rare/rareelite, red for bosses and themed otherwise (target only). If the portrait source is itself round, it is retained inside the square border for later in-game tuning.
+- Health and power values are never read. Frame points, size and every existing fade rule stay.
 
-Restore: restore textures, crops, masks and colours, release held art and hide own regions. Colour hooks stop applying when the area is off.
+Restore: restore textures, bar colours, crops and masks, release held art and hide own regions. The hooks stay installed but do nothing while the area is off.
 
 ## Windows and parchment
 
-Apply: dark chrome for character tabs/subpanels, spellbook, talents, quest log and bags. Resolve classic/newer spellbook and talent names, `QuestLogFrame`/`QuestMapFrame`, and combined or separate bags at run time. Keep talent-tree, spellbook-page and character-model content art. Bag icons are cropped square and quality colours remain on flat borders; bags retain Blizzard stacking. Character, spellbook, talents and quest log have title drag handles and saved positions; load-on-demand windows are skinned when loaded.
+Apply: dark chrome for character tabs/subpanels, spellbook, talents, quest log and bags. Resolve classic/newer spellbook and talent names, a standalone `QuestLogFrame`, and combined or separate bags at run time; absent ones are skipped silently. The 12.0 chrome (`PortraitFrameTemplate` / `ButtonFrameTemplate`: `NineSlice`, `Bg`, `TopTileStreaks`, the portrait in `PortraitContainer`, and the nested `Inset` with its own `NineSlice` and `Bg`) is held at alpha 0 through the skin journal, so Blizzard repainting it changes nothing; the title, close button and content stay. Panel tab art (`Left`/`Middle`/`Right` and the `Active` and `Disabled` variants, also on the spellbook `TabSystem`) is held and replaced by a dark fill with a thin border; the selected tab, shown by Blizzard through its `Active` art, gets the accent border. Keep talent-tree, spellbook-page and character-model content art. `QuestMapFrame` belongs to the map: it is never made movable, panelled or saved. The spellbook and talents window (`PlayerSpellsFrame`) is skinned after `Blizzard_PlayerSpells` loads.
+
+Bags: items come from `EnumerateValidItems()` / `Items` of `ContainerFrameN` and `ContainerFrameCombinedBags`. Item icons (`icon`) are cropped square, Blizzard's `IconBorder` is held hidden, and a flat 1 px border takes the quality colour that Blizzard sets on `IconBorder` (`SetItemButtonQuality`: shown and coloured per item) and returns to the theme border when the quality goes. The border follows `IconBorder` through hooks that do nothing while the area is off. Bags opened or refilled later (`BAG_UPDATE_DELAYED`, `UpdateItems`) are skinned too. Bags retain Blizzard stacking. Character, spellbook, talents and a standalone quest log have title drag handles and saved positions; load-on-demand windows are skinned when loaded.
 
 NPC quest, gossip and item text use the parchment behavior from branch 008: warm torn parchment extending 12 px past the frame, dark-ink title two pixels larger, flat red primary/grey secondary buttons in a bottom band, a small close cross and scroll content lifted above the band. Blizzard text, objectives, rewards and scripts stay. Reapply on show and relevant quest/gossip/item-text events.
 
-Restore: restore exact chrome, points, fonts, colours, crops, scroll anchors and button geometry; release holds and drag handles. Original window points return out of combat, or on combat end even after QuietUI is off. Saved positions remain.
+Restore: restore exact chrome, tab and item art, icon crops, `IconBorder`, points, fonts, colours, scroll anchors and button geometry; hide own borders and fills; release holds and drag handles. Original window points return out of combat, or on combat end even after QuietUI is off. Saved positions remain.
 
 ## Map
 
-Apply: dark chrome and a title drag handle on `WorldMapFrame`. Reopen at the saved character position; no point change or drag begins during combat.
+Apply: dark panel and border on `WorldMapFrame`, a title drag handle, and the 12.0 chrome held hidden: the map frame's own chrome and `BorderFrame` (`NineSlice`, `Bg`, `TopTileStreaks`, portrait, `Inset`, `InsetBorderTop`). The canvas (`ScrollContainer`), the blackout, the title and the quest log inside the map (`QuestMapFrame`) stay untouched. Reopen at the saved character position; no point change or drag begins during combat.
 
 Restore: original chrome and Blizzard position, immediately out of combat or deferred until combat ends. Saved positions remain.
 
 ## Minimap
 
-Apply: square mask, thin theme border and flat zone text strip. Hold the ring, decorations and zoom buttons hidden; disable zoom-button clicks and enable mouse-wheel zoom. The minimap, LFG eye, mail and tracking remain visible and usable. `GetMinimapShape()` returns `SQUARE`; the setup button projects onto the square edge.
+Apply: square mask, thin theme border and flat zone text strip. Hold the ring art hidden: `MinimapCluster.BorderTop` and `MinimapCompassTexture` on 12.0 (older clients: `MinimapBorder`, `MinimapNorthTag`). The zoom buttons (`Minimap.ZoomIn`, `ZoomOut`, `ZoomHitArea`, or the older `MinimapZoomIn` / `MinimapZoomOut`) are held at alpha 0 and cannot be clicked, even when Blizzard shows them on mouse over. Mouse-wheel zoom stays Blizzard's own; only a minimap without a wheel script gets a wheel handler. The minimap, queue button (LFG eye), mail, tracking and the expansion landing page button remain visible and usable and are never faded. `GetMinimapShape()` returns `SQUARE`; the setup button projects onto the square edge. A missing or forbidden part is skipped.
 
-Restore: exact original mask (round fallback when unreadable), shape function or nil, wheel script/enabled state, zoom-button mouse state and art alpha. The setup button returns to its circular placement. Hide own strip and border.
+Restore: exact original mask (the round `Textures\MinimapMask` when the client cannot read it), shape function or nil, wheel script/enabled state when it was changed, zoom-button mouse state and art alpha. The setup button returns to its circular placement. Hide own strip and border.
 
 ## Tooltips
 
-Apply: themed background and border on GameTooltip, item-reference and shopping tooltips, with NineSlice/backdrop compatibility. An item border follows item quality and a unit health bar uses the theme texture. No health values are read.
+Apply: themed background and a 1 px border on GameTooltip, item-reference and shopping tooltips. A tooltip with a `NineSlice` (all 12.0 tooltips) has that art held at alpha 0 and gets own regions; an older backdrop tooltip keeps `SetBackdropColor` / `SetBackdropBorderColor`. The unit health bar uses the theme texture; health values are never read. The border of an item follows its quality colour (`ITEM_QUALITY_COLORS`) and returns to the theme border when the tooltip is shown with anything else.
 
-Restore: original backdrop, border colours and health-bar texture; release chrome holds and hide own regions. Tooltip update hooks remain inert while off.
+Scripts are never replaced on a `NineSlice` tooltip and `OnTooltipSetItem` is never touched (it throws on 12.0). The quality comes from one `TooltipDataProcessor.AddTooltipPostCall` for items, registered once when the addon loads, and a `Show` hook. Both do nothing while the area is off and ignore a tooltip the area did not skin. Only an old backdrop tooltip without a `NineSlice` gets an `OnShow` wrapper, which restore puts back.
+
+Restore: original backdrop and border colours (old tooltips) and health-bar texture; release the held `NineSlice`, hide own regions. The hooks stay but do nothing while off.
 
 ## Buffs and debuffs
 
-Apply: square-crop buff, debuff and temporary-enchant icons, add thin borders (debuff dispel colour), and outline duration text beneath each icon. Keep aura fades and button size/layout.
+Apply: square-crop the icons of the buttons in `BuffFrame.auraFrames` and `DebuffFrame.auraFrames` (temporary enchants are among them), add a thin border around the icon and outline the duration text beneath it. Older clients are found through `BuffButtonN`, `DebuffButtonN`, `TempEnchantN` and the children of the frames. Private aura anchors (`isAuraAnchor`) and forbidden or incomplete buttons are skipped. A debuff border takes the dispel colour of `button.buttonInfo.debuffType` from `AuraUtil.GetAuraBorderColor` (`DebuffTypeColor` on older clients, red for a debuff without a type); every other aura gets the theme border. Blizzard's `DebuffBorder` and `TempEnchantBorder` art is held at alpha 0. Aura fades, frame alpha, button size and layout stay and the frames are never shown or hidden.
 
-Restore: original crops, duration font/anchors and art, hiding own borders. Updates stop skinning while the area is off.
+New buttons and changed dispel types are skinned again after Blizzard's `UpdateAuraButtons` (hooked with `hooksecurefunc`) and on the player's `UNIT_AURA`. `UNIT_AURA` for any other unit does no work.
+
+Restore: original crops, duration font and anchors, border art; own borders are hidden. The hooks stay but skin nothing while the area is off.
 
 ## XP and reputation
 
-Apply: own 6 px XP bar with rested overlay and a 4 px watched-reputation bar 2 px above it, parented to Blizzard's status container so existing fades still apply. Hold stock art hidden, keeping Blizzard mouse behavior and text. XP, exhaustion, level and faction events refresh the values. Ordinary gains interpolate over 0.4 s and play a short end glow; secret values go directly to widgets without arithmetic or comparison. Per-frame animation runs only while a gain is active.
+Apply: own 6 px XP bar and a 4 px watched-reputation bar 2 px above it, parented to Blizzard's status container (so existing fades still apply, and the bars never set their own alpha). Rested XP is a lighter bar one frame level behind the XP fill covering the XP value up to `min(xp + exhaustion, maximum)`. Reputation reads `C_Reputation.GetWatchedFactionData()` (`GetWatchedFactionInfo()` on older clients) with `currentReactionThreshold`, `nextReactionThreshold` and `currentStanding`; nothing watched (no data, or `factionID` 0) hides the bar until a faction is watched. Blizzard's bar art is held at alpha 0: the container's `BarFrameTexture` and textures, and for each tracking bar the `StatusBar` `Background`, `Underlay`, `Overlay` and fill, looked at again on every refresh because Blizzard swaps tracking bars. Blizzard's mouse behavior and text stay.
 
-Restore: stop animation, hide reusable own visuals and restore stock art. Container alpha and points remain owned by Blizzard and Faders.
+XP, exhaustion, level and faction events refresh the values. Ordinary gains interpolate over 0.4 s and play a short end glow, and the rested bar follows at once; a lower value (level up) is set directly. Secret values go directly to widgets; a secret XP, maximum or exhaustion skips the rested math and is never added or compared. Per-frame animation runs only while a gain is active and is removed afterwards.
+
+Restore: stop animation, hide reusable own bars and release the stock art. Container alpha and points remain owned by Blizzard and Faders.
 
 ## Reset positions
 

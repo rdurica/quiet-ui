@@ -1,7 +1,9 @@
 local _, ns = ...
 
--- Square minimap chrome.  Controls owned by Blizzard (tracking, mail and the
--- queue eye) deliberately stay out of this area.
+-- Square minimap chrome.  Controls owned by Blizzard (tracking, mail, the queue button and the
+-- landing page button) deliberately stay out of this area. Retail 12.0 names are resolved first
+-- (MinimapCluster.BorderTop, MinimapCompassTexture, Minimap.ZoomIn / ZoomOut / ZoomHitArea), the
+-- older flat names are the fallback.
 local Modern = ns.Modern
 
 local function Part(map, name)
@@ -17,19 +19,37 @@ local function Art(skin, frame)
     if ns.Usable(frame) then skin:Hold(frame) end
 end
 
-local function Zoom(skin, map, button)
-    if not ns.Usable(button) then return end
+-- Blizzard shows the zoom buttons from the minimap's OnEnter; the held alpha keeps them invisible.
+local function Zoom(skin, button)
+    if not ns.Usable(button) or type(button.EnableMouse) ~= "function" then return end
     skin:Hold(button)
     local mouse = button.IsMouseEnabled and button:IsMouseEnabled()
     skin:Remember(button, "mouse", function() button:EnableMouse(mouse) end)
     button:EnableMouse(false)
 end
 
-local function Wheel(map)
-    if not ns.Usable(map) then return end
+-- The retail minimap zooms with the wheel by itself; only an older minimap gets our handler.
+local function Wheel(skin, map)
+    if type(map.EnableMouseWheel) ~= "function" or type(map.SetScript) ~= "function" then return end
     local enabled = map.IsMouseWheelEnabled and map:IsMouseWheelEnabled()
     local previous = map.GetScript and map:GetScript("OnMouseWheel")
-    return enabled, previous
+    if enabled and previous then return end
+    skin:Remember(map, "wheel", function()
+        map:EnableMouseWheel(enabled)
+        map:SetScript("OnMouseWheel", previous)
+    end)
+    map:EnableMouseWheel(true)
+    map:SetScript("OnMouseWheel", function(_, delta)
+        local zoom = map.GetZoom and map:GetZoom() or 0
+        if delta > 0 and zoom < 5 and map.SetZoom then map:SetZoom(zoom + 1) end
+        if delta < 0 and zoom > 0 and map.SetZoom then map:SetZoom(zoom - 1) end
+    end)
+end
+
+local function Compass()
+    local compass = _G.MinimapCompassTexture
+    if compass == nil and ns.Usable(_G.MinimapBackdrop) then compass = _G.MinimapBackdrop.MinimapCompassTexture end
+    return compass
 end
 
 Modern.Register{
@@ -43,10 +63,14 @@ Modern.Register{
             skin:Remember(map, "mask", function() map:SetMaskTexture(old) end)
             map:SetMaskTexture("Interface\\Buttons\\WHITE8X8")
         end
+        local cluster = _G.MinimapCluster
+        Art(skin, ns.Usable(cluster) and cluster.BorderTop or nil)
+        Art(skin, Compass())
         Art(skin, Part(map, "MinimapBorder"))
         Art(skin, Part(map, "MinimapNorthTag"))
-        Zoom(skin, map, Part(map, "MinimapZoomIn"))
-        Zoom(skin, map, Part(map, "MinimapZoomOut"))
+        for _, key in ipairs({ "ZoomIn", "ZoomOut", "ZoomHitArea" }) do Zoom(skin, map[key]) end
+        Zoom(skin, Part(map, "MinimapZoomIn"))
+        Zoom(skin, Part(map, "MinimapZoomOut"))
         skin:Border(map)
         local strip = skin:Own(map, "zone strip", function()
             local frame = CreateFrame("Frame", nil, map)
@@ -62,19 +86,7 @@ Modern.Register{
             if ns.Usable(zone) and zone.SetPoint then skin:Set(zone, "SetPoint", "CENTER", strip, "CENTER", 0, 0) end
         end
 
-        local wheel, old = Wheel(map)
-        if map.EnableMouseWheel and map.SetScript then
-            skin:Remember(map, "wheel", function()
-                map:EnableMouseWheel(wheel)
-                map:SetScript("OnMouseWheel", old)
-            end)
-            map:EnableMouseWheel(true)
-            map:SetScript("OnMouseWheel", function(_, delta)
-                local zoom = map.GetZoom and map:GetZoom() or 0
-                if delta > 0 and zoom < 5 and map.SetZoom then map:SetZoom(zoom + 1) end
-                if delta < 0 and zoom > 0 and map.SetZoom then map:SetZoom(zoom - 1) end
-            end)
-        end
+        Wheel(skin, map)
 
         local shape = GetMinimapShape
         skin:Remember(map, "shape", function()

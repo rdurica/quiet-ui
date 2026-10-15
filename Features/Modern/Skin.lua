@@ -163,7 +163,7 @@ function Skin:Border(frame, color, anchor)
     local edges = Own(self, owner, "border:" .. tostring(anchor), function()
         local list = {}
         for _, edge in ipairs(EDGES) do
-            local line = owner:CreateTexture(nil, "BORDER")
+            local line = owner:CreateTexture(nil, "OVERLAY", nil, 7)
             if edge == "TOP" or edge == "BOTTOM" then
                 line:SetHeight(1)
                 line:SetPoint(edge .. "LEFT", anchor, edge .. "LEFT", 0, 0)

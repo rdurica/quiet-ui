@@ -1,45 +1,115 @@
 local _, ns = ...
 
+-- Aura icons. Retail 12.0 keeps the buttons of BuffFrame and DebuffFrame in `.auraFrames` (private
+-- aura anchors among them, flagged `isAuraAnchor`); older clients have named buttons or plain
+-- children. Blizzard's update reshows the border art and changes the dispel type, so the frames'
+-- UpdateAuraButtons is hooked (inert while the area is off). Only the player's UNIT_AURA matters.
+
 local Modern = ns.Modern
 
-local function Font(skin, font)
-    if not ns.Usable(font) or type(font.GetFont) ~= "function" or type(font.SetFont) ~= "function" then return end
-    local ok, face, size, flags = pcall(font.GetFont, font)
-    if ok then
-        skin:Set(font, "SetFont", face, size, (flags or "") .. "OUTLINE")
-        skin:Set(font, "SetPoint", "TOP", font:GetParent(), "BOTTOM", 0, -1)
-    end
+local active = false
+local hooked = setmetatable({}, { __mode = "k" })
+local OUTLINE = "OUTLINE"
+
+local function Texture(region)
+    return ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
 end
 
+local function Font(skin, font, icon)
+    if not ns.Usable(font) or type(font.GetFont) ~= "function" or type(font.SetFont) ~= "function" then return end
+    local ok, face, size, flags = pcall(font.GetFont, font)
+    if not ok then return end
+    flags = type(flags) == "string" and flags or ""
+    if not flags:find(OUTLINE, 1, true) then
+        skin:Set(font, "SetFont", face, size, flags == "" and OUTLINE or (flags .. "," .. OUTLINE))
+    end
+    skin:Set(font, "SetPoint", "TOP", icon, "BOTTOM", 0, -1)
+end
+
+local function Rgb(color)
+    if type(color) ~= "table" then return end
+    if type(color.GetRGB) == "function" then
+        local r, g, b = color:GetRGB()
+        return { r, g, b, 1 }
+    end
+    local r, g, b = color.r or color[1], color.g or color[2], color.b or color[3]
+    if r then return { r, g, b, 1 } end
+end
+
+-- The dispel colour of a debuff; nil for everything else (the theme border).
 local function Dispel(button)
-    local kind = button.DebuffType or button.debuffType
+    local info = button.buttonInfo
+    local kind = type(info) == "table" and info.debuffType or button.DebuffType or button.debuffType
+    if kind == nil and type(info) == "table" and info.auraType == "Debuff" then kind = "None" end
+    if kind == nil or ns.IsSecret(kind) then return end
+    if type(AuraUtil) == "table" and type(AuraUtil.GetAuraBorderColor) == "function" then
+        local ok, color = pcall(AuraUtil.GetAuraBorderColor, kind)
+        if ok and Rgb(color) then return Rgb(color) end
+    end
     local colours = _G.DebuffTypeColor
-    local c = type(colours) == "table" and colours[kind]
-    if type(c) == "table" then return { c.r or c[1], c.g or c[2], c.b or c[3], 1 } end
+    return Rgb(type(colours) == "table" and colours[kind])
 end
 
 local function Aura(skin, button)
-    if not ns.Usable(button) then return end
+    if not ns.Usable(button) or button.isAuraAnchor then return end
     local icon = button.Icon or button.icon or button.IconTexture
-    if not ns.Usable(icon) then return end
+    if not Texture(icon) then return end
     skin:Icon(icon)
-    skin:Border(button, Dispel(button))
-    Font(skin, button.Duration or button.duration)
+    skin:Border(button, Dispel(button), icon)
+    for _, key in ipairs({ "DebuffBorder", "TempEnchantBorder" }) do
+        if Texture(button[key]) then skin:Hold(button[key]) end
+    end
+    Font(skin, button.Duration or button.duration, icon)
+end
+
+local function Frames()
+    local list = {}
+    for _, name in ipairs({ "BuffFrame", "DebuffFrame", "TemporaryEnchantFrame" }) do
+        if ns.Usable(_G[name]) then list[#list + 1] = _G[name] end
+    end
+    return list
 end
 
 local function Scan(skin)
-    local prefixes = { "BuffButton", "DebuffButton", "TemporaryEnchantFrame", "TempEnchant" }
-    for _, prefix in ipairs(prefixes) do
+    local listed
+    for _, frame in ipairs(Frames()) do
+        if type(frame.auraFrames) == "table" then
+            listed = true
+            for _, button in ipairs(frame.auraFrames) do Aura(skin, button) end
+        elseif type(frame.GetChildren) == "function" then
+            for _, child in ipairs({ frame:GetChildren() }) do Aura(skin, child) end
+        end
+    end
+    if listed then return end
+    for _, prefix in ipairs({ "BuffButton", "DebuffButton", "TempEnchant" }) do
         for i = 1, 40 do Aura(skin, _G[prefix .. i]) end
     end
-    for _, frame in ipairs({ _G.BuffFrame, _G.DebuffFrame, _G.TemporaryEnchantFrame }) do
-        if ns.Usable(frame) and type(frame.GetChildren) == "function" then
-            for _, child in ipairs({ frame:GetChildren() }) do Aura(skin, child) end
+end
+
+local function Updated()
+    if active then ns.Run("modern auras", Scan, Modern.Skin("auras")) end
+end
+
+local function Watch()
+    for _, frame in ipairs(Frames()) do
+        if not hooked[frame] and type(frame.UpdateAuraButtons) == "function"
+            and pcall(hooksecurefunc, frame, "UpdateAuraButtons", Updated) then
+            hooked[frame] = true
         end
     end
 end
 
 Modern.Register{
     key = "auras", label = "Auras", events = { "PLAYER_ENTERING_WORLD", "UNIT_AURA" },
-    apply = Scan, onEvent = function(skin) Scan(skin) end,
+    apply = function(skin)
+        active = true
+        Watch()
+        Scan(skin)
+    end,
+    restore = function() active = false end,
+    onEvent = function(skin, event, unit)
+        if event == "UNIT_AURA" and unit ~= "player" then return end
+        Watch()
+        Scan(skin)
+    end,
 }
