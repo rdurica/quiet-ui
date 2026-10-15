@@ -24,24 +24,31 @@ function ns.Remember(frame)
     Alpha.saved[frame] = alpha
 end
 
+-- Puts the held alpha back; `alpha` is what Blizzard set, nil when it cannot be compared (SetAlphaFromBoolean).
+local function Reapply(self, alpha)
+    if self._quietApplying then return end
+    if not ns.DB().enabled then return end
+    if self._quietChat and ns.Settings.ModernChat and not ns.Settings.ModernChat() then return end
+    local want = self._quietSecret
+    if want == nil then
+        want = self._quietAlpha
+        if type(want) ~= "number" then return end
+        if alpha ~= nil and not ns.IsSecret(alpha) and math.abs(alpha - want) < 0.02 then return end
+    end
+    self._quietApplying = true
+    self:SetAlpha(want)
+    self._quietApplying = false
+end
+
 function ns.EnsureAlphaHook(frame)
     if not frame or frame._quietAlphaHook or not frame.SetAlpha then return end
     frame._quietAlphaHook = true
     Alpha.hooked[#Alpha.hooked + 1] = frame
-    pcall(hooksecurefunc, frame, "SetAlpha", function(self, alpha)
-        if self._quietApplying then return end
-        if not ns.DB().enabled then return end
-        if self._quietChat and ns.Settings.ModernChat and not ns.Settings.ModernChat() then return end
-        local want = self._quietSecret
-        if want == nil then
-            want = self._quietAlpha
-            if type(want) ~= "number" then return end
-            if not ns.IsSecret(alpha) and math.abs((alpha or 0) - want) < 0.02 then return end
-        end
-        self._quietApplying = true
-        self:SetAlpha(want)
-        self._quietApplying = false
-    end)
+    pcall(hooksecurefunc, frame, "SetAlpha", function(self, alpha) Reapply(self, alpha or 0) end)
+    -- 12.0 sets alpha from a (secret) boolean without going through SetAlpha.
+    if type(frame.SetAlphaFromBoolean) == "function" then
+        pcall(hooksecurefunc, frame, "SetAlphaFromBoolean", function(self) Reapply(self, nil) end)
+    end
 end
 
 function ns.PushAlpha(frame, alpha)

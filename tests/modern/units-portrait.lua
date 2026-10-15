@@ -18,6 +18,8 @@ h.test("portraits are held at alpha 0 in place and return on restore", function(
         A.alpha(p, 0, f:GetName() .. " portrait held")
         p:SetAlpha(1)
         A.alpha(p, 0, f:GetName() .. " Blizzard cannot show it again")
+        p:SetAlphaFromBoolean(true, 1, 0.55)
+        A.alpha(p, 0, f:GetName() .. " SetAlphaFromBoolean cannot show it again")
         A.eq(p:GetNumPoints(), 0, f:GetName() .. " portrait not moved")
     end
     ns.Modern.Restore()

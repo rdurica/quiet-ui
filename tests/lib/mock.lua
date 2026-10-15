@@ -95,6 +95,8 @@ function Frame:GetEffectiveAlpha()
     return a
 end
 function Frame:SetAlpha(v) bump(self, "SetAlpha"); self._alpha = v end
+-- 12.0: sets the alpha without going through SetAlpha, so a SetAlpha hook does not see it.
+function Frame:SetAlphaFromBoolean(on, yes, no) bump(self, "SetAlphaFromBoolean"); self._alpha = on and (yes or 1) or (no or 0) end
 function Frame:IsShown() return self._shown end
 function Frame:IsVisible()
     local p = self
