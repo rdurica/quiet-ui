@@ -9,8 +9,8 @@ local function Texture(button, ...)
     end
 end
 
--- The 12.0 IconMask is a rounded clip on the icon; the square crop needs it off.
-local function NoMask(skin, icon)
+-- A mask is a rounded clip on an icon or portrait; the square crop needs it off. Shared with Units.
+function Modern.NoMask(skin, icon)
     if type(icon.GetNumMaskTextures) ~= "function" or type(icon.GetMaskTexture) ~= "function"
         or type(icon.RemoveMaskTexture) ~= "function" or type(icon.AddMaskTexture) ~= "function" then return end
     local count = icon:GetNumMaskTextures()
@@ -30,7 +30,7 @@ local function Button(skin, button)
     local icon = Texture(button, "Icon", "icon", "IconTexture")
     if not icon then return end
     skin:Icon(icon)
-    NoMask(skin, icon)
+    Modern.NoMask(skin, icon)
     for _, name in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "CheckedTexture", "Border", "SlotBackground", "SlotArt" }) do
         local art = button[name]
         local getter = button["Get" .. name]

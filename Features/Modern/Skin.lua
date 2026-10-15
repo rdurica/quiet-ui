@@ -124,7 +124,7 @@ function Skin:Hold(texture)
 end
 
 -- Own regions are created once per frame, hidden by Undo and reused.
-local function Own(self, frame, name, create)
+local function OwnRegion(self, frame, name, create)
     local own = self.regions[frame]
     if not own then
         own = {}
@@ -136,7 +136,7 @@ end
 
 function Skin:Own(frame, key, create)
     if not ns.Usable(frame) or type(key) ~= "string" or type(create) ~= "function" then return end
-    local region = Own(self, frame, key, create)
+    local region = OwnRegion(self, frame, key, create)
     self:Remember(frame, "own:" .. key, function()
         if type(region) == "table" and type(region.Hide) == "function" then
             region:Hide()
@@ -155,21 +155,24 @@ local function Hideable(self, frame, name, regions)
     end
 end
 
-function Skin:Border(frame, color, anchor)
-    -- A portrait is a texture and cannot create children.  Its border belongs
-    -- to the nearest frame but follows the texture's edges.
-    anchor = anchor or frame
-    local owner = frame
-    local texture = ns.Usable(owner) and type(owner.GetObjectType) == "function"
-        and owner:GetObjectType() == "Texture"
-    if texture or (not ns.Usable(owner) or type(owner.CreateTexture) ~= "function")
-        and ns.Usable(frame) and type(frame.GetParent) == "function" then
+-- A texture cannot create children, so its border belongs to the nearest frame.
+local function BorderOwner(frame)
+    if not ns.Usable(frame) then return frame end
+    local isTexture = type(frame.GetObjectType) == "function" and frame:GetObjectType() == "Texture"
+    if (isTexture or type(frame.CreateTexture) ~= "function") and type(frame.GetParent) == "function" then
         local ok, parent = pcall(frame.GetParent, frame)
-        owner = ok and parent or nil
+        return ok and parent or nil
     end
+    return frame
+end
+
+-- The border follows the edges of `anchor` (default: the frame itself).
+function Skin:Border(frame, color, anchor)
+    anchor = anchor or frame
+    local owner = BorderOwner(frame)
     if not Ready("Border", owner, "CreateTexture") or not ns.Usable(anchor) then return end
     local theme = Modern.Theme()
-    local edges = Own(self, owner, "border:" .. tostring(anchor), function()
+    local edges = OwnRegion(self, owner, "border:" .. tostring(anchor), function()
         local list = {}
         for _, edge in ipairs(EDGES) do
             local line = owner:CreateTexture(nil, "OVERLAY", nil, 7)
@@ -197,7 +200,7 @@ end
 function Skin:Panel(frame)
     if not Ready("Panel", frame, "CreateTexture") then return end
     local theme = Modern.Theme()
-    local fill = Own(self, frame, "panel", function()
+    local fill = OwnRegion(self, frame, "panel", function()
         local texture = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
         texture:SetAllPoints(frame)
         return texture

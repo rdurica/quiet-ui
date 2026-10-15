@@ -6,13 +6,10 @@ local _, ns = ...
 -- older flat names are the fallback.
 local Modern = ns.Modern
 
-local function Part(map, name)
+-- Named parts only: a named child is also a global, so no scan of the minimap's children is needed.
+local function Part(name)
     local frame = _G[name]
     if ns.Usable(frame) then return frame end
-    if not ns.Usable(map) or not map.GetChildren then return end
-    for _, child in ipairs({ map:GetChildren() }) do
-        if child.GetName and child:GetName() == name then return child end
-    end
 end
 
 local function Art(skin, frame)
@@ -52,47 +49,59 @@ local function Compass()
     return compass
 end
 
+local function Mask(skin, map)
+    if not map.SetMaskTexture then return end
+    local old = map.GetMaskTexture and map:GetMaskTexture() or "Textures\\MinimapMask"
+    skin:Remember(map, "mask", function() map:SetMaskTexture(old) end)
+    map:SetMaskTexture("Interface\\Buttons\\WHITE8X8")
+end
+
+-- Flat strip above the minimap that carries the zone text.
+local function Strip(skin, map)
+    local strip = skin:Own(map, "zone strip", function()
+        local frame = CreateFrame("Frame", nil, map)
+        frame:SetHeight(16)
+        frame:SetPoint("BOTTOMLEFT", map, "TOPLEFT", 0, 2)
+        frame:SetPoint("BOTTOMRIGHT", map, "TOPRIGHT", 0, 2)
+        return frame
+    end)
+    if not ns.Usable(strip) then return end
+    skin:Panel(strip)
+    skin:Border(strip)
+    strip:Show()
+    local zone = _G.MinimapZoneText
+    if ns.Usable(zone) and zone.SetPoint then skin:Set(zone, "SetPoint", "CENTER", strip, "CENTER", 0, 0) end
+end
+
+-- The global only exists while the area is applied; restore puts back whatever was there.
+local function Shape(skin, map)
+    local shape = GetMinimapShape
+    skin:Remember(map, "shape", function()
+        GetMinimapShape = shape
+        if ns.Setup and ns.Setup.PlaceMinimap then ns.Setup.PlaceMinimap() end
+    end)
+    GetMinimapShape = function() return "SQUARE" end
+    if ns.Setup and ns.Setup.PlaceMinimap then ns.Setup.PlaceMinimap() end
+end
+
 Modern.Register{
     key = "minimap",
     label = "Minimap",
     apply = function(skin)
         local map = Minimap
         if not ns.Usable(map) then return end
-        if map.SetMaskTexture then
-            local old = map.GetMaskTexture and map:GetMaskTexture() or "Textures\\MinimapMask"
-            skin:Remember(map, "mask", function() map:SetMaskTexture(old) end)
-            map:SetMaskTexture("Interface\\Buttons\\WHITE8X8")
-        end
+        Mask(skin, map)
         local cluster = _G.MinimapCluster
         Art(skin, ns.Usable(cluster) and cluster.BorderTop or nil)
         Art(skin, Compass())
-        Art(skin, Part(map, "MinimapBorder"))
-        Art(skin, Part(map, "MinimapNorthTag"))
+        Art(skin, Part("MinimapBorder"))
+        Art(skin, Part("MinimapNorthTag"))
         for _, key in ipairs({ "ZoomIn", "ZoomOut", "ZoomHitArea" }) do Zoom(skin, map[key]) end
-        Zoom(skin, Part(map, "MinimapZoomIn"))
-        Zoom(skin, Part(map, "MinimapZoomOut"))
+        Zoom(skin, Part("MinimapZoomIn"))
+        Zoom(skin, Part("MinimapZoomOut"))
         skin:Border(map)
-        local strip = skin:Own(map, "zone strip", function()
-            local frame = CreateFrame("Frame", nil, map)
-            frame:SetHeight(16)
-            frame:SetPoint("BOTTOMLEFT", map, "TOPLEFT", 0, 2)
-            frame:SetPoint("BOTTOMRIGHT", map, "TOPRIGHT", 0, 2)
-            return frame
-        end)
-        if ns.Usable(strip) then
-            skin:Panel(strip); skin:Border(strip); strip:Show()
-            local zone = _G.MinimapZoneText
-            if ns.Usable(zone) and zone.SetPoint then skin:Set(zone, "SetPoint", "CENTER", strip, "CENTER", 0, 0) end
-        end
-
+        Strip(skin, map)
         Wheel(skin, map)
-
-        local shape = GetMinimapShape
-        skin:Remember(map, "shape", function()
-            GetMinimapShape = shape
-            if ns.Setup and ns.Setup.PlaceMinimap then ns.Setup.PlaceMinimap() end
-        end)
-        GetMinimapShape = function() return "SQUARE" end
-        if ns.Setup and ns.Setup.PlaceMinimap then ns.Setup.PlaceMinimap() end
+        Shape(skin, map)
     end,
 }

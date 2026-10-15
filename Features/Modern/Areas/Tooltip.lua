@@ -9,7 +9,7 @@ local _, ns = ...
 local Modern = ns.Modern
 
 local TIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2" }
-local skinned = setmetatable({}, { __mode = "k" })
+local skinned = setmetatable({}, { __mode = "k" })    -- tip -> { skin, nine } while the area is applied
 local hooked = setmetatable({}, { __mode = "k" })
 
 local function Link(tip, data)
@@ -39,14 +39,15 @@ end
 
 -- Item quality colour, or the theme border when the tooltip shows something else.
 local function Paint(tip, data)
-    if not skinned[tip] or not ns.Usable(tip) then return end
+    local record = skinned[tip]
+    if not record or not ns.Usable(tip) then return end
     local link = Link(tip, data)
     local quality = link and Quality(link, ItemID(link, data))
     local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
     local rgb = color and { color.r, color.g, color.b, color.a or 1 } or Modern.Theme().border
     -- With a NineSlice the backdrop colours belong to the held art; only own lines are painted.
-    if not skinned[tip].nine and tip.SetBackdropBorderColor then tip:SetBackdropBorderColor(unpack(rgb)) end
-    Modern.Skin("tooltip"):Border(tip, rgb)
+    if not record.nine and tip.SetBackdropBorderColor then tip:SetBackdropBorderColor(unpack(rgb)) end
+    record.skin:Border(tip, rgb)
 end
 
 local function Safe(tip, data)
@@ -99,7 +100,7 @@ local function ApplyTip(skin, tip)
     skin:Border(tip)
     if nine then skin:Hold(nine) else Backdrop(skin, tip) end
     Bar(skin, tip)
-    skinned[tip] = { nine = nine ~= nil }
+    skinned[tip] = { skin = skin, nine = nine ~= nil }
     Watch(skin, tip, nine ~= nil)
 end
 

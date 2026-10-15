@@ -23,7 +23,11 @@ local function Items(bag)
     if type(bag.EnumerateValidItems) == "function" then
         local ok, iter, state, init = pcall(bag.EnumerateValidItems, bag)
         if ok and type(iter) == "function" then
-            for _, button in iter, state, init do Add(button) end
+            -- Index-and-button or pool style (button, true): the button is the table either way.
+            for key, value in iter, state, init do
+                Add(value)
+                Add(key)
+            end
         end
     end
     if type(bag.Items) == "table" then

@@ -60,9 +60,14 @@ local function Style(xp, reputation)
     reputation:SetStatusBarColor(unpack(theme.accent))
 end
 
+-- A secret value is present by definition and is never compared, not even with nil.
+local function Present(value)
+    return ns.IsSecret(value) or value ~= nil
+end
+
 local function SetRange(bar, low, high, value)
-    if not bar or value == nil then return end
-    if low ~= nil and high ~= nil and bar.SetMinMaxValues then bar:SetMinMaxValues(low, high) end
+    if not bar or not Present(value) then return end
+    if Present(low) and Present(high) and bar.SetMinMaxValues then bar:SetMinMaxValues(low, high) end
     bar:SetValue(value)
 end
 
@@ -82,26 +87,28 @@ local function SetRested(current, maximum)
     end
 end
 
--- Blizzard's "no faction watched" is nil data or factionID 0.
+-- Blizzard's "no faction watched" is nil data or factionID 0. Returns true and the values (which
+-- may be secret) when a faction is watched.
 local function Watched()
     if type(C_Reputation) == "table" and type(C_Reputation.GetWatchedFactionData) == "function" then
         local data = C_Reputation.GetWatchedFactionData()
-        if type(data) ~= "table" or not data.factionID or data.factionID == 0 then return end
-        return data.currentReactionThreshold, data.nextReactionThreshold, data.currentStanding
+        if type(data) ~= "table" or not data.factionID or data.factionID == 0 then return false end
+        return true, data.currentReactionThreshold, data.nextReactionThreshold, data.currentStanding
     end
     if type(GetWatchedFactionInfo) == "function" then
         local name, _, low, high, value = GetWatchedFactionInfo()
-        if name then return low, high, value end
+        if name then return true, low, high, value end
     end
+    return false
 end
 
 local function SetReputation()
     local bar = state.reputation
     if not bar then return end
-    local low, high, value = Watched()
-    if value == nil then
+    local watched, low, high, value = Watched()
+    if not watched or not Present(value) then
         bar:Hide()
-    elseif Plain(low) and Plain(high) and Plain(value) then
+    else
         SetRange(bar, low, high, value)
         bar:Show()
     end
@@ -127,7 +134,7 @@ local function SetXP(animate)
     local bar = state.xp
     if not bar or type(UnitXP) ~= "function" then return end
     local value = UnitXP("player")
-    if value == nil then return end
+    if not Present(value) then return end
     local maximum = type(UnitXPMax) == "function" and UnitXPMax("player") or nil
     if ns.IsSecret(value) then
         bar:SetScript("OnUpdate", nil)
@@ -138,13 +145,15 @@ local function SetXP(animate)
     end
     local old = state.last
     state.last = value
-    if animate and Plain(old) and Plain(value) and value > old then
+    -- The range follows a level up even while a gain is still running.
+    if Present(maximum) and bar.SetMinMaxValues then bar:SetMinMaxValues(0, maximum) end
+    if animate and Plain(old) and value > old then
         Animate(bar, old, value)
     elseif state.target ~= value then
         -- A gain still running toward this value keeps running.
         bar:SetScript("OnUpdate", nil)
         state.target = nil
-        SetRange(bar, 0, maximum, value)
+        bar:SetValue(value)
     end
     return value, maximum
 end
@@ -199,6 +208,7 @@ Modern.Register{
         if state.xp then state.xp:SetScript("OnUpdate", nil); state.xp:Hide() end
         if state.reputation then state.reputation:Hide() end
         if state.rested then state.rested:Hide() end
+        if state.glow then state.glow:Stop() end
         state.target = nil
     end,
     onEvent = function(skin, event, unit)

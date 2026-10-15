@@ -73,8 +73,6 @@ local function HealthColour(unit)
     elseif type(UnitReaction) == "function" and type(FACTION_BAR_COLORS) == "table" then
         local reaction = UnitReaction(unit, "player")
         if ns.IsSecret(reaction) then return unpack(GREEN) end
-        if reaction == nil then reaction = UnitReaction(unit) end
-        if ns.IsSecret(reaction) then return unpack(GREEN) end
         r, g, b = Colours(FACTION_BAR_COLORS[reaction])
     end
     if r and g and b then return r, g, b end
@@ -164,16 +162,7 @@ local function Portrait(skin, frame, unit, name)
     local portrait = Find(frame, PORTRAIT_PATHS, name == "PetFrame" and "PetPortrait" or nil)
     if not portrait then return end
     skin:Icon(portrait)
-    if type(portrait.GetNumMaskTextures) == "function" and type(portrait.GetMaskTexture) == "function"
-        and type(portrait.RemoveMaskTexture) == "function" and type(portrait.AddMaskTexture) == "function" then
-        local masks = {}
-        for i = 1, portrait:GetNumMaskTextures() do masks[#masks + 1] = portrait:GetMaskTexture(i) end
-        if skin:Remember(portrait, "masks", function()
-            for i = 1, #masks do pcall(portrait.AddMaskTexture, portrait, masks[i]) end
-        end) then
-            for _, mask in ipairs(masks) do pcall(portrait.RemoveMaskTexture, portrait, mask) end
-        end
-    end
+    Modern.NoMask(skin, portrait)
     local color = Modern.Theme().border
     if unit == "target" and type(UnitClassification) == "function" then
         local kind = UnitClassification(unit)
@@ -200,10 +189,21 @@ local function Apply(skin)
     for _, spec in ipairs(FRAMES) do Unit(skin, spec) end
 end
 
+-- UNIT_FACTION and UNIT_CLASSIFICATION_CHANGED fire for every unit (nameplates, party): only the skinned
+-- ones matter. A secret token cannot be told apart, so it skins to be safe.
+local function OnEvent(skin, _, unit)
+    if type(unit) == "string" and not ns.IsSecret(unit) then
+        local tracked = false
+        for _, spec in ipairs(FRAMES) do tracked = tracked or spec[2] == unit end
+        if not tracked then return end
+    end
+    Apply(skin)
+end
+
 Modern.Register{
     key = "units", label = "Unit frames",
     events = { "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "UNIT_FACTION", "UNIT_CLASSIFICATION_CHANGED" },
-    apply = Apply, onEvent = function(skin) Apply(skin) end,
+    apply = Apply, onEvent = OnEvent,
     -- Untrack first: the journal's undo then restores texture and colour without the hooks answering.
     restore = function() for bar in pairs(tracked) do tracked[bar] = nil end end,
 }

@@ -16,8 +16,8 @@ local function Character(skin)
     end
 end
 
--- The first frame the client has, so a classic and a newer window are never both moved.
-local function Movable(skin, ...)
+-- The first window the client has, so a classic and a newer variant are never both skinned and moved.
+local function FirstWindow(skin, ...)
     for index = 1, select("#", ...) do
         local name = select(index, ...)
         local frame = _G[name]
@@ -30,9 +30,9 @@ end
 
 local function Apply(skin)
     Character(skin)
-    Movable(skin, "SpellBookFrame", "PlayerSpellsFrame")
-    Movable(skin, "PlayerTalentFrame", "ClassTalentFrame")
-    Movable(skin, "QuestLogFrame")
+    FirstWindow(skin, "SpellBookFrame", "PlayerSpellsFrame")
+    FirstWindow(skin, "PlayerTalentFrame", "ClassTalentFrame")
+    FirstWindow(skin, "QuestLogFrame")
     Modern.Bags.Apply(skin)
     -- Parchment owns the replacement layer and button band; the common journal holds
     -- the Blizzard chrome as well so it remains hidden when the client repaints it.

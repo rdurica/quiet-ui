@@ -26,20 +26,15 @@ local function PlaceMinimap(button)
     local h = map:GetHeight()
     if type(h) ~= "number" or h <= 0 then h = w end
     local x, y = math.cos(rad), math.sin(rad)
-    local square = type(GetMinimapShape) == "function" and GetMinimapShape() == "SQUARE"
-    if square then
+    local radiusX, radiusY = w / 2 + 5, w / 2 + 5
+    if type(GetMinimapShape) == "function" and GetMinimapShape() == "SQUARE" then
+        -- Project the direction onto the square edge instead of the circle.
         local edge = math.max(math.abs(x), math.abs(y))
-        if edge > 0 then
-            x = x / edge * (w / 2 + 5)
-            y = y / edge * (h / 2 + 5)
-        end
-        button:ClearAllPoints()
-        button:SetPoint("CENTER", map, "CENTER", x, y)
-        return
+        x, y = x / edge, y / edge
+        radiusY = h / 2 + 5
     end
-    local radius = w / 2 + 5
     button:ClearAllPoints()
-    button:SetPoint("CENTER", map, "CENTER", x * radius, y * radius)
+    button:SetPoint("CENTER", map, "CENTER", x * radiusX, y * radiusY)
 end
 
 local function CursorDegrees(map)

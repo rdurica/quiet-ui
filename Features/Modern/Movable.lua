@@ -130,10 +130,11 @@ end
 -- Combat ended, or Blizzard positioned its panels: saved or original wanted points go back.
 function Modern.PlaceWindows(onlyPending)
     for frame, entry in pairs(windows) do
-        if frame:IsShown() and (not onlyPending or pending[frame]) then
+        if not onlyPending or pending[frame] then
             if pending[frame] == "original" or entry.reset then
+                -- A hidden window gets Blizzard's point back too, so it does not show up displaced.
                 ns.Run("modern window " .. entry.key, RestoreOriginal, frame, entry)
-            elseif entry.active then
+            elseif entry.active and frame:IsShown() then
                 ns.Run("modern window " .. entry.key, Place, frame, entry)
             end
         end
