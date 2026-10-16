@@ -124,6 +124,21 @@ h.test("12.0 buttons keep visible pressed and checked feedback in theme colours"
     end
 end)
 
+h.test("12.0 a secret checked state reaches the checked feedback without a boolean test", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local _, buttons = fixture(1)
+    local button = buttons[1]
+    local seen = known(button)
+    button.GetChecked = function() return mock:secret(true) end
+    enable(ns)
+    local theme = ns.Modern.Theme()
+    local before = mock.calls.SetAlphaFromBoolean or 0
+    button:SetChecked(true)
+    A.eq(L.errors(mock), 0, "no Report for a secret GetChecked")
+    A.ok((mock.calls.SetAlphaFromBoolean or 0) > before, "the secret value goes to SetAlphaFromBoolean")
+    A.ok(next(B.visibleOwn(button, theme, seen)) ~= nil, "the checked region is driven by the secret value")
+end)
+
 h.test("12.0 state feedback regions go away when the area is switched off", function(t)
     local A, ns = t.assert, t.ns
     local _, buttons = fixture()

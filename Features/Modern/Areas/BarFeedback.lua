@@ -24,13 +24,29 @@ local function Show(region, on)
     if on then region:Show() else region:Hide() end
 end
 
+-- 12.0 may return a secret checked state; it goes to the widget and is never tested.
+local function ShowChecked(region, checked)
+    if ns.IsSecret(checked) then
+        region:Show()
+        if type(region.SetAlphaFromBoolean) == "function" then
+            region:SetAlphaFromBoolean(checked, 1, 0)
+        else
+            region:Hide()
+        end
+        return
+    end
+    region:SetAlpha(1)
+    Show(region, checked and true or false)
+end
+
 local function Refresh(button)
     local info = tracked[button]
     if not info then return end
     local state = type(button.GetButtonState) == "function" and button:GetButtonState()
+    if ns.IsSecret(state) then state = nil end
     local checked = type(button.GetChecked) == "function" and button:GetChecked()
     Show(info.pushed, info.down or state == "PUSHED")
-    Show(info.checked, checked and true or false)
+    ShowChecked(info.checked, checked)
 end
 
 local function Watch(button)
