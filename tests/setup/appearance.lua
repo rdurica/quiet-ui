@@ -65,8 +65,8 @@ for _, mode in ipairs(modes) do
             expect(ui.backdrop and ui.backdrop.edgeFile:find('Gold'), 'gold fallback keeps gold frame')
         else expect(ui.title and ui.close, 'flat fallback keeps title and usable close') end
         local height, width = ui.height, ui.width
-        local labels = { 'General', 'Visible', 'Bars', 'Groups', 'Player', 'Misc.', 'Info' }
-        expect(#ui.tabs == 7, 'seven tabs retained')
+        local labels = { 'General', 'Visible', 'Bars', 'Groups', 'Player', 'Misc.', 'Modern', 'Info' }
+        expect(#ui.tabs == 8, 'eight tabs')
         for index, tab in ipairs(ui.tabs) do
             click(tab)
             expect(tab.label.text == labels[index], 'tab order ' .. index)

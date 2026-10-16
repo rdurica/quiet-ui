@@ -15,6 +15,7 @@ local TABS = {
     { id = "groups", label = "Groups", height = 320 },
     { id = "player", label = "Player", height = 306 },
     { id = "chat", label = "Misc.", height = 320 },
+    { id = "modern", label = "Modern", height = 320 },
     { id = "info", label = "Info", height = 148 },
 }
 
@@ -218,7 +219,7 @@ local function CreateSetup()
     widget.tabs = {}
     widget.pages = {}
     -- Keep every tab on one centered row.
-    local tabW, gap = 68, 4
+    local tabW, gap = 64, 4
     local total = #TABS * tabW + (#TABS - 1) * gap
     local x = -total / 2
     for _, info in ipairs(TABS) do

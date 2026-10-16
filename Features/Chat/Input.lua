@@ -33,6 +33,19 @@ local function ChatCount()
     return temporaryMax > n and temporaryMax or n
 end
 Chat.ChatCount = ChatCount
+
+-- Per-frame paths look windows up by index; the global names are built once.
+local names = { [""] = {}, Tab = {}, EditBox = {} }
+
+function Chat.Window(i, part)
+    local list = names[part or ""]
+    local name = list[i]
+    if not name then
+        name = "ChatFrame" .. i .. (part or "")
+        list[i] = name
+    end
+    return _G[name]
+end
 ------------------------------------------------------------------------------
 -- Input box
 ------------------------------------------------------------------------------

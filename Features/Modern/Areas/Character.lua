@@ -1,0 +1,206 @@
+local _, ns = ...
+
+-- The 12.0 character window (Forever): pane backgrounds, equipment slots, model controls, the stats list and its
+-- scroll bar, the vertical mode tabs and the stats sidebar tabs. The model scene backdrop is content and stays.
+-- Stat rows come from a ScrollBox pool, so they are skinned again whenever the list updates.
+
+local Modern = ns.Modern
+local Character = {}
+Modern.Character = Character
+
+local SIDEBAR_TABS = 3
+local SIDEBAR_SELECTED = "UI-Character-Info-StatTab-Selected"
+
+local styled = setmetatable({}, { __mode = "k" })  -- watched frame -> journal while applied
+local hooked = setmetatable({}, { __mode = "k" })
+
+local function IsTexture(obj)
+    return ns.Usable(obj) and type(obj.GetObjectType) == "function" and obj:GetObjectType() == "Texture"
+end
+
+local function Regions(frame)
+    if not ns.Usable(frame) or type(frame.GetRegions) ~= "function" then return {} end
+    return { frame:GetRegions() }
+end
+
+function Character.Children(frame)
+    if not ns.Usable(frame) or type(frame.GetChildren) ~= "function" then return {} end
+    return { frame:GetChildren() }
+end
+
+-- Every texture of the frame except `keep`.
+function Character.HoldArt(skin, frame, keep)
+    for _, region in ipairs(Regions(frame)) do
+        if IsTexture(region) and region ~= keep then skin:Hold(region) end
+    end
+end
+
+local function AtlasOf(texture)
+    if type(texture.GetAtlas) ~= "function" then return nil end
+    local ok, atlas = pcall(texture.GetAtlas, texture)
+    return ok and atlas or nil
+end
+
+-- Pane backgrounds, the stone art and the divider of the stats pane, the strip behind the level text.
+local function Panes(skin, frame)
+    Character.HoldArt(skin, frame.LeftPaneHost)
+    local right = frame.RightPaneHost
+    Character.HoldArt(skin, right)
+    for _, child in ipairs(Character.Children(right)) do Character.HoldArt(skin, child) end
+    local paperdoll = _G.PaperDollFrame
+    if ns.Usable(paperdoll) then Character.HoldArt(skin, paperdoll.TopBackgroundStripHost) end
+end
+
+local function Slots(skin)
+    for _, slot in ipairs(Character.Children(_G.PaperDollItemsFrame)) do
+        if ns.Usable(slot) and (slot.icon or slot.Icon) then
+            Modern.Bags.Item(skin, slot)
+            Character.HoldArt(skin, slot.BorderFrame)
+        end
+    end
+end
+
+-- Zoom, rotate and reset: the grey square art becomes a flat button, the icon stays.
+local function ModelControls(skin)
+    local scene = _G.CharacterModelScene
+    local controls = ns.Usable(scene) and scene.ControlFrame
+    for _, button in ipairs(Character.Children(controls)) do
+        if ns.Usable(button) and button.Icon then
+            if ns.Usable(button.NormalTexture) then skin:Hold(button.NormalTexture) end
+            skin:Button(button)
+        end
+    end
+end
+
+-- Minimal scroll bar: the track art is held, the thumb becomes a flat bar in the border colour.
+function Character.ScrollBar(skin, bar)
+    if not ns.Usable(bar) then return end
+    local track = bar.Track
+    if not ns.Usable(track) then return end
+    Character.HoldArt(skin, track)
+    local thumb = track.Thumb
+    if not ns.Usable(thumb) or type(thumb.CreateTexture) ~= "function" then return end
+    Character.HoldArt(skin, thumb)
+    local fill = skin:Own(thumb, "thumb", function()
+        local texture = thumb:CreateTexture(nil, "ARTWORK", nil, 7)
+        texture:SetPoint("TOPLEFT", thumb, "TOPLEFT", 2, 0)
+        texture:SetPoint("BOTTOMRIGHT", thumb, "BOTTOMRIGHT", -2, 0)
+        return texture
+    end)
+    if fill then
+        fill:SetColorTexture(unpack(Modern.Theme().border))
+        fill:Show()
+    end
+end
+
+-- A thin rule in the border colour along the bottom of a header.
+function Character.Rule(skin, line)
+    if not ns.Usable(line) or type(line.CreateTexture) ~= "function" then return end
+    local rule = skin:Own(line, "rule", function()
+        local texture = line:CreateTexture(nil, "ARTWORK")
+        texture:SetHeight(1)
+        texture:SetPoint("BOTTOMLEFT", line, "BOTTOMLEFT", 4, 0)
+        texture:SetPoint("BOTTOMRIGHT", line, "BOTTOMRIGHT", -4, 0)
+        return texture
+    end)
+    if rule then
+        rule:SetColorTexture(unpack(Modern.Theme().border))
+        rule:Show()
+    end
+end
+
+-- A category title loses its banner and gets the rule; a stat row loses its stripe.
+local function StatLine(skin, line)
+    if not ns.Usable(line) then return end
+    if IsTexture(line.Background) then skin:Hold(line.Background) end
+    if line.Title then Character.Rule(skin, line) end
+end
+
+local function StatLines(skin, pane)
+    local box = pane.ScrollBox
+    local target = ns.Usable(box) and box.ScrollTarget
+    for _, line in ipairs(Character.Children(target)) do StatLine(skin, line) end
+    -- Older layouts keep fixed category frames on the pane.
+    for _, key in ipairs({ "ItemLevelCategory", "AttributesCategory", "EnhancementsCategory" }) do
+        StatLine(skin, pane[key])
+    end
+end
+
+local function StatsPane(skin)
+    local pane = _G.CharacterStatsPaneScrollBox or _G.CharacterStatsPane
+    if not ns.Usable(pane) then return end
+    Character.HoldArt(skin, pane)
+    StatLines(skin, pane)
+    Character.ScrollBar(skin, pane.ScrollBar)
+end
+
+-- The stats sidebar tabs: frame art held, icon kept; the selected one shows Blizzard's selected art.
+local function SidebarSelected(tab)
+    for _, region in ipairs(Regions(tab)) do
+        if IsTexture(region) and AtlasOf(region) == SIDEBAR_SELECTED then
+            return type(region.IsShown) == "function" and region:IsShown() and region or nil, region
+        end
+    end
+end
+
+local function SidebarBorder(skin, tab)
+    local theme = Modern.Theme()
+    skin:Border(tab, SidebarSelected(tab) and theme.accent or theme.border)
+end
+
+local function SidebarTab(skin, tab)
+    if not ns.Usable(tab) then return end
+    Character.HoldArt(skin, tab, tab.Icon)
+    skin:Panel(tab)
+    SidebarBorder(skin, tab)
+    styled[tab] = skin
+    skin:Remember(tab, "modern sidebar tab", function() styled[tab] = nil end)
+    if hooked[tab] then return end
+    local _, marker = SidebarSelected(tab)
+    if not marker then return end
+    hooked[tab] = true
+    for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+        if type(marker[method]) == "function" then
+            pcall(hooksecurefunc, marker, method, function()
+                local owner = styled[tab]
+                if owner then ns.Run("modern character", SidebarBorder, owner, tab) end
+            end)
+        end
+    end
+end
+
+local function Refresh(skin)
+    Slots(skin)
+    StatsPane(skin)
+    Character.Lists(skin)
+end
+
+-- New pool rows and late slots are skinned when the window opens and when the stats list updates.
+local function Watch(frame)
+    if hooked[frame] then return end
+    hooked[frame] = true
+    local function Again()
+        local skin = styled[frame]
+        if skin then ns.Run("modern character", Refresh, skin) end
+    end
+    if type(frame.HookScript) == "function" then pcall(frame.HookScript, frame, "OnShow", Again) end
+    local pane = _G.CharacterStatsPaneScrollBox
+    local box = ns.Usable(pane) and pane.ScrollBox
+    if ns.Usable(box) and type(box.Update) == "function" then pcall(hooksecurefunc, box, "Update", Again) end
+    if type(_G.PaperDollFrame_UpdateStats) == "function" then pcall(hooksecurefunc, "PaperDollFrame_UpdateStats", Again) end
+    Character.WatchLists(Again)
+end
+
+function Character.Apply(skin, frame)
+    if not ns.Usable(frame) then return end
+    styled[frame] = skin
+    skin:Remember(frame, "modern character", function() styled[frame] = nil end)
+    Panes(skin, frame)
+    ModelControls(skin)
+    for _, tab in ipairs(Character.Children(frame.ModeTabs)) do
+        if ns.Usable(tab) and tab.SelectedTexture then Modern.TabChrome(skin, tab) end
+    end
+    for index = 1, SIDEBAR_TABS do SidebarTab(skin, _G["PaperDollSidebarTab" .. index]) end
+    Refresh(skin)
+    Watch(frame)
+end

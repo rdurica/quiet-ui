@@ -72,8 +72,12 @@ local function newFrame(mock, kind, name, parent, template)
     if parent and parent._children then parent._children[#parent._children + 1] = f end
     if template and tostring(template):find("BackdropTemplate", 1, true) then
         f.SetBackdrop = function(self, spec) self._backdrop = spec end
-        f.SetBackdropColor = function(self, ...) self._backdropColor = { ... } end
-        f.SetBackdropBorderColor = function(self, ...) self._backdropBorder = { ... } end
+        f.SetBackdropColor = function(self, ...)
+            if select("#", ...) == 0 then self._backdropColor = nil else self._backdropColor = { ... } end
+        end
+        f.SetBackdropBorderColor = function(self, ...)
+            if select("#", ...) == 0 then self._backdropBorder = nil else self._backdropBorder = { ... } end
+        end
     end
     return f
 end
@@ -91,6 +95,8 @@ function Frame:GetEffectiveAlpha()
     return a
 end
 function Frame:SetAlpha(v) bump(self, "SetAlpha"); self._alpha = v end
+-- 12.0: sets the alpha without going through SetAlpha, so a SetAlpha hook does not see it.
+function Frame:SetAlphaFromBoolean(on, yes, no) bump(self, "SetAlphaFromBoolean"); self._alpha = on and (yes or 1) or (no or 0) end
 function Frame:IsShown() return self._shown end
 function Frame:IsVisible()
     local p = self
@@ -209,6 +215,22 @@ function Frame:GetTexture() return self._texture end
 function Frame:SetColorTexture(...) self._color = { ... } end
 function Frame:SetVertexColor(...) self._vertex = { ... } end
 function Frame:SetTexCoord(...) self._texCoord = { ... } end
+function Frame:GetTexCoord()
+    local c = self._texCoord or { 0, 1, 0, 1 }
+    return unpack(c)
+end
+function Frame:GetVertexColor()
+    local c = self._vertex or { 1, 1, 1, 1 }
+    return unpack(c)
+end
+-- Dragging: StartMoving / StopMovingOrSizing keep a flag; a test moves the frame between the two
+-- with ClearAllPoints + SetPoint, as the client would. SetMovable / RegisterForDrag only record.
+function Frame:SetMovable(v) self._movable = v and true or false end
+function Frame:IsMovable() return self._movable == true end
+function Frame:RegisterForDrag(...) self._dragButtons = { ... } end
+function Frame:StartMoving() self._moving = true end
+function Frame:StopMovingOrSizing() self._moving = false end
+function Frame:IsMoving() return self._moving == true end
 function Frame:SetBlendMode(v) self._blend = v end
 function Frame:SetText(v) self._text = v == nil and "" or v end
 function Frame:GetText() return self._text end
@@ -219,7 +241,12 @@ function Frame:GetFont()
 end
 function Frame:SetFontObject(v) self._fontObject = v end
 function Frame:SetTextColor(...) self._textColor = { ... } end
+function Frame:GetTextColor()
+    local c = self._textColor or { 1, 1, 1, 1 }
+    return c[1], c[2], c[3], c[4] or 1
+end
 function Frame:SetJustifyH(v) self._justifyH = v end
+function Frame:GetJustifyH() return self._justifyH end
 function Frame:SetJustifyV(v) self._justifyV = v end
 -- Deterministic text: width = chars * CHAR_W, one fixed line, no wrapping.
 function Frame:GetStringWidth()
@@ -301,7 +328,12 @@ function M:build()
         if template and mock.rejectTemplates[template] then
             error("Unknown template: " .. tostring(template), 2)
         end
-        return frame(kind, name, parent or G.UIParent, template)
+        local f = frame(kind, name, parent or G.UIParent, template)
+        if type(name) == "string" and name ~= "" then
+            G[name] = f
+            _G[name] = f
+        end
+        return f
     end
     G.hooksecurefunc = function(a, b, c)
         local obj, method, hook

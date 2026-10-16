@@ -23,9 +23,18 @@ local function PlaceMinimap(button)
     local rad = math.rad(MinimapDegrees())
     local w = map:GetWidth()
     if type(w) ~= "number" or w <= 0 then w = 140 end
-    local radius = w / 2 + 5
+    local h = map:GetHeight()
+    if type(h) ~= "number" or h <= 0 then h = w end
+    local x, y = math.cos(rad), math.sin(rad)
+    local radiusX, radiusY = w / 2 + 5, w / 2 + 5
+    if type(GetMinimapShape) == "function" and GetMinimapShape() == "SQUARE" then
+        -- Project the direction onto the square edge instead of the circle.
+        local edge = math.max(math.abs(x), math.abs(y))
+        x, y = x / edge, y / edge
+        radiusY = h / 2 + 5
+    end
     button:ClearAllPoints()
-    button:SetPoint("CENTER", map, "CENTER", math.cos(rad) * radius, math.sin(rad) * radius)
+    button:SetPoint("CENTER", map, "CENTER", x * radiusX, y * radiusY)
 end
 
 local function CursorDegrees(map)
@@ -126,4 +135,8 @@ function Setup.EnsureMinimap()
     end
     minimapButton = CreateMinimap()
     PlaceMinimap(minimapButton)
+end
+
+function Setup.PlaceMinimap()
+    if minimapButton then PlaceMinimap(minimapButton) end
 end
