@@ -39,7 +39,7 @@ end
 local function OnEvent(_, event, ...)
     for _, area in ipairs(S.areas) do
         if area.applied and area.eventSet[event] and area.onEvent then
-            ns.Run("modern " .. area.key, area.onEvent, area.skin, event, ...)
+            ns.Profiler.Run("modern " .. area.key, area.onEvent, area.skin, event, ...)
         end
     end
 end
