@@ -101,9 +101,11 @@ h.test("Top: tabs hidden until hovered and a flashing tab stays visible", functi
     A.near(ChatFrame1Tab._alpha, 0, 0.01, "docked tab hidden")
     A.near(ChatFrame2Tab._alpha, 0, 0.01, "undocked tab hidden")
     GeneralDockManager:SetMouseOver(true)
+    t.mock.state.cursor = { 41, 41 } -- hover comes with a moved pointer
     ns.Chat.Update(0.01)
     A.near(ChatFrame1Tab._alpha, 1, 0.01, "tab row hover shows the tabs")
     GeneralDockManager:SetMouseOver(false)
+    t.mock.state.cursor = { 42, 42 } -- hover comes with a moved pointer
     ns.Chat.Update(1)
     ChatFrame2Tab.alerting = true
     ns.Chat.Update(1)

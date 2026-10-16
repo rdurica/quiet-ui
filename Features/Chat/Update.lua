@@ -4,12 +4,27 @@ local _, ns = ...
 
 local Chat = ns.Chat
 
+-- Hover is read again only after the pointer moves (or every 0.1 s, for frames moving under it).
+-- Chat reads the cursor itself, so the answer does not depend on the order of the frame phases.
+function Chat.PointerStill()
+    local state = Chat.state
+    if type(GetCursorPosition) ~= "function" then
+        state.pointerStill = false
+        return false
+    end
+    local x, y = GetCursorPosition()
+    state.pointerStill = x == state.pointerX and y == state.pointerY
+    state.pointerX, state.pointerY = x, y
+    return state.pointerStill
+end
+
 function Chat.Update(elapsed)
     if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     local now = GetTime()
+    local still = Chat.PointerStill()
     for i = 1, Chat.ChatCount() do
-        Chat.EaseEdit(_G["ChatFrame" .. i .. "EditBox"], elapsed)
-        local frame = _G["ChatFrame" .. i]
+        Chat.EaseEdit(Chat.Window(i, "EditBox"), elapsed)
+        local frame = Chat.Window(i)
         if frame and frame._quietBubbles then
             if not ns.Usable(frame) or not frame.IsShown or not frame:IsShown() then
                 if frame._quietShown ~= false then
@@ -25,10 +40,14 @@ function Chat.Update(elapsed)
                     Chat.PlaceCatcher(frame)
                     frame._quietCatcherAt = now + 0.1
                 end
-                local hot = Chat.FrameHot(frame) or Chat.TabRowHot(frame, i)
-                if hot ~= frame._quietHover then
-                    frame._quietHover = hot
-                    frame._quietDirty = true
+                -- A still pointer keeps the hover; it is checked again at most every 0.1 s.
+                if not still or frame._quietDirty or not frame._quietHoverAt or now >= frame._quietHoverAt then
+                    frame._quietHoverAt = now + 0.1
+                    local hot = Chat.FrameHot(frame) or Chat.TabRowHot(frame, i)
+                    if hot ~= frame._quietHover then
+                        frame._quietHover = hot
+                        frame._quietDirty = true
+                    end
                 end
                 local wake = frame._quietNext
                 if frame._quietDirty or wake == 0 or (type(wake) == "number" and wake > 0 and now >= wake) then
