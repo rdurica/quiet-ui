@@ -16,7 +16,7 @@ function Profiler.Start()
         ns.Print("CPU timing is not available on this client.")
         return
     end
-    profile = { started = GetTime(), sections = {}, smooth = {}, frames = 0 }
+    profile = { started = GetTime(), sections = {}, smooth = {}, details = {}, frames = 0 }
     ns.Print("Measuring QuietUI for 10 seconds. Keep playing in the same situation.")
 end
 
@@ -58,6 +58,10 @@ function Profiler.Finish(pending)
     for _, row in ipairs(Rows(profile.smooth)) do
         emit(RowText(row, duration, "smooth / "), true)
     end
+    -- Laps break a section into its steps; they are only saved, to keep the chat short.
+    for _, row in ipairs(Rows(profile.details)) do
+        emit(RowText(row, duration, "lap / "), false)
+    end
     ns.DB().lastProfile = saved
     profile = nil
 end
@@ -78,6 +82,18 @@ function Profiler.Run(label, fn, ...)
     if active then
         Record(active.sections, label, started)
     end
+end
+
+-- Steps inside a section: `local t = Profiler.Clock()` then `t = Profiler.Lap("step", t)` after each
+-- step. Both are nil and free while no profile runs.
+function Profiler.Clock()
+    return profile and debugprofilestop() or nil
+end
+
+function Profiler.Lap(label, started)
+    if not profile or not started then return nil end
+    Record(profile.details, label, started)
+    return debugprofilestop()
 end
 
 -- Times one detail of the smooth sampler. Only called while a profile runs.

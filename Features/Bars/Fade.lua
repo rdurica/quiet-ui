@@ -127,6 +127,18 @@ end
 local showGroup = {}
 local barShow = {}
 local haveBarShow = false
+-- Bar -> the state it was last applied with. While every bar sits at its target alpha and nothing
+-- changed, a pass skips the walk over every button (hovering runs a pass each frame). A full pass
+-- still runs every SETTLED_FOR seconds, for buttons Blizzard shows on a faded bar.
+local SETTLED_FOR = 0.2
+local applied = {}
+local settled = false
+local settledUntil = 0
+
+local function Wanted(bar, show)
+    if not (ns.Usable(bar) and bar:IsShown()) then return "hidden" end
+    return show and "show" or "fade"
+end
 
 -- Hover groups skip automatic triggers; explicit HUD and bar editing still show them.
 local function RowForced(id, showAllForced)
@@ -140,13 +152,17 @@ function Bars.Update(showAll, elapsed, rescan)
     if rescan == nil then rescan = true end
     local showAllForced = showAll or ns.Glance.Active()
     -- ApplyBar reads hosts/covered, which ForgetBarButtons drops between rescans.
+    if S.dirty then settled = false end
+    local lap = ns.Profiler.Clock()
     S.Collect()
+    lap = ns.Profiler.Lap("bars / collect", lap)
     if rescan or not haveBarShow then
         if ns.World.InEditMode() or not ns.DB().enabled then
             Bars.HideCatchers()
         else
             S.SyncCatchers()
         end
+        lap = ns.Profiler.Lap("bars / catchers", lap)
         for key in pairs(showGroup) do
             showGroup[key] = nil
         end
@@ -171,13 +187,30 @@ function Bars.Update(showAll, elapsed, rescan)
                 or (not mode and friendly and ns.Settings.BarTarget(entry.id, "friendly")) or false
         end
         haveBarShow = true
+        lap = ns.Profiler.Lap("bars / hover", lap)
     end
+    if settled and GetTime() >= settledUntil then settled = false end
+    if settled then
+        for _, entry in ipairs(resolved) do
+            local show = RowForced(entry.id, showAllForced) or barShow[entry.id]
+            for _, bar in ipairs(entry.frames) do
+                if applied[bar] ~= Wanted(bar, show) then settled = false end
+            end
+        end
+        lap = ns.Profiler.Lap("bars / settled check", lap)
+        if settled then return end
+    end
+    settled = true
+    settledUntil = GetTime() + SETTLED_FOR
     local mainAlpha, gamepadAlpha
     for _, entry in ipairs(resolved) do
         local show = RowForced(entry.id, showAllForced) or barShow[entry.id]
         for _, bar in ipairs(entry.frames) do
-            if ns.Usable(bar) and bar:IsShown() then
+            local want = Wanted(bar, show)
+            applied[bar] = want
+            if want ~= "hidden" then
                 local name, alpha = ApplyBar(bar, show, elapsed)
+                if type(alpha) == "number" and alpha ~= (show and 1 or 0) then settled = false end
                 if type(alpha) == "number" then
                     if MAIN_BAR[name] then
                         mainAlpha = alpha
@@ -188,11 +221,13 @@ function Bars.Update(showAll, elapsed, rescan)
             end
         end
     end
+    lap = ns.Profiler.Lap("bars / apply", lap)
     local artAlpha = mainAlpha or gamepadAlpha
     if type(artAlpha) == "number" then
         FollowArt(artAlpha)
     end
     ReleaseUnwatched()
+    ns.Profiler.Lap("bars / art", lap)
 end
 
 ns.Feature({

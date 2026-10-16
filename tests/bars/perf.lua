@@ -93,3 +93,34 @@ h.test("No swing timer waits 10s before the next UIParent walk", function(t)
     t.ns.Bars.ScanSwing()
     A.eq(uiWalks(t) - before, 2, "The 10s fallback walk did not run")
 end)
+
+-- Hovering runs a bars pass every frame. Once every bar sits at its target alpha and nothing
+-- changed, a pass skips the bar walk; a change applies at once and a full pass still runs every 0.2 s.
+h.test("Settled bars skip the per-frame walk, react to a change at once and recheck every 0.2 s", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local bar = CreateFrame("Frame", "MultiBarBottomLeft", UIParent)
+    _G.MultiBarBottomLeft = bar
+    t.boot()
+    ns.Hit = function() return false end
+    local function pass(showAll, elapsed)
+        ns.NextFadeTick()
+        ns.Bars.Update(showAll, elapsed or 1 / 60, false)
+    end
+    ns.Bars.ForgetButtons()
+    for _ = 1, 3 do pass(false, 1) end
+    A.eq(bar._alpha, 0, "precondition: the bar faded out")
+    local faded = 0
+    local update = ns.UpdateFaded
+    ns.UpdateFaded = function(...) faded = faded + 1; return update(...) end
+    for _ = 1, 10 do pass(false) end
+    A.eq(faded, 0, "a settled pass does not walk the bars")
+    pass(true)
+    A.eq(bar._alpha, 1, "a show change applies at once")
+    faded = 0
+    for _ = 1, 10 do pass(true) end
+    A.eq(faded, 0, "settled again once shown")
+    mock.now = mock.now + 0.25
+    pass(true)
+    A.ok(faded > 0, "a full pass runs again after 0.2 s")
+    ns.UpdateFaded = update
+end)
