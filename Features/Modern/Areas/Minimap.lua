@@ -73,6 +73,116 @@ local function Strip(skin, map)
     if ns.Usable(zone) and zone.SetPoint then skin:Set(zone, "SetPoint", "CENTER", strip, "CENTER", 0, 0) end
 end
 
+local function Pack(...)
+    return { n = select("#", ...), ... }
+end
+
+local function Points(frame)
+    local points = {}
+    for i = 1, frame:GetNumPoints() do points[i] = Pack(frame:GetPoint(i)) end
+    return points
+end
+
+local function Put(frame, points)
+    frame:ClearAllPoints()
+    for _, p in ipairs(points) do frame:SetPoint(unpack(p, 1, p.n)) end
+end
+
+-- Gap between the zone header and the top edge of the square map.
+local GAP = 4
+-- While docked: the cluster parts and Blizzard's latest container points; the SetPoint hook re-docks.
+local dock
+local docking
+local hooked = setmetatable({}, { __mode = "k" })
+
+local function Anchored(frame, cluster)
+    if frame:GetNumPoints() ~= 1 then return nil end
+    local point, relative, relativePoint, _, y = frame:GetPoint(1)
+    if point ~= "TOP" or relative ~= cluster or relativePoint ~= "TOP" or type(y) ~= "number" then return nil end
+    return y
+end
+
+-- 12.0 hangs the map container well below the zone header; the container (map, its buttons and the
+-- coordinates) moves up so the map sits right under the header. A header Edit Mode put underneath
+-- is not anchored to the cluster top, so the container stays where Blizzard put it.
+local function Dock()
+    local d = dock
+    if not d or docking then return end
+    local headerY, containerY = Anchored(d.header, d.cluster), Anchored(d.container, d.cluster)
+    if not headerY or not containerY then return end
+    local _, _, _, x = d.container:GetPoint(1)
+    local scale = d.container:GetScale() or 1
+    local mapHeight = d.map:GetHeight() * (d.map:GetScale() or 1)
+    local inset = (d.container:GetHeight() - mapHeight) / 2
+    local y = (headerY - d.header:GetHeight() - GAP) / scale + inset
+    docking = true
+    d.container:ClearAllPoints()
+    d.container:SetPoint("TOP", d.cluster, "TOP", x, y)
+    docking = false
+end
+
+local function Docked(skin, cluster, map)
+    local container, header = cluster.MinimapContainer, cluster.ZoneTextButton
+    if not ns.Usable(container) or not ns.Usable(header) or type(container.ClearAllPoints) ~= "function" then return false end
+    if not Anchored(header, cluster) or not Anchored(container, cluster) then return false end
+    dock = { cluster = cluster, container = container, header = header, map = map, points = Points(container) }
+    skin:Remember(container, "dock", function()
+        local d = dock
+        dock = nil
+        if d then Put(container, d.points) end
+    end)
+    if not hooked[container] then
+        hooked[container] = true
+        -- Blizzard re-anchors the container when Edit Mode applies a layout; that point becomes the one to restore.
+        pcall(hooksecurefunc, container, "SetPoint", function()
+            if not dock or docking or dock.container ~= container then return end
+            dock.points = Points(container)
+            ns.Run("modern minimap", Dock)
+        end)
+    end
+    Dock()
+    return true
+end
+
+-- The addon compartment ("1") hangs under the calendar and would cover the docked map's corner;
+-- it joins the header row left of the tracking button.
+local function Compartment(skin, cluster)
+    local button, tracking = _G.AddonCompartmentFrame, cluster.Tracking
+    if not ns.Usable(button) or not ns.Usable(tracking) or type(button.ClearAllPoints) ~= "function" then return end
+    local points = Points(button)
+    skin:Remember(button, "points", function() Put(button, points) end)
+    button:ClearAllPoints()
+    button:SetPoint("RIGHT", tracking, "LEFT", -2, 0)
+end
+
+-- WoW Forever's day / night dial: an unnamed child of the container, known by its background atlas.
+local DAY_ATLAS = "UI-HUD-Minimap-DayCycle"
+
+local function DayDial(container)
+    if type(container.GetChildren) ~= "function" then return nil end
+    for _, child in ipairs({ container:GetChildren() }) do
+        if ns.Usable(child) and child ~= Minimap and type(child.GetRegions) == "function" then
+            for _, region in ipairs({ child:GetRegions() }) do
+                local ok, atlas = pcall(function() return region:GetAtlas() end)
+                if ok and atlas == DAY_ATLAS then return child end
+            end
+        end
+    end
+end
+
+-- The dial sits further from the right edge than from the top; it moves right into the corner.
+local function Dial(skin, container)
+    local dial = DayDial(container)
+    if not dial or dial:GetNumPoints() ~= 1 then return end
+    local point, relative, relativePoint, x, y = dial:GetPoint(1)
+    if point ~= "CENTER" or relative ~= container or relativePoint ~= "CENTER"
+        or type(x) ~= "number" or type(y) ~= "number" or y <= x then return end
+    local points = Points(dial)
+    skin:Remember(dial, "points", function() Put(dial, points) end)
+    dial:ClearAllPoints()
+    dial:SetPoint("CENTER", container, "CENTER", y, y)
+end
+
 -- The global only exists while the area is applied; restore puts back whatever was there.
 local function Shape(skin, map)
     local shape = GetMinimapShape
@@ -100,7 +210,13 @@ Modern.Register{
         Zoom(skin, Part("MinimapZoomIn"))
         Zoom(skin, Part("MinimapZoomOut"))
         skin:Border(map)
-        Strip(skin, map)
+        -- 12.0 keeps the zone text in its own header; only an older minimap gets our strip.
+        if ns.Usable(cluster) and Docked(skin, cluster, map) then
+            Compartment(skin, cluster)
+            Dial(skin, cluster.MinimapContainer)
+        else
+            Strip(skin, map)
+        end
         Wheel(skin, map)
         Shape(skin, map)
     end,

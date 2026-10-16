@@ -1,7 +1,8 @@
 -- Fixtures that mirror the retail 12.0 frame shapes (Gethe/wow-ui-source, branch live) for the
 -- Modern minimap, tooltip, aura and status areas. Test code only, loaded with h.lib("modern-retail").
 --   Minimap.xml            MinimapCluster.BorderTop, Minimap.ZoomIn / ZoomOut (parentKey, no global name),
---                          MinimapBackdrop > MinimapCompassTexture, ZoneTextButton > MinimapZoneText
+--                          MinimapBackdrop > MinimapCompassTexture, ZoneTextButton > MinimapZoneText;
+--                          points and sizes as dumped in game (WoW Forever beta)
 --   SharedTooltipTemplates TooltipBackdropTemplate: NineSlice child; colours go through NineSlice
 --   BuffFrame.lua          BuffFrame / DebuffFrame .auraFrames, AuraButtonArtTemplate keys
 --   ReputationBar.lua      C_Reputation.GetWatchedFactionData(); StatusTrackingBar.xml children
@@ -39,8 +40,18 @@ function R.minimap()
         if delta > 0 then Minimap_ZoomIn() elseif delta < 0 then Minimap_ZoomOut() end
     end
     map:SetScript("OnMouseWheel", parts.nativeWheel)
-    cluster.MinimapContainer = CreateFrame("Frame", nil, cluster)
-    cluster.MinimapContainer.Minimap = map
+    local container = CreateFrame("Frame", nil, cluster)
+    cluster.MinimapContainer, container.Minimap = container, map
+    container:SetSize(253, 253)
+    container:SetPoint("TOP", cluster, "TOP", 11.1, -33.3)
+    map:SetSize(198, 198)
+    map:SetPoint("CENTER", container, "CENTER", 0, 0)
+    parts.container = container
+    parts.dial = CreateFrame("Frame", nil, container)
+    parts.dial:SetSize(42, 42)
+    parts.dial:SetPoint("CENTER", container, "CENTER", 49.5, 77.4)
+    local dayCycle = parts.dial:CreateTexture(nil, "BACKGROUND")
+    dayCycle.GetAtlas = function() return "UI-HUD-Minimap-DayCycle" end
 
     -- BorderTop: NineSliceCodeTemplate, pieces are textures of the frame.
     parts.border = CreateFrame("Frame", nil, cluster)
@@ -50,6 +61,8 @@ function R.minimap()
 
     parts.zoneButton = CreateFrame("Button", nil, cluster)
     cluster.ZoneTextButton = parts.zoneButton
+    parts.zoneButton:SetSize(152, 23)
+    parts.zoneButton:SetPoint("TOP", cluster, "TOP", 10, 0)
     parts.zone = parts.zoneButton:CreateFontString(nil, "OVERLAY")
     parts.zone:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
     parts.zone:SetPoint("CENTER", parts.zoneButton, "CENTER", 0, 1)
@@ -74,7 +87,12 @@ function R.minimap()
 
     parts.queue = QueueStatusButton
     cluster.Tracking = CreateFrame("Frame", nil, cluster)
+    cluster.Tracking:SetPoint("RIGHT", parts.zoneButton, "LEFT", 0, 0)
     cluster.Tracking.Button = CreateFrame("Button", nil, cluster.Tracking)
+    parts.calendar = CreateFrame("Button", "GameTimeFrame", cluster)
+    parts.calendar:SetPoint("TOPLEFT", parts.zoneButton, "TOPRIGHT", -4, 0)
+    parts.compartment = CreateFrame("Button", "AddonCompartmentFrame", cluster)
+    parts.compartment:SetPoint("TOP", parts.calendar, "BOTTOM", 0, 1)
     cluster.IndicatorFrame = CreateFrame("Frame", nil, cluster)
     cluster.IndicatorFrame.MailFrame = CreateFrame("Frame", nil, cluster.IndicatorFrame)
     parts.tracking, parts.mail = cluster.Tracking, cluster.IndicatorFrame.MailFrame
