@@ -27,7 +27,7 @@ end
 local function restedBar(xp)
     local function walk(frame)
         for _, child in ipairs(frame._children) do
-            if child ~= xp and child._kind == "StatusBar" and child._h == 6 then return child end
+            if child ~= xp and child._kind == "StatusBar" and child._h == 12 then return child end
             local found = walk(child)
             if found then return found end
         end
@@ -97,7 +97,7 @@ h.test("12.0 rested is a lighter bar behind the XP fill covering xp to xp plus e
     local A, ns, mock = t.assert, t.ns, t.mock
     data(mock)
     enable(); ns.Modern.Apply()
-    local xp = direct(mock, 6)
+    local xp = direct(mock, 12)
     local rested = restedBar(xp)
     A.type(rested, "table", "a rested bar")
     A.near(rested:GetValue(), 0.35, 1e-6, "xp 0.25 + rested 0.1")
@@ -116,7 +116,7 @@ h.test("12.0 a gain moves rested with the XP value and a level up sets the bar d
     local A, ns, mock = t.assert, t.ns, t.mock
     data(mock)
     enable(); ns.Modern.Apply()
-    local xp = direct(mock, 6)
+    local xp = direct(mock, 12)
     mock.xp = 0.5; mock:fire("PLAYER_XP_UPDATE", "player")
     mock:tick(0.4); mock:tick(0.1)
     A.eq(xp:GetValue(), 0.5, "animation ended on the new value")
@@ -144,7 +144,7 @@ h.test("12.0 own bars sit under the container so its fade applies and they never
     data(mock)
     MainStatusTrackingBarContainer:SetAlpha(0.3)
     enable(); ns.Modern.Apply()
-    local xp, rep = direct(mock, 6), direct(mock, 4)
+    local xp, rep = direct(mock, 12), direct(mock, 4)
     for _, bar in ipairs({ xp, rep, restedBar(xp) }) do
         A.eq(bar:GetEffectiveAlpha(), 0.3, "the container fade reaches the bar")
         A.eq(bar._alpha, 1, "the bar keeps alpha 1 so the fade is the only owner")
@@ -177,15 +177,174 @@ h.test("12.0 Blizzard bar art is held hidden, mouse and text stay, and restore r
     A.alpha(sb.Background, 1, "background released")
     A.alpha(sb.Underlay, 0.8, "underlay released")
     A.alpha(blizz.Fill, 1, "fill released")
-    for _, f in ipairs({ direct(mock, 6), direct(mock, 4) }) do A.falsy(f:IsShown(), "own bar hidden after restore") end
-    A.falsy(direct(mock, 6):GetScript("OnUpdate"), "no OnUpdate left behind")
+    for _, f in ipairs({ direct(mock, 12), direct(mock, 4) }) do A.falsy(f:IsShown(), "own bar hidden after restore") end
+    A.falsy(direct(mock, 12):GetScript("OnUpdate"), "no OnUpdate left behind")
+end)
+
+h.test("12.0 nested Blizzard bar art (fill, segment ticks, exhaustion marker) is held and the text stays", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    data(mock)
+    local blizz = blizzardBar()
+    local ticks = CreateFrame("Frame", nil, blizz.StatusBar)
+    local tick = ticks:CreateTexture(nil, "OVERLAY")
+    tick:SetTexture("Interface\\Blizzard\\Ticks")
+    local marker = CreateFrame("Button", nil, blizz)
+    local markerArt = marker:CreateTexture(nil, "ARTWORK")
+    markerArt:SetTexture("Interface\\Blizzard\\Marker")
+    blizz.Underlay = blizz:CreateTexture(nil, "BACKGROUND")
+    enable(); ns.Modern.Apply()
+    for _, region in ipairs({ tick, markerArt, blizz.Underlay }) do
+        A.alpha(region, 0, "nested Blizzard art is held")
+    end
+    A.alpha(blizz.OverlayFrame.Text, 1, "the text is not held")
+    local _, _, _, a = tick:GetVertexColor()
+    A.eq(a, 0, "vertex alpha 0 survives an alpha animation that bypasses SetAlpha")
+    QuietUICharDB.modernize.status = false
+    ns.Modern.Apply()
+    A.alpha(tick, 1, "released on restore")
+    _, _, _, a = tick:GetVertexColor()
+    A.ok(a == nil or a == 1, "vertex alpha restored")
+end)
+
+h.test("12.0 segment dividers Blizzard adds after our refresh are held on the next frame", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    data(mock)
+    enable(); ns.Modern.Apply()
+    mock:fire("PLAYER_ENTERING_WORLD")
+    local divider = CreateFrame("Frame", nil, MainStatusTrackingBarContainer)
+    local art = divider:CreateTexture(nil, "OVERLAY")
+    art:SetTexture("Interface\\Blizzard\\Divider")
+    mock:drain()
+    A.alpha(art, 0, "a divider created after the event handler is held")
+    QuietUICharDB.modernize.status = false
+    ns.Modern.Apply()
+    A.alpha(art, 1, "released on restore")
+end)
+
+h.test("12.0 art whose set alpha the client drops right after a reload is set again until it stays hidden", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    data(mock)
+    local divider = CreateFrame("Frame", nil, MainStatusTrackingBarContainer)
+    local art = divider:CreateTexture(nil, "OVERLAY")
+    -- The client ignores the first sets while the atlas loads, without any Lua call.
+    local loading = 3
+    local setAlpha, setVertex = art.SetAlpha, art.SetVertexColor
+    art.SetAlpha = function(self, a) if loading > 0 then loading = loading - 1; return end setAlpha(self, a) end
+    art.SetVertexColor = function(self, ...) if loading > 0 then return end setVertex(self, ...) end
+    enable(); ns.Modern.Apply()
+    for _ = 1, 10 do mock:advance(0.25) end
+    A.alpha(art, 0, "set again until it stays hidden")
+    local before = mock.calls.SetAlpha or 0
+    for _ = 1, 10 do mock:advance(0.25) end
+    A.ok((mock.calls.SetAlpha or 0) - before < 3, "no endless retries once hidden")
+    QuietUICharDB.modernize.status = false
+    ns.Modern.Apply()
+    A.alpha(art, 1, "released on restore")
+end)
+
+h.test("12.0 the XP bar has its own nine dividers, ten equal segments twice Blizzard's width", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    data(mock)
+    enable(); ns.Modern.Apply()
+    local xp = direct(mock, 12)
+    xp:SetWidth(900)
+    xp._scripts.OnSizeChanged(xp, 900)
+    local offsets = {}
+    for _, region in ipairs(xp._regions) do
+        local point, _, _, x = region:GetPoint(1)
+        if region._w == 1 and region:IsShown() and point == "TOP" then offsets[#offsets + 1] = x end
+    end
+    table.sort(offsets)
+    A.deep(offsets, { 90, 180, 270, 360, 450, 540, 630, 720, 810 }, "a divider every tenth of the bar")
+end)
+
+local function under(frame, root)
+    for _ = 1, 10 do
+        if frame == root then return true end
+        frame = frame and frame._parent
+    end
+    return false
+end
+
+local function effect(mock, xp)
+    local sparks, flashes, scripts = 0, 0, 0
+    for _, f in ipairs(mock.frames) do
+        if f._parent ~= xp and under(f._parent, xp) and f._kind == "Texture" and f:IsShown() and f._blend == "ADD" then
+            if f._texture == "Interface\\AddOns\\QuietUI\\Media\\spark.tga" then sparks = sparks + 1
+            elseif f._texture ~= "Interface\\AddOns\\QuietUI\\Media\\round.tga" then flashes = flashes + 1 end
+        end
+        if f ~= xp and under(f, xp) and f._scripts.OnUpdate then scripts = scripts + 1 end
+    end
+    return sparks, flashes, scripts
+end
+
+h.test("12.0 an XP gain flashes the gained stretch and sends sparks up inside the bar, then stops", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    data(mock)
+    enable(); ns.Modern.Apply()
+    local xp = direct(mock, 12)
+    xp:SetWidth(900)
+    mock.xp = 0.6; mock:fire("PLAYER_XP_UPDATE", "player")
+    mock:tick(0.4)
+    local sparks, flashes, scripts = effect(mock, xp)
+    A.ok(flashes >= 1, "the gained stretch flashes")
+    A.ok(sparks >= 6, "sparks rise out of the gain")
+    A.eq(scripts, 1, "one effect script while it plays")
+    for _ = 1, 10 do mock:tick(0.1) end
+    sparks, flashes, scripts = effect(mock, xp)
+    A.eq(sparks + flashes, 0, "nothing of the effect stays visible")
+    A.eq(scripts, 0, "no per-frame work after the effect")
+    A.eq(xp:GetValue(), 0.6)
+end)
+
+h.test("12.0 restore stops a running XP effect", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    data(mock)
+    enable(); ns.Modern.Apply()
+    local xp = direct(mock, 12)
+    xp:SetWidth(900)
+    mock.xp = 0.6; mock:fire("PLAYER_XP_UPDATE", "player")
+    mock:tick(0.2)
+    QuietUICharDB.modernize.status = false
+    ns.Modern.Apply()
+    local _, _, scripts = effect(mock, xp)
+    A.eq(scripts, 0, "the effect script is gone after restore")
+end)
+
+h.test("12.0 bubbles keep rising inside the filled part as looping animations, without per-frame Lua", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local bar = CreateFrame("StatusBar", nil, UIParent)
+    bar:SetWidth(900); bar:SetHeight(12)
+    local fill = bar:CreateTexture(nil, "ARTWORK")
+    local bubbles = ns.Modern.XPBurst.Bubbles(bar)
+    ns.Modern.XPBurst.Fill(bubbles, fill)
+    local looping, playing, scripts = 0, 0, 0
+    for _, f in ipairs(mock.frames) do
+        if f._kind == "AnimationGroup" and under(f._owner, bar) then
+            if f._looping == "REPEAT" then looping = looping + 1 end
+            if f._playing then playing = playing + 1 end
+        end
+        if under(f, bar) and f._scripts.OnUpdate then scripts = scripts + 1 end
+    end
+    A.ok(looping >= 10, "a looping animation per bubble")
+    A.eq(playing, looping, "all bubbles play while the bar shows")
+    A.eq(scripts, 0, "no per-frame Lua for the bubbles")
+    local _, relative, point = bubbles.clip:GetPoint(2)
+    A.eq(relative, fill, "the bubbles are clipped where the fill ends")
+    A.eq(point, "BOTTOMRIGHT")
+    bubbles.stop()
+    playing = 0
+    for _, f in ipairs(mock.frames) do
+        if f._kind == "AnimationGroup" and under(f._owner, bar) and f._playing then playing = playing + 1 end
+    end
+    A.eq(playing, 0, "stop stops every bubble")
 end)
 
 h.test("12.0 restore in the middle of a gain stops the animation", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     data(mock)
     enable(); ns.Modern.Apply()
-    local xp = direct(mock, 6)
+    local xp = direct(mock, 12)
     mock.xp = 0.75; mock:fire("PLAYER_XP_UPDATE", "player")
     A.ok(xp:GetScript("OnUpdate"), "animation running")
     QuietUICharDB.modernize.status = false

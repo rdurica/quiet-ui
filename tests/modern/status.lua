@@ -3,7 +3,7 @@
 local h = ...
 local L = h.lib("modern")
 
-local EVENTS = { "PLAYER_XP_UPDATE", "UPDATE_EXHAUSTION", "PLAYER_LEVEL_UP", "UPDATE_FACTION" }
+local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE", "UPDATE_EXHAUSTION", "PLAYER_LEVEL_UP", "UPDATE_FACTION" }
 
 local function enable()
     QuietUICharDB = { modernize = { enabled = true } }
@@ -19,7 +19,7 @@ local function bars(mock, first)
     local found = {}
     for i = first + 1, #mock.frames do
         local frame = mock.frames[i]
-        if frame._parent == MainStatusTrackingBarContainer and (frame._h == 6 or frame._h == 4) then
+        if frame._parent == MainStatusTrackingBarContainer and (frame._h == 12 or frame._h == 4) then
             found[#found + 1] = frame
         end
     end
@@ -47,11 +47,11 @@ local function playedGlow(mock, xp)
     end
 end
 
--- The rested bar is any other 6 px StatusBar below the container (child of the XP bar or a sibling).
+-- The rested bar is any other 12 px StatusBar below the container (child of the XP bar or a sibling).
 local function restedBar(xp)
     local function walk(frame)
         for _, child in ipairs(frame._children) do
-            if child ~= xp and child._kind == "StatusBar" and child._h == 6 then return child end
+            if child ~= xp and child._kind == "StatusBar" and child._h == 12 then return child end
             local found = walk(child)
             if found then return found end
         end
@@ -72,7 +72,7 @@ h.test("Status registers XP and reputation in the Modern area list", function(t)
     local A, ns = t.assert, t.ns
     local entry = area(ns)
     A.type(entry, "table", "the status area is registered")
-    A.eq(entry.label, "XP and reputation")
+    A.eq(entry.label, "Modern XP bar")
     A.eq(ns.Settings.ModernArea("status"), false, "it follows the Modernize gate")
 end)
 
@@ -86,8 +86,8 @@ h.test("Status creates thin XP and watched-reputation bars under Blizzard's cont
     local before = #mock.frames
     enable(); ns.Modern.Apply()
     local own = bars(mock, before)
-    local xp, reputation = byHeight(own, 6), byHeight(own, 4)
-    A.type(xp, "table", "a 6 px XP bar")
+    local xp, reputation = byHeight(own, 12), byHeight(own, 4)
+    A.type(xp, "table", "a 12 px XP bar")
     A.type(reputation, "table", "a 4 px watched reputation bar")
     A.eq(xp._parent, MainStatusTrackingBarContainer)
     A.eq(reputation._parent, MainStatusTrackingBarContainer)
@@ -114,7 +114,7 @@ h.test("Status updates on every XP and faction event and animates a normal XP ga
     end
     local before = #mock.frames
     mock.xp = 0.25; mock:fire("PLAYER_XP_UPDATE", "player")
-    local xp = byHeight(bars(mock, before), 6) or byHeight(bars(mock, 0), 6)
+    local xp = byHeight(bars(mock, before), 12) or byHeight(bars(mock, 0), 12)
     A.type(xp, "table", "the XP visual bar")
     mock.xp = 0.75; mock:fire("PLAYER_XP_UPDATE", "player")
     A.ok(xp:GetScript("OnUpdate"), "gain starts the only per-frame animation")
@@ -147,7 +147,7 @@ h.test("Status passes secret XP straight to its widget without arithmetic, compa
     mock.secrets[secret] = true
     mock.xp = secret
     enable(); ns.Modern.Apply()
-    local xp = byHeight(bars(mock, 0), 6)
+    local xp = byHeight(bars(mock, 0), 12)
     A.type(xp, "table", "the XP visual bar")
     A.eq(xp:GetValue(), secret, "the widget receives the secret value itself")
     A.falsy(xp:GetScript("OnUpdate"), "secret values never animate")
@@ -165,7 +165,7 @@ h.test("Status never does arithmetic or comparison on a secret rested value", fu
     mock.secrets[secret] = true
     mock.rested = secret
     enable(); ns.Modern.Apply()
-    local xp = byHeight(bars(mock, 0), 6)
+    local xp = byHeight(bars(mock, 0), 12)
     A.type(xp, "table", "the XP visual bar")
     A.eq(L.errors(mock), 0, "a secret rested value is never added to or compared with the XP value")
     A.eq(xp:GetValue(), 0.25, "the XP fill is unaffected by a secret rested value")

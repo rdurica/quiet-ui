@@ -88,6 +88,7 @@ Features\Modern\Areas\Map.lua
 Features\Modern\Areas\Minimap.lua
 Features\Modern\Areas\Tooltip.lua
 Features\Modern\Areas\Auras.lua
+Features\Modern\Areas\StatusFx.lua
 Features\Modern\Areas\Status.lua
 Features\Modern\Feature.lua
 Setup\Draft.lua

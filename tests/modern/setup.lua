@@ -86,7 +86,11 @@ h.test("area checkboxes follow ns.Modern.Areas() in order and label", function(t
     L.area(t, "zz_b", { label = "Zz beta" })
     local ui = fixture(t)
     click(check(t, "Modernize"))
-    local list = ns.Modern.Areas()
+    -- The XP area heads its own section; the others fill the Areas column.
+    local list = {}
+    for _, area in ipairs(ns.Modern.Areas()) do
+        if area.key ~= "status" then list[#list + 1] = area end
+    end
     local boxes = {}
     for _, area in ipairs(list) do boxes[#boxes + 1] = check(t, area.label) end
     A.eq(#boxes, #list)
@@ -101,6 +105,43 @@ h.test("area checkboxes follow ns.Modern.Areas() in order and label", function(t
         if last then A.ok(y < last, "area " .. list[i].key .. " sits below the previous one") end
         last = y
     end
+end)
+
+local function section(t, text)
+    for _, f in ipairs(t.mock.frames) do
+        if f._kind == "FontString" and f._text == text then return f end
+    end
+end
+
+h.test("the XP and reputation section holds the Modern XP bar and Show on big XP gain, on by default", function(t)
+    local A = t.assert
+    fixture(t)
+    click(check(t, "Modernize"))
+    A.ok(section(t, "XP and reputation"), "XP and reputation section")
+    local area, gain = check(t, "Modern XP bar"), check(t, "Show on big XP gain")
+    A.ok(area and area:IsVisible() and checked(area), "Modern XP bar on")
+    A.ok(gain and gain:IsVisible() and checked(gain), "Show on big XP gain on")
+    local _, _, _, areaX, areaY = area:GetPoint(1)
+    local _, _, _, gainX, gainY = gain:GetPoint(1)
+    A.eq(areaX, 0, "left column"); A.eq(gainX, 0, "left column")
+    A.ok(gainY < areaY, "Show on big XP gain sits under Modern XP bar")
+end)
+
+h.test("Show on big XP gain is disabled while Modern XP bar is off and saves false only when unchecked", function(t)
+    local A, ns = t.assert, t.ns
+    local ui = fixture(t)
+    click(check(t, "Modernize"))
+    click(check(t, "Modern XP bar"))
+    A.falsy(check(t, "Show on big XP gain"):IsEnabled(), "disabled without the XP area")
+    click(check(t, "Modern XP bar"))
+    A.ok(check(t, "Show on big XP gain"):IsEnabled(), "enabled again")
+    click(ui.save)
+    A.eq(QuietUICharDB.modernize.xpGain, nil, "the default is not stored")
+    A.ok(ns.Settings.ModernXPGain())
+    click(check(t, "Show on big XP gain"))
+    click(ui.save)
+    A.eq(QuietUICharDB.modernize.xpGain, false)
+    A.falsy(ns.Settings.ModernXPGain())
 end)
 
 h.test("unchecking Modernize hides the options but keeps their values", function(t)

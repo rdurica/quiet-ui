@@ -21,7 +21,7 @@ h.test("a level up that raises XP and maximum together sets the new range while 
     UnitXPMax = function() return max end
     GetXPExhaustion = function() return nil end
     enable(); ns.Modern.Apply()
-    local bar = child(6)
+    local bar = child(12)
     xp, max = 150, 2000
     mock:fire("PLAYER_XP_UPDATE", "player")
     mock:fire("PLAYER_LEVEL_UP", 11)

@@ -23,7 +23,9 @@ end
 
 function Faders.Update(elapsed)
     local glance = ns.Glance.Active()
-    ns.Run("xp bar", UpdateVisible, "xp", statusFrames, Faders.XPShouldShow(), false, ns.World.XPForced(), glance, elapsed)
+    local gain = Faders.XPGainShows()
+    ns.Run("xp bar", UpdateVisible, "xp", statusFrames, Faders.XPShouldShow() or gain, false,
+        ns.World.XPForced() or gain, glance, elapsed)
     ns.Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true, nil,
         glance, elapsed)
     ns.Run("damage meter", UpdateVisible, "meter", meterFrames, Faders.MeterShouldShow(), true, nil, glance, elapsed)
@@ -73,5 +75,8 @@ ns.Feature({
         ACTIONBAR_SLOT_CHANGED = function() Faders.ForgetRangeSlot() end,
         SPELLS_CHANGED = function() Faders.ForgetRangeSlot() end,
         QUEST_TURNED_IN = function(_, xp) Faders.MarkQuestXP(xp) end,
+        PLAYER_XP_UPDATE = function(_, unit)
+            if unit == nil or unit == "player" then Faders.NoteXP() end
+        end,
     },
 })

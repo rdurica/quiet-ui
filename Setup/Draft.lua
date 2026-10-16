@@ -43,6 +43,7 @@ local function ReadModern(source)
         if stored.opacity == percent then draft.modernOpacity = percent end
     end
     draft.modernClassColors = stored.classColors ~= false
+    draft.modernXPGain = stored.xpGain ~= false
     draft.modernAreas = {}
     for _, area in ipairs(ns.Modern.Areas()) do draft.modernAreas[area.key] = stored[area.key] ~= false end
 end
@@ -58,6 +59,7 @@ local function WriteModern()
     if draft.modernTheme ~= "dark" then put("theme", draft.modernTheme) end
     if draft.modernOpacity ~= 75 then put("opacity", draft.modernOpacity) end
     if not draft.modernClassColors then put("classColors", false) end
+    if not draft.modernXPGain then put("xpGain", false) end
     for _, area in ipairs(ns.Modern.Areas()) do
         if draft.modernAreas[area.key] == false then put(area.key, false) end
     end

@@ -13,7 +13,7 @@ local S = { areas = {}, byKey = {}, events = {}, frame = nil, signature = nil }
 Modern.state = S
 
 -- Settings keys of the modernize table that an area key must not shadow.
-local RESERVED = { enabled = true, theme = true, opacity = true, classColors = true }
+local RESERVED = { enabled = true, theme = true, opacity = true, classColors = true, xpGain = true }
 
 local function Problem(spec)
     if type(spec) ~= "table" then return "the spec must be a table" end

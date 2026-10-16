@@ -282,7 +282,7 @@ local function Fixture(t, key)
             local xp, reputation
             for i = before + 1, #mock.frames do
                 local frame = mock.frames[i]
-                if frame._parent == MainStatusTrackingBarContainer and frame._h == 6 then xp = frame end
+                if frame._parent == MainStatusTrackingBarContainer and frame._h == 12 then xp = frame end
                 if frame._parent == MainStatusTrackingBarContainer and frame._h == 4 then reputation = frame end
             end
             A.type(xp, "table", "status XP bar was created")

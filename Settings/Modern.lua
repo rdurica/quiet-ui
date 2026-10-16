@@ -30,6 +30,11 @@ function ns.Settings.ModernClassColors()
     return Stored().classColors ~= false
 end
 
+-- Missing means on while the XP and reputation area is on. Only an explicit false turns it off.
+function ns.Settings.ModernXPGain()
+    return ns.Settings.ModernArea("status") and Stored().xpGain ~= false
+end
+
 -- A name the theme list does not know means dark.
 function ns.Settings.ModernTheme()
     local name = Stored().theme

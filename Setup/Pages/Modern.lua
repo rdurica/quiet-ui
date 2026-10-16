@@ -36,21 +36,39 @@ Setup.Pages.modern = function(widget, modern)
     widget.modernAreaHeader = Setup.Section(modern, "Areas")
     widget.modernAreaHeader:SetPoint("TOPLEFT", modern, "TOPLEFT", column, 0)
     widget.modernAreaHeader:SetWidth(Setup.CONTENT_W - column)
-    widget.modernOptions = { widget.modernTheme, widget.modernOpacity, widget.modernColors, widget.modernAreaHeader }
+    widget.modernXPHeader = Setup.Section(modern, "XP and reputation")
+    widget.modernXPHeader:SetPoint("TOPLEFT", modern, "TOPLEFT", 0, -170)
+    widget.modernXPHeader:SetWidth(column - 16)
+    widget.modernOptions = { widget.modernTheme, widget.modernOpacity, widget.modernColors, widget.modernAreaHeader,
+        widget.modernXPHeader }
     widget.modernAreas = {}
-    -- One checkbox per registered area, in registration order, in the right column
-    -- so the page stays inside the compact setup height.
-    for index, area in ipairs(ns.Modern.Areas()) do
+    -- One checkbox per registered area, in registration order, in the right column so the page
+    -- stays inside the compact setup height. The XP area heads its own section on the left.
+    local row = 0
+    for _, area in ipairs(ns.Modern.Areas()) do
         local key = area.key
         local button = Setup.Choice(modern, area.label, function()
             draft.modernAreas[key] = not (draft.modernAreas[key] ~= false)
             Setup.Paint()
         end)
-        button:SetWidth(Setup.CONTENT_W - column)
-        button:SetPoint("TOPLEFT", modern, "TOPLEFT", column, -22 - (index - 1) * 22)
-        widget.modernAreas[index] = { key = key, button = button }
+        if key == "status" then
+            button:SetWidth(column - 16)
+            button:SetPoint("TOPLEFT", modern, "TOPLEFT", 0, -192)
+        else
+            button:SetWidth(Setup.CONTENT_W - column)
+            button:SetPoint("TOPLEFT", modern, "TOPLEFT", column, -22 - row * 22)
+            row = row + 1
+        end
+        widget.modernAreas[#widget.modernAreas + 1] = { key = key, button = button }
         widget.modernOptions[#widget.modernOptions + 1] = button
     end
+    widget.modernXPGain = Setup.Choice(modern, "Show on big XP gain", function()
+        draft.modernXPGain = not draft.modernXPGain
+        Setup.Paint()
+    end)
+    widget.modernXPGain:SetWidth(column - 16)
+    widget.modernXPGain:SetPoint("TOPLEFT", modern, "TOPLEFT", 0, -214)
+    widget.modernOptions[#widget.modernOptions + 1] = widget.modernXPGain
     widget.modernResetPositions = Setup.Button(modern, "Reset positions", function()
         ns.Modern.ResetPositions()
     end)

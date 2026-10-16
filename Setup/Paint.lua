@@ -32,6 +32,8 @@ function Setup.PaintModern(frame)
     for _, row in ipairs(frame.modernAreas) do
         Setup.PaintBox(row.button.box, draft.modernAreas[row.key] ~= false)
     end
+    Setup.PaintBox(frame.modernXPGain.box, draft.modernXPGain)
+    if draft.modernAreas.status ~= false then frame.modernXPGain:Enable() else frame.modernXPGain:Disable() end
     for _, widget in ipairs(frame.modernOptions) do
         if draft.modernize then widget:Show() else widget:Hide() end
     end
