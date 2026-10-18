@@ -84,6 +84,7 @@ Features\Modern\Areas\CharacterLists.lua
 Features\Modern\Areas\Spellbook.lua
 Features\Modern\Areas\Professions.lua
 Features\Modern\Areas\Auction.lua
+Features\Modern\Areas\Merchant.lua
 Features\Modern\Areas\Windows.lua
 Features\Modern\Areas\Map.lua
 Features\Modern\Areas\Minimap.lua

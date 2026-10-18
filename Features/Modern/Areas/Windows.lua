@@ -1,7 +1,7 @@
 local _, ns = ...
 
--- Character, spellbook / talents, professions, auction house, quest log, bags and the NPC parchment windows.
--- Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
+-- Character, spellbook / talents, professions, auction house, merchant, quest log, bags and the NPC parchment
+-- windows. Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
 -- QuestMapFrame lives inside WorldMapFrame and is never made movable or panelled.
 local Modern = ns.Modern
 
@@ -37,6 +37,7 @@ local function Apply(skin)
     FirstWindow(skin, "QuestLogFrame")
     Modern.Professions.Apply(skin, _G.ProfessionsFrame)
     Modern.Auction.Apply(skin, _G.AuctionHouseFrame)
+    Modern.Merchant.Apply(skin, _G.MerchantFrame)
     Modern.Bags.Apply(skin)
     -- Parchment owns the replacement layer and button band; the common journal holds
     -- the Blizzard chrome as well so it remains hidden when the client repaints it.

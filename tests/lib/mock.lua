@@ -199,6 +199,7 @@ local function newRegion(self, kind, layer)
 end
 function Frame:CreateTexture(name, layer) return newRegion(self, "Texture", layer) end
 function Frame:CreateFontString(name, layer) return newRegion(self, "FontString", layer) end
+function Frame:GetDrawLayer() return self._layer end
 function Frame:CreateAnimationGroup()
     local group = newFrame(self._mock, "AnimationGroup", nil, nil)
     group._owner = self
