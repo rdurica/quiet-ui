@@ -2,8 +2,8 @@ local _, ns = ...
 
 -- Tooltip chrome. Tooltips are secure frames: a tooltip with a NineSlice (every 12.0 tooltip) never
 -- gets a script replaced, and OnTooltipSetItem is never touched (it throws on 12.0). Item quality
--- arrives through one TooltipDataProcessor post call registered at load; a hook on Show returns a
--- tooltip to the theme border. Both do nothing for a tooltip this area did not skin. An old
+-- and the player's class colour arrive through TooltipDataProcessor post calls registered at load;
+-- a hook on Show returns a tooltip to the theme border. Both do nothing for a tooltip this area did not skin. An old
 -- backdrop tooltip without a NineSlice gets one OnShow HookScript for the session; Safe ignores it
 -- while the area is off.
 
@@ -55,16 +55,29 @@ local function Safe(tip, data)
     ns.Run("modern tooltip", Paint, tip, data)
 end
 
+-- The unit health bar is held at alpha 0; it hangs below the tooltip, so no gap is left.
 local function Bar(skin, tip)
     local name = tip.GetName and tip:GetName()
     local bar = tip.StatusBar or (name and _G[name .. "StatusBar"])
-    if not ns.Usable(bar) or not bar.SetStatusBarTexture or not bar.GetStatusBarTexture then return end
-    local texture = bar:GetStatusBarTexture()
-    local previous = texture and texture.GetTexture and texture:GetTexture()
-    skin:Remember(bar, "status texture", function()
-        if previous then bar:SetStatusBarTexture(previous) end
-    end)
-    bar:SetStatusBarTexture(Modern.Theme().bar)
+    if ns.Usable(bar) then skin:Hold(bar) end
+end
+
+-- A player's name line in its class colour; Blizzard repaints it on the next unit.
+local function Name(tip)
+    if not skinned[tip] or not ns.Usable(tip) or type(tip.GetUnit) ~= "function" then return end
+    local ok, _, unit = pcall(tip.GetUnit, tip)
+    if not ok or type(unit) ~= "string" or ns.IsSecret(unit) then return end
+    local player = UnitIsPlayer and UnitIsPlayer(unit)
+    if ns.IsSecret(player) or not player then return end
+    local _, class = UnitClass(unit)
+    if ns.IsSecret(class) then return end
+    local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    local line = _G[(tip:GetName() or "") .. "TextLeft1"]
+    if color and ns.Usable(line) and line.SetTextColor then line:SetTextColor(color.r, color.g, color.b) end
+end
+
+local function SafeName(tip)
+    ns.Run("modern tooltip name", Name, tip)
 end
 
 local function Backdrop(skin, tip)
@@ -103,6 +116,9 @@ end
 if TooltipDataProcessor and type(TooltipDataProcessor.AddTooltipPostCall) == "function"
     and Enum and Enum.TooltipDataType then
     pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Item, Safe)
+    if Enum.TooltipDataType.Unit then
+        pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Unit, SafeName)
+    end
 end
 
 Modern.Register{

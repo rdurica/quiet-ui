@@ -18,8 +18,7 @@ h.test("Tooltip themes GameTooltip, item reference and shopping tooltips with Ni
         A.ok(tip._backdropColor or #tip._regions > 0, (tip:GetName() or "shopping") .. " has themed background")
         A.ok(F.borderColor(tip), (tip:GetName() or "shopping") .. " has a one-pixel border")
     end
-    A.eq(GameTooltipStatusBar:GetStatusBarTexture():GetTexture(), ns.Modern.Theme().bar,
-        "unit health bar uses the theme texture")
+    A.eq(GameTooltipStatusBar:GetAlpha(), 0, "unit health bar is hidden")
 end)
 
 h.test("Tooltip item quality updates its border and restore returns Blizzard's colour and chrome", function(t)
@@ -50,7 +49,7 @@ h.test("Tooltip skin never reads secret health values and safely skips missing o
     ShoppingTooltip1 = F.tooltip("ShoppingTooltip1", false)
     ShoppingTooltip1._forbidden = true
     A.noThrow(function() F.enable(ns) end)
-    A.eq(GameTooltipStatusBar:GetStatusBarTexture():GetTexture(), ns.Modern.Theme().bar)
+    A.eq(GameTooltipStatusBar:GetAlpha(), 0, "unit health bar is hidden")
     ns.Modern.Restore()
 end)
 

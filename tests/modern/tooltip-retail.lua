@@ -30,7 +30,7 @@ h.test("12.0 tooltips get the themed background and a 1px border and hide their 
         A.ok(R.hasColor(tip, theme.bg), name .. " has the theme background")
         F.sameColor(A, F.borderColor(tip), theme.border, name .. " theme border")
     end
-    A.eq(GameTooltipStatusBar:GetStatusBarTexture():GetTexture(), theme.bar, "unit health bar uses the theme texture")
+    A.eq(GameTooltipStatusBar:GetAlpha(), 0, "unit health bar is hidden")
     A.eq(L.errors(t.mock), 0, "no Report on the retail shapes")
 end, { beforeLoad = before })
 
@@ -119,6 +119,44 @@ h.test("12.0 tooltip skips a missing or forbidden tooltip without reading secret
     ItemRefTooltip = nil
     ShoppingTooltip1._forbidden = true
     A.noThrow(function() F.enable(ns) end)
-    A.eq(GameTooltipStatusBar:GetStatusBarTexture():GetTexture(), ns.Modern.Theme().bar)
+    A.eq(GameTooltipStatusBar:GetAlpha(), 0, "unit health bar is hidden")
     A.eq(L.errors(mock), 0, "skipped parts are not errors")
+end, { beforeLoad = before })
+
+local function unitTip(ns, mock, class)
+    fixture(ns)
+    GameTooltipTextLeft1 = GameTooltip:CreateFontString("GameTooltipTextLeft1")
+    GameTooltipTextLeft1:SetTextColor(1, 1, 1)
+    GameTooltip.GetUnit = function() return "Someone", "mouseover" end
+    UnitIsPlayer = function() return class ~= nil end
+    UnitClass = function() return class, class end
+    RAID_CLASS_COLORS = { PALADIN = { r = 0.96, g = 0.55, b = 0.73 } }
+    return function()
+        for _, call in ipairs(mock.postCalls) do
+            if call.kind == Enum.TooltipDataType.Unit then call.fn(GameTooltip, { type = Enum.TooltipDataType.Unit }) end
+        end
+    end
+end
+
+h.test("12.0 unit tooltip colours a player's name by class and keeps an NPC's colour", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local show = unitTip(ns, mock, "PALADIN")
+    F.enable(ns)
+    show()
+    F.sameColor(A, { GameTooltipTextLeft1:GetTextColor() }, { 0.96, 0.55, 0.73 }, "paladin name colour")
+    show = unitTip(ns, mock, nil)
+    F.enable(ns)
+    show()
+    F.sameColor(A, { GameTooltipTextLeft1:GetTextColor() }, { 1, 1, 1 }, "NPC keeps Blizzard's colour")
+end, { beforeLoad = before })
+
+h.test("12.0 unit tooltip name colour does nothing while the area is off and the health bar returns on restore", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local show = unitTip(ns, mock, "PALADIN")
+    F.enable(ns)
+    A.eq(GameTooltipStatusBar:GetAlpha(), 0, "health bar hidden while on")
+    ns.Modern.Restore()
+    A.eq(GameTooltipStatusBar:GetAlpha(), 1, "health bar back after restore")
+    show()
+    F.sameColor(A, { GameTooltipTextLeft1:GetTextColor() }, { 1, 1, 1 }, "no class colour while off")
 end, { beforeLoad = before })

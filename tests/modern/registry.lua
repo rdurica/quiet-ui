@@ -251,8 +251,7 @@ local function Fixture(t, key)
         ItemRefTooltip = M.tooltip("ItemRefTooltip", false)
         ShoppingTooltip1 = M.tooltip("ShoppingTooltip1", false)
         return function(A)
-            A.eq(GameTooltipStatusBar:GetStatusBarTexture():GetTexture(), ns.Modern.Theme().bar,
-                "tooltip health bar was skinned")
+            A.eq(GameTooltipStatusBar:GetAlpha(), 0, "tooltip health bar was hidden")
         end
     end
     if key == "units" then
