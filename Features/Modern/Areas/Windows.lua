@@ -55,10 +55,12 @@ Modern.Register{
     addons = { "Blizzard_TalentUI", "Blizzard_PlayerSpells", "Blizzard_SpellBookUI", "Blizzard_QuestUI",
         "Blizzard_Professions" },
     events = { "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "ITEM_TEXT_READY",
-        "BAG_UPDATE_DELAYED", "BAG_NEW_ITEMS_UPDATED" },
+        "BAG_UPDATE_DELAYED", "BAG_NEW_ITEMS_UPDATED", "PLAYER_EQUIPMENT_CHANGED" },
     onEvent = function(skin, event)
         if BAG_EVENTS[event] then
             Modern.Bags.Apply(skin)
+        elseif event == "PLAYER_EQUIPMENT_CHANGED" then
+            Modern.Character.Slots(skin)
         else
             Modern.Parchment.Event(event, skin)
         end

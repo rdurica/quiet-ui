@@ -38,13 +38,14 @@ local function Quality(link, id)
     return quality
 end
 
--- Item quality colour, or the theme border when the tooltip shows something else.
+-- Item quality colour from common up, or the theme border.
 local function Paint(tip, data)
     local record = skinned[tip]
     if not record or not ns.Usable(tip) then return end
     local link = Link(tip, data)
     local quality = link and Quality(link, ItemID(link, data))
-    local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    -- Poor (grey) items keep the theme border, like the bag slots.
+    local color = quality and quality >= 1 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
     local rgb = color and { color.r, color.g, color.b, color.a or 1 } or Modern.Theme().border
     -- With a NineSlice the backdrop colours belong to the held art; only own lines are painted.
     if not record.nine and tip.SetBackdropBorderColor then tip:SetBackdropBorderColor(unpack(rgb)) end

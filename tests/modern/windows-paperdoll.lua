@@ -187,3 +187,37 @@ h.test("Windows moves the accent border with Blizzard's tab selection and skins 
     c.modes[1].SelectedTexture:Show()
     A.ok(not accent(ns, c.modes[1]), "the tab hook does nothing while the area is off")
 end)
+
+h.test("Windows frames equipped items in their quality colour, also slots nested below PaperDollItemsFrame", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    W.area(ns, "windows")
+    local c = character()
+    local GREEN, BLUE = { 0.12, 1, 0 }, { 0, 0.44, 0.87 }
+    ITEM_QUALITY_COLORS = {
+        [0] = { r = 0.62, g = 0.62, b = 0.62 },
+        [2] = { r = GREEN[1], g = GREEN[2], b = GREEN[3] },
+        [3] = { r = BLUE[1], g = BLUE[2], b = BLUE[3] },
+    }
+    local quality = { [1] = 0, [11] = 2 }
+    GetInventoryItemQuality = function(unit, id) return unit == "player" and quality[id] or nil end
+    PaperDollItemSlotButton_Update = function() end
+    function c.slot:GetID() return 1 end
+    local column = CreateFrame("Frame", nil, PaperDollItemsFrame)
+    local ring = CreateFrame("ItemButton", "CharacterFinger0Slot", column)
+    ring.icon = ring:CreateTexture(nil, "BORDER")
+    ring.icon:SetTexture("Interface\\Icons\\Ring")
+    function ring:GetID() return 11 end
+    W.enable(ns)
+    local theme = ns.Modern.Theme().border
+    A.ok(B.same(B.border(ring), GREEN), "a nested equipment slot is framed in its quality colour")
+    A.ok(B.same(B.border(c.slot), theme), "a poor equipped item keeps the theme border")
+    quality[11] = 3
+    mock:fire("PLAYER_EQUIPMENT_CHANGED")
+    mock:drain()
+    A.ok(B.same(B.border(ring), BLUE), "the border follows a changed item")
+    quality[1] = 2
+    PaperDollItemSlotButton_Update(c.slot)
+    A.ok(B.same(B.border(c.slot), GREEN), "Blizzard's slot update repaints the border")
+    ns.Modern.Restore()
+    A.ok(B.border(ring) == nil, "restore removes the border")
+end)

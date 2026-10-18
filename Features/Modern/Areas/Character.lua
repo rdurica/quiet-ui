@@ -51,12 +51,27 @@ local function Panes(skin, frame)
     if ns.Usable(paperdoll) then Character.HoldArt(skin, paperdoll.TopBackgroundStripHost) end
 end
 
-local function Slots(skin)
-    for _, slot in ipairs(Character.Children(_G.PaperDollItemsFrame)) do
-        if ns.Usable(slot) and (slot.icon or slot.Icon) then
-            Modern.Bags.Item(skin, slot)
-            Character.HoldArt(skin, slot.BorderFrame)
+-- Equipment slots by name as well: a layout may nest them below PaperDollItemsFrame.
+local SLOT_NAMES = { "Head", "Neck", "Shoulder", "Back", "Chest", "Shirt", "Tabard", "Wrist", "Hands", "Waist", "Legs",
+    "Feet", "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo" }
+
+local function SlotList()
+    local list, seen = {}, {}
+    local function Add(slot)
+        if ns.Usable(slot) and not seen[slot] and (slot.icon or slot.Icon) then
+            seen[slot] = true
+            list[#list + 1] = slot
         end
+    end
+    for _, slot in ipairs(Character.Children(_G.PaperDollItemsFrame)) do Add(slot) end
+    for _, name in ipairs(SLOT_NAMES) do Add(_G["Character" .. name .. "Slot"]) end
+    return list
+end
+
+function Character.Slots(skin)
+    for _, slot in ipairs(SlotList()) do
+        Modern.Bags.Item(skin, slot, true)
+        Character.HoldArt(skin, slot.BorderFrame)
     end
 end
 
@@ -170,7 +185,7 @@ local function SidebarTab(skin, tab)
 end
 
 local function Refresh(skin)
-    Slots(skin)
+    Character.Slots(skin)
     StatsPane(skin)
     Character.Lists(skin)
 end
@@ -188,6 +203,11 @@ local function Watch(frame)
     local box = ns.Usable(pane) and pane.ScrollBox
     if ns.Usable(box) and type(box.Update) == "function" then pcall(hooksecurefunc, box, "Update", Again) end
     if type(_G.PaperDollFrame_UpdateStats) == "function" then pcall(hooksecurefunc, "PaperDollFrame_UpdateStats", Again) end
+    if type(_G.PaperDollItemSlotButton_Update) == "function" then
+        pcall(hooksecurefunc, "PaperDollItemSlotButton_Update", function(slot)
+            ns.Run("modern character", Modern.Bags.Repaint, slot)
+        end)
+    end
     Character.WatchLists(Again)
 end
 

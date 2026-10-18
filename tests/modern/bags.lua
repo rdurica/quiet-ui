@@ -230,3 +230,35 @@ h.test("An empty slot's wing atlas on the icon is held invisible and an item pla
     A.alpha(item.icon, 1, "after Restore the wing is Blizzard's again")
     B.fill(item, "Interface\\Icons\\ContainerFrame1Item2"); B.empty(slot)
 end)
+
+h.test("Bags colour the border from the item's own quality, common and up; poor items keep the theme border", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local bag = setup(ns)
+    local WHITE, GREEN, GREY = { 1, 1, 1 }, { 0.12, 1, 0 }, { 0.62, 0.62, 0.62 }
+    ITEM_QUALITY_COLORS = {
+        [0] = { r = GREY[1], g = GREY[2], b = GREY[3] },
+        [1] = { r = WHITE[1], g = WHITE[2], b = WHITE[3] },
+        [2] = { r = GREEN[1], g = GREEN[2], b = GREEN[3] },
+    }
+    local quality = { [1] = 2, [2] = 0, [3] = 1 }
+    C_Container.GetContainerItemInfo = function(bagID, slot)
+        if bagID == 0 and quality[slot] then return { quality = quality[slot] } end
+    end
+    local function item(slot, color)
+        local button = B.item(bag, "ContainerFrame1Item" .. slot, color)
+        function button:GetBagID() return 0 end
+        function button:GetID() return slot end
+        return button
+    end
+    -- Blizzard leaves IconBorder alone on the green item and colours the poor one grey.
+    local green, poor, common, empty = item(1), item(2, GREY), item(3), item(4)
+    W.enable(ns)
+    local theme = ns.Modern.Theme().border
+    A.ok(B.same(B.border(green), GREEN), "an uncommon item is framed green without IconBorder")
+    A.ok(B.same(B.border(common), WHITE), "a common item is framed white")
+    A.ok(B.same(B.border(poor), theme), "a poor item keeps the theme border")
+    A.ok(B.same(B.border(empty), theme), "an empty slot keeps the theme border")
+    quality[4] = 2
+    B.refresh(mock, bag)
+    A.ok(B.same(B.border(empty), GREEN), "an item put into the slot gets its colour on the next bag update")
+end)

@@ -1,8 +1,8 @@
 local _, ns = ...
 
 -- Bag windows (ContainerFrameN and ContainerFrameCombinedBags): dark chrome, square slots like the
--- action bars and a flat border that follows the quality colour Blizzard sets on IconBorder (the
--- accent for quest items). The combined bag has a title drag handle; separate bags keep Blizzard
+-- action bars and a flat border in the item's quality colour from common up (the accent for quest
+-- items). The combined bag has a title drag handle; separate bags keep Blizzard
 -- stacking, so they get none.
 
 local Modern = ns.Modern
@@ -13,6 +13,7 @@ local MAX_BAGS = 20
 local styled = setmetatable({}, { __mode = "k" })  -- window or item button -> journal while applied
 local hooked = setmetatable({}, { __mode = "k" })
 local empty = setmetatable({}, { __mode = "k" })   -- empty-slot icon -> true while held
+local worn = setmetatable({}, { __mode = "k" })    -- equipment slot button -> true
 
 local function Items(bag)
     local list, seen = {}, {}
@@ -49,12 +50,52 @@ local function Shown(texture)
     return ns.Usable(texture) and type(texture.IsShown) == "function" and texture:IsShown() and true or false
 end
 
--- Accent while Blizzard shows the quest border, quality colour while it shows IconBorder, the theme border otherwise.
+-- Poor (grey) items keep the theme border; common (white) and up are framed.
+local MIN_QUALITY = 1
+
+local function Call(func, ...)
+    if type(func) ~= "function" then return nil end
+    local ok, a, b, c, d = pcall(func, ...)
+    if ok then return a, b, c, d end
+end
+
+-- Quality read from the item itself: Forever does not colour IconBorder on every button.
+local function ItemQuality(button)
+    if type(button.GetID) ~= "function" then return nil end
+    local slot = Call(button.GetID, button)
+    local quality
+    if worn[button] then
+        quality = Call(_G.GetInventoryItemQuality, "player", slot)
+    elseif type(button.GetBagID) == "function" then
+        local bag = Call(button.GetBagID, button)
+        local info = C_Container and Call(C_Container.GetContainerItemInfo, bag, slot)
+        if type(info) == "table" then
+            quality = info.quality
+        else
+            quality = select(4, Call(_G.GetContainerItemInfo, bag, slot))
+        end
+    end
+    if type(quality) ~= "number" or ns.IsSecret(quality) then return nil end
+    return quality
+end
+
+local function QualityColor(quality)
+    if quality < MIN_QUALITY then return nil end
+    local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    if type(color) ~= "table" then return nil end
+    return { color.r, color.g, color.b, 1 }
+end
+
+-- Accent while Blizzard shows the quest border, else the item's quality colour (from its data, or from IconBorder
+-- when the data is missing), the theme border otherwise.
 local function Border(skin, button)
     local color
     local border = button.IconBorder
+    local quality = ItemQuality(button)
     if Shown(button.IconQuestTexture) then
         color = Modern.Theme().accent
+    elseif quality then
+        color = QualityColor(quality)
     elseif Shown(border) and type(border.GetVertexColor) == "function" then
         local r, g, b, a = border:GetVertexColor()
         if type(r) == "number" and not ns.IsSecret(r) then color = { r, g, b, a or 1 } end
@@ -114,9 +155,14 @@ local function NormalOf(button)
     return ok and ns.Usable(texture) and texture or nil
 end
 
--- One square slot; the character window's equipment slots use it too.
-function Bags.Item(skin, button)
-    if styled[button] then return end
+-- One square slot; the character window's equipment slots (`equipped`) use it too. A slot already skinned is
+-- only repainted.
+function Bags.Item(skin, button, equipped)
+    if equipped then worn[button] = true end
+    if styled[button] then
+        Border(styled[button], button)
+        return
+    end
     styled[button] = skin
     skin:Remember(button, "modern bag item", function()
         styled[button] = nil
@@ -139,6 +185,12 @@ function Bags.Item(skin, button)
     skin:Panel(button)
     Border(skin, button)
     Follow(button)
+end
+
+-- Repaints the border of a skinned slot after Blizzard updates its item; nothing while the area is off.
+function Bags.Repaint(button)
+    local skin = styled[button]
+    if skin then Border(skin, button) end
 end
 
 local function SkinItems(skin, bag)
