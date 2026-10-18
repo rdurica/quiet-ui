@@ -137,3 +137,42 @@ h.test("Reset positions returns character, spellbook and map windows to Blizzard
     end
     A.eq(R.visibleChrome(frame), "", "the skin stays applied")
 end)
+
+h.test("Windows turns the close button into a dark square with a thin cross, red under the mouse, and restores it", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local frame = character()
+    local close = frame.CloseButton
+    close:SetSize(24, 24)
+    close.normal = close:CreateTexture(nil, "ARTWORK")
+    close.normal:SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+    close.normal:SetAlpha(1)
+    close.GetNormalTexture = function() return close.normal end
+    local before = L.snapshot({ close.normal })
+    local theme = ns.Modern.Theme()
+    W.enable(ns)
+    A.alpha(close.normal, 0, "Blizzard's red and gold art is held")
+    A.alpha(close, 1, "the button itself stays, with its place and click")
+    local own = {}
+    for _, region in ipairs({ close:GetRegions() }) do
+        if region ~= close.normal and region:IsShown() and region._color then own[#own + 1] = region end
+    end
+    A.ok(#own >= 6, "a box, its border and two cross lines are drawn")
+    local function crossColor()
+        for _, region in ipairs(own) do
+            if region._layer == "OVERLAY" and region:GetWidth() == 10 then return region._color end
+        end
+    end
+    A.deep(crossColor(), theme.glyph, "the cross is grey")
+    close.normal:SetAlpha(1)
+    A.alpha(close.normal, 0, "the art stays held when Blizzard repaints it")
+    close:GetScript("OnEnter")(close)
+    A.deep(crossColor(), theme.danger, "the cross turns red under the mouse")
+    close:GetScript("OnLeave")(close)
+    A.deep(crossColor(), theme.glyph, "and grey again when the mouse leaves")
+    ns.Modern.Restore()
+    A.deep(L.diff(before), {}, "restore returns Blizzard's art")
+    for _, region in ipairs(own) do A.falsy(region:IsShown(), "own regions are hidden on restore") end
+    close:GetScript("OnEnter")(close)
+    A.deep(crossColor(), theme.glyph, "the hover hook does nothing while the area is off")
+end)

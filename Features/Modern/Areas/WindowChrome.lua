@@ -3,7 +3,8 @@ local _, ns = ...
 -- Window chrome shared by the Windows and Map areas: holds the art that Blizzard's
 -- PortraitFrameTemplate / ButtonFrameTemplate, NineSlicePanelTemplate, InsetFrameTemplate and
 -- PanelTabButtonTemplate put on a frame. Everything is held through the area journal (alpha),
--- never hidden, so titles, close buttons and window content stay.
+-- never hidden, so titles and window content stay. The close button keeps its place and click area; only its art
+-- becomes a small dark square with a thin cross.
 
 local Modern = ns.Modern
 
@@ -19,7 +20,12 @@ local TAB_KEYS = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "Rig
 -- The art Blizzard shows on the selected tab, first match wins.
 local SELECTED_KEYS = { "SquareBackgroundActive", "LeftActive", "SelectedTexture" }
 
+local CLOSE_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
+local CLOSE_BOX, CROSS_LENGTH = 16, 10
+
 local tabs = setmetatable({}, { __mode = "k" })    -- tab -> true while its area is applied
+local closes = setmetatable({}, { __mode = "k" })  -- close button -> its skin while the area is applied
+local hovered = setmetatable({}, { __mode = "k" })
 local hooked = setmetatable({}, { __mode = "k" })
 
 local function IsTexture(obj)
@@ -105,6 +111,71 @@ function Modern.TabSystemChrome(skin, frame)
     end
 end
 
+local function CloseParts(button)
+    local fill = button:CreateTexture(nil, "BACKGROUND", nil, -8)
+    fill:SetSize(CLOSE_BOX, CLOSE_BOX)
+    fill:SetPoint("CENTER", button, "CENTER", 0, 0)
+    local parts = { fill }
+    for _, angle in ipairs({ 45, -45 }) do
+        local line = button:CreateTexture(nil, "OVERLAY")
+        line:SetSize(CROSS_LENGTH, 2)
+        line:SetPoint("CENTER", button, "CENTER", 0, 0)
+        if type(line.SetRotation) == "function" then pcall(line.SetRotation, line, math.rad(angle)) end
+        parts[#parts + 1] = line
+    end
+    return parts
+end
+
+local function Parts(skin, button)
+    return skin:Own(button, "close", function() return CloseParts(button) end)
+end
+
+local function PaintClose(skin, button)
+    local theme = Modern.Theme()
+    local parts = Parts(skin, button)
+    local over = hovered[button]
+    parts[1]:SetColorTexture(unpack(theme.bg))
+    for i = 2, #parts do parts[i]:SetColorTexture(unpack(over and theme.danger or theme.glyph)) end
+    skin:Border(button, over and theme.danger or theme.border, parts[1])
+end
+
+-- PortraitFrameTemplate / ButtonFrameTemplate name it CloseButton; the world map keeps it on BorderFrame.
+local function FindClose(frame)
+    local name = type(frame.GetName) == "function" and frame:GetName()
+    for _, close in ipairs({ frame.CloseButton, ns.Usable(frame.BorderFrame) and frame.BorderFrame.CloseButton,
+        type(name) == "string" and _G[name .. "CloseButton"] }) do
+        if ns.Usable(close) and type(close.CreateTexture) == "function" then return close end
+    end
+end
+
+function Modern.CloseButton(skin, frame)
+    local button = ns.Usable(frame) and FindClose(frame)
+    if not button then return end
+    for _, getter in ipairs(CLOSE_ART) do
+        if type(button[getter]) == "function" then
+            local ok, texture = pcall(button[getter], button)
+            if ok and IsTexture(texture) then skin:Hold(texture) end
+        end
+    end
+    for _, part in ipairs(Parts(skin, button)) do part:Show() end
+    closes[button] = skin
+    skin:Remember(button, "modern close", function()
+        closes[button] = nil
+        hovered[button] = nil
+    end)
+    PaintClose(skin, button)
+    if hooked[button] or type(button.HookScript) ~= "function" then return end
+    hooked[button] = true
+    for script, on in pairs({ OnEnter = true, OnLeave = false }) do
+        pcall(button.HookScript, button, script, function()
+            local owner = closes[button]
+            if not owner then return end
+            hovered[button] = on
+            ns.Run("modern close", PaintClose, owner, button)
+        end)
+    end
+end
+
 -- Three-piece art (Left, Middle or Center, Right) of a search box, a money bar or a panel button is held. The
 -- field becomes a dark fill with a thin border; a bare one keeps only its content.
 function Modern.Field(skin, frame, bare)
@@ -124,6 +195,7 @@ function Modern.Window(skin, frame, key, over)
     skin:Border(frame)
     Modern.WindowChrome(skin, frame)
     Modern.TabSystemChrome(skin, frame)
+    Modern.CloseButton(skin, frame)
     if key then
         skin:Remember(frame, "modern movable", function() Modern.ReleaseMovable(frame) end)
         Modern.MakeMovable(frame, key, over)

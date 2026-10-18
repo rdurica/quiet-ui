@@ -11,6 +11,9 @@ local THEMES = {
         -- Opaque: a translucent border over a translucent fill lets the world tint it.
         border = { 0.33, 0.33, 0.33, 1 },
         accent = { 0.95, 0.75, 0.25 },
+        -- The close cross, and its colour under the mouse.
+        glyph = { 0.75, 0.75, 0.75, 1 },
+        danger = { 0.85, 0.25, 0.20, 1 },
         bar = "Interface\\Buttons\\WHITE8X8",
     },
 }
