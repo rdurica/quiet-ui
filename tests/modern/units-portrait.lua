@@ -1,4 +1,5 @@
--- Modern unit frames: no portraits, the target's rarity on its health bar border (retail 12.0 structure).
+-- Modern unit frames: pet and target of target lose their portraits, the target's rarity on its health bar
+-- border (retail 12.0).
 local h = ...
 local U = h.lib("modern-units")
 
@@ -9,11 +10,15 @@ local function enable(ns, extra)
     ns.Modern.Apply()
 end
 
-h.test("portraits are held at alpha 0 in place and return on restore", function(t)
+h.test("pet and target of target portraits are held at alpha 0 in place; player and NPC target portraits stay", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()
     enable(ns)
-    for _, f in ipairs(frames) do
+    for _, i in ipairs({ 1, 3, 5 }) do
+        A.alpha(U.parts(frames[i]).portrait, 1, frames[i]:GetName() .. " portrait stays visible")
+    end
+    for _, i in ipairs({ 2, 4 }) do
+        local f = frames[i]
         local p = U.parts(f).portrait
         A.alpha(p, 0, f:GetName() .. " portrait held")
         p:SetAlpha(1)
@@ -24,7 +29,7 @@ h.test("portraits are held at alpha 0 in place and return on restore", function(
     end
     ns.Modern.Restore()
     for _, f in ipairs(frames) do
-        A.alpha(U.parts(f).portrait, 1, f:GetName() .. " portrait released")
+        A.alpha(U.parts(f).portrait, 1, f:GetName() .. " portrait visible after restore")
     end
 end)
 

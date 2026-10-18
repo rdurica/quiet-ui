@@ -6,6 +6,7 @@
 --     BossPortraitFrameTexture}; .TargetFrameContent.TargetFrameContentMain.{HealthBarsContainer.HealthBar,
 --     ManaBar, ReputationColor, LevelText}
 -- The level text sits in a ring texture anchored to it (WoW Forever art, name unknown).
+-- The player's combat swords: PlayerFrameContent.PlayerFrameContentContextual.AttackIcon.
 --   TargetFrameToT: Portrait, PortraitMask, FrameTexture, HealthBar, ManaBar directly on the frame
 --   PetFrame: Portrait / PortraitMask keys; PetFrameTexture, PetFrameFlash, PetFrameHealthBar,
 --     PetFrameManaBar as named globals
@@ -52,6 +53,7 @@ local function bar(parent, atlas, colour)
     for _, spec in ipairs({ { "TextString", "CENTER" }, { "LeftText", "LEFT" }, { "RightText", "RIGHT" } }) do
         local text = parent:CreateFontString(nil, "OVERLAY")
         text:SetPoint(spec[2], parent, spec[2], 0, 0)
+        text:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
         value[spec[1]] = text
     end
     value._statusColor = colour
@@ -73,6 +75,7 @@ local function sub(parent) return CreateFrame("Frame", nil, parent) end
 local function level(parent, text)
     local label = parent:CreateFontString(nil, "OVERLAY")
     label:SetText(text)
+    label:SetFont("Fonts\\FRIZQT__.TTF", 14, "")
     label:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 4, 4)
     local ring = parent:CreateTexture(nil, "BORDER")
     ring:SetTexture("Interface\\LevelRing")
@@ -89,6 +92,7 @@ local function finish(f, unit, kind, p)
     p.health.unitFrame, p.mana.unitFrame = f, f
     p.health.unit, p.mana.unit = unit, unit
     f.Name = f:CreateFontString(nil, "OVERLAY")
+    f.Name:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
     f:SetSize(232, 100)
     parts[f] = p
     _G[f:GetName()] = f
@@ -108,6 +112,10 @@ local function player()
     local main = sub(content); content.PlayerFrameContentMain = main
     main.StatusTexture = texture(main, ATLAS .. "Player-PortraitOn-Status")
     local lvl, ring = level(main, "20"); main.PlayerLevelText = lvl
+    local contextual = sub(content); content.PlayerFrameContentContextual = contextual
+    contextual.AttackIcon = texture(contextual, ATLAS .. "Player-CombatIcon", true)
+    contextual.AttackIcon:SetSize(24, 24)
+    contextual.AttackIcon:SetPoint("TOPLEFT", lvl, "BOTTOMLEFT", 0, -2)
     local hb = sub(main); main.HealthBarsContainer = hb
     hb.HealthBar = bar(hb, ATLAS .. "Player-PortraitOn-Bar-Health", { 0, 1, 0, 1 })
     hb.HealthBar:SetPoint("TOPLEFT", hb, "TOPLEFT", 85, -26)
@@ -116,7 +124,8 @@ local function player()
     area.ManaBar:SetPoint("TOPLEFT", area, "TOPLEFT", 85, -47)
     return finish(f, "player", "Player", { portrait = icon, mask = mask, health = hb.HealthBar, mana = area.ManaBar,
         art = { c.FrameTexture, c.AlternatePowerFrameTexture, c.VehicleFrameTexture, c.FrameFlash, main.StatusTexture },
-        flash = c.FrameFlash, status = main.StatusTexture, level = lvl, ring = ring })
+        flash = c.FrameFlash, status = main.StatusTexture, level = lvl, ring = ring,
+        combat = contextual.AttackIcon })
 end
 
 local function target(name, unit)
@@ -221,6 +230,22 @@ local function edges(owner, anchor)
         end
     end)
     return list
+end
+
+-- The square QuietUI draws where a target or focus portrait was: a shown square background fill on the frame.
+function U.levelBox(frame)
+    for _, r in ipairs(frame._regions or {}) do
+        if r._layer == "BACKGROUND" and r._shown and r._color and r._w == r._h then return r end
+    end
+end
+
+-- The class icon QuietUI shows in that square for a player unit.
+function U.classIcon(frame)
+    for _, r in ipairs(frame._regions or {}) do
+        if r._layer == "ARTWORK" and r._shown and type(r._texture) == "string" and r._texture:find("CLASSES") then
+            return r
+        end
+    end
 end
 
 function U.border(bar) return #edges(bar, bar) >= 4 end

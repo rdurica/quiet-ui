@@ -174,7 +174,8 @@ function L.diff(snap)
             end
             local function same(x, y)
                 if type(x) ~= type(y) then return false end
-                if type(x) ~= "table" or x == y then return x == y end
+                -- Frames are compared by identity; walking them recurses through parent and child links.
+                if type(x) ~= "table" or x == y or x._mock or y._mock then return x == y end
                 for kk, v in pairs(x) do if not same(v, y[kk]) then return false end end
                 for kk in pairs(y) do if x[kk] == nil then return false end end
                 return true

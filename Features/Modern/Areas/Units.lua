@@ -7,9 +7,9 @@ local _, ns = ...
 
 local Modern = ns.Modern
 
--- The third field: Blizzard draws the portrait right of the bars.
+-- The third field: Blizzard draws the portrait right of the bars; the fourth: the portrait stays.
 local FRAMES = {
-    { "PlayerFrame", "player" }, { "PetFrame", "pet" }, { "TargetFrame", "target", true },
+    { "PlayerFrame", "player", false, true }, { "PetFrame", "pet" }, { "TargetFrame", "target", true },
     { "TargetFrameToT", "targettarget" }, { "FocusFrame", "focus", true },
 }
 
@@ -29,6 +29,7 @@ local PORTRAIT_PATHS = { "portrait", "Portrait", "PlayerFrameContainer.PlayerPor
 local LEVEL_PATHS = { "PlayerFrameContent.PlayerFrameContentMain.PlayerLevelText",
     "TargetFrameContent.TargetFrameContentMain.LevelText", "levelText", "LevelText" }
 local NAME_PATHS = { "name", "Name", "TargetFrameContent.TargetFrameContentMain.Name" }
+local COMBAT_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.AttackIcon" }
 local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
 
 local GREEN = { 0.2, 0.8, 0.2 }
@@ -37,6 +38,7 @@ local BOSS = { 0.9, 0.15, 0.15, 1 }
 
 local tracked = setmetatable({}, { __mode = "k" }) -- bar -> { unit, kind, texture, busy } while applied
 local hooked = setmetatable({}, { __mode = "k" })
+local held = setmetatable({}, { __mode = "k" })    -- portrait -> true while held at alpha 0
 local hookedUpdate
 
 local function Dig(root, path)
@@ -82,6 +84,21 @@ local function HealthColour(unit)
     end
     if r and g and b then return r, g, b end
     return unpack(GREEN)
+end
+
+local CLASS_ICONS = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
+local ICON_INSET = 0.02 -- of the sheet, trims the icon's rounded corners
+
+-- A player's class icon from Blizzard's class sheet; nil for NPCs, a secret identity or a missing sheet.
+local function ClassIcon(unit)
+    if type(UnitIsPlayer) ~= "function" or type(UnitClass) ~= "function" or type(CLASS_ICON_TCOORDS) ~= "table" then return end
+    local player = UnitIsPlayer(unit)
+    if ns.IsSecret(player) or not player then return end
+    local token = select(2, UnitClass(unit))
+    if type(token) ~= "string" or ns.IsSecret(token) then return end
+    local c = CLASS_ICON_TCOORDS[token]
+    if type(c) ~= "table" then return end
+    return { CLASS_ICONS, c[1] + ICON_INSET, c[2] - ICON_INSET, c[3] + ICON_INSET, c[4] - ICON_INSET }
 end
 
 local function PowerColour(unit)
@@ -184,11 +201,22 @@ local function Unit(skin, spec)
     local health, mana = Find(frame, HEALTH_PATHS, name .. "HealthBar"), Find(frame, POWER_PATHS, name .. "ManaBar")
     Bar(skin, health, unit, "health", RarityColour(unit))
     Bar(skin, mana, unit, "power")
-    -- No portrait: Blizzard's stays in place, held at alpha 0, and the bars take its space.
+    -- Portraits stay for the player and NPC targets; the others are held at alpha 0 and the bars take
+    -- their space. A target turning from NPC to player holds it again.
     local portrait = Find(frame, PORTRAIT_PATHS, name == "PetFrame" and "PetPortrait" or nil)
     if not portrait then return end
-    skin:Hold(portrait)
+    local icon = spec[3] and ClassIcon(unit) or nil
+    local inside = spec[3] and not icon
+    if spec[4] or inside then
+        if held[portrait] then ns.ReleaseAlpha(portrait) end
+        held[portrait] = nil
+    else
+        skin:Hold(portrait)
+        held[portrait] = true
+    end
     Modern.UnitLayout(skin, frame, { health = health, mana = mana, portrait = portrait, right = spec[3],
+        shown = spec[4], combat = spec[4] and Find(frame, COMBAT_PATHS, "PlayerAttackIcon") or nil,
+        colour = { HealthColour(unit) }, icon = icon, inside = inside,
         level = Find(frame, LEVEL_PATHS, name == "PlayerFrame" and "PlayerLevelText" or name .. "TextureFrameLevelText"),
         skull = Find(frame, SKULL_PATHS, name .. "TextureFrameHighLevelTexture"),
         name = Find(frame, NAME_PATHS, name == "PlayerFrame" and "PlayerName" or name .. "TextureFrameName") })
@@ -217,5 +245,8 @@ Modern.Register{
         "PLAYER_REGEN_ENABLED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" },
     apply = Apply, onEvent = OnEvent,
     -- Untrack first: the journal's undo then restores texture and colour without the hooks answering.
-    restore = function() for bar in pairs(tracked) do tracked[bar] = nil end end,
+    restore = function()
+        for bar in pairs(tracked) do tracked[bar] = nil end
+        for portrait in pairs(held) do held[portrait] = nil end
+    end,
 }
