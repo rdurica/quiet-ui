@@ -250,7 +250,7 @@ h.test("bar fills lose their fixed-size mask and the value texts centre on the b
     A.deep(U.points(health.TextString), { { "CENTER", health:GetParent(), "CENTER", 0, 0 } }, "text points back")
 end)
 
-h.test("player, target and focus names sit left-aligned right of the level; pet and target of target keep theirs", function(t)
+h.test("player, target and focus names sit left-aligned right of the level; pet and target of target names span the health bar", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()
     local before = {}
@@ -265,7 +265,10 @@ h.test("player, target and focus names sit left-aligned right of the level; pet 
         A.eq(f.Name:GetJustifyH(), "LEFT", f:GetName() .. " name left-aligned")
     end
     for _, i in ipairs({ 2, 4 }) do
-        A.deep(U.points(frames[i].Name), before[frames[i]], frames[i]:GetName() .. " name untouched")
+        local f, health = frames[i], U.parts(frames[i]).health
+        A.deep(U.points(f.Name), { { "BOTTOMLEFT", health, "TOPLEFT", 0, 2 }, { "BOTTOMRIGHT", health, "TOPRIGHT", 0, 2 } },
+            f:GetName() .. " name over the health bar")
+        A.eq(f.Name:GetJustifyH(), "LEFT", f:GetName() .. " name left-aligned")
     end
     ns.Modern.Restore()
     for _, f in ipairs(frames) do A.deep(U.points(f.Name), before[f], f:GetName() .. " name restored") end

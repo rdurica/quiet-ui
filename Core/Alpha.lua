@@ -49,6 +49,11 @@ function ns.EnsureAlphaHook(frame)
     if type(frame.SetAlphaFromBoolean) == "function" then
         pcall(hooksecurefunc, frame, "SetAlphaFromBoolean", function(self) Reapply(self, nil) end)
     end
+    -- On a texture the vertex colour's alpha is its alpha (the ToT portrait gets one every frame).
+    if type(frame.SetVertexColor) == "function" and type(frame.GetObjectType) == "function"
+        and frame:GetObjectType() == "Texture" then
+        pcall(hooksecurefunc, frame, "SetVertexColor", function(self, _, _, _, a) Reapply(self, a) end)
+    end
 end
 
 function ns.PushAlpha(frame, alpha)

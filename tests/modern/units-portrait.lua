@@ -33,6 +33,28 @@ h.test("pet and target of target portraits are held at alpha 0 in place; player 
     end
 end)
 
+h.test("pet and target of target portraits stay hidden when Blizzard sets their vertex colour every frame", function(t)
+    local A, ns = t.assert, t.ns
+    local frames = U.frames()
+    enable(ns)
+    for _, i in ipairs({ 2, 4 }) do
+        local p = U.parts(frames[i]).portrait
+        p:SetVertexColor(1, 1, 1, 1)
+        A.alpha(p, 0, frames[i]:GetName() .. " portrait hidden after a white vertex colour")
+        p:SetVertexColor(0.35, 0.35, 0.35, 1)
+        A.alpha(p, 0, frames[i]:GetName() .. " portrait hidden after the dead grey")
+    end
+    local player = U.parts(frames[1]).portrait
+    player:SetVertexColor(1, 1, 1, 1)
+    A.alpha(player, 1, "the player's portrait is not held")
+    ns.Modern.Restore()
+    for _, i in ipairs({ 2, 4 }) do
+        local p = U.parts(frames[i]).portrait
+        p:SetVertexColor(1, 1, 1, 1)
+        A.alpha(p, 1, frames[i]:GetName() .. " portrait left alone while off")
+    end
+end)
+
 h.test("the resting glow around the player frame is held hidden", function(t)
     local A, ns = t.assert, t.ns
     local status = U.parts(U.frames()[1]).status

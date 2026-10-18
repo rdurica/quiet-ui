@@ -147,6 +147,14 @@ local function LevelName(skin, parts, box)
     end
 end
 
+-- Without a level (pet, target of target) the name spans the health bar, just above it.
+local function BarName(skin, parts)
+    local name = parts.name
+    if not ns.Usable(name) or type(name.SetPoint) ~= "function" then return end
+    if type(name.SetJustifyH) == "function" then skin:Set(name, "SetJustifyH", "LEFT") end
+    Anchor(skin, name, { "BOTTOMLEFT", parts.health, "TOPLEFT", 0, 2 }, { "BOTTOMRIGHT", parts.health, "TOPRIGHT", 0, 2 })
+end
+
 -- A portrait as a square picture: no round mask, the faded rim cropped.
 local function Square(skin, portrait)
     Modern.NoMask(skin, portrait)
@@ -228,5 +236,6 @@ function Modern.UnitLayout(skin, frame, parts)
     local box
     if parts.shown then box = Portrait(skin, frame, parts, outer, top, size)
     elseif level then box = ColourBox(skin, frame, parts, outer, top, size) end
-    if level and box then LevelName(skin, parts, box) end
+    if level and box then LevelName(skin, parts, box)
+    elseif not level and not parts.shown then BarName(skin, parts) end
 end

@@ -213,7 +213,12 @@ function Frame:IsPlaying() return self._playing == true end
 function Frame:SetTexture(v) self._texture = v end
 function Frame:GetTexture() return self._texture end
 function Frame:SetColorTexture(...) self._color = { ... } end
-function Frame:SetVertexColor(...) self._vertex = { ... } end
+-- On a texture the vertex alpha is the texture's alpha, set past any SetAlpha hook.
+function Frame:SetVertexColor(...)
+    self._vertex = { ... }
+    local a = select(4, ...)
+    if self._kind == "Texture" and a ~= nil then self._alpha = a end
+end
 function Frame:SetTexCoord(...) self._texCoord = { ... } end
 function Frame:GetTexCoord()
     local c = self._texCoord or { 0, 1, 0, 1 }
