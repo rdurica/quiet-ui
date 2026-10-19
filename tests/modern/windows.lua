@@ -1,4 +1,4 @@
--- Modern Windows: runtime variants, dark chrome, bags and the branch-008 parchment behaviour.
+-- Modern Windows: runtime variants, dark chrome, bags.
 local h = ...
 local L = h.lib("modern")
 local W = h.lib("modern-windows")
@@ -72,40 +72,6 @@ h.test("Windows makes character, spellbook, talents, quest log and the combined 
     ns.Modern.Apply()
     A.deep(W.point(f.character), { "TOPLEFT", "TOPLEFT", 31, -71 }, "area off restores Blizzard position")
     A.deep(QuietUICharDB.windowPoints.CharacterFrame, { "CENTER", "CENTER", 8, 9 }, "saved point remains")
-end)
-
-h.test("Windows ports the parchment behaviour for NPC quest, gossip and item text and restores it", function(t)
-    local A, ns, mock = t.assert, t.ns, t.mock
-    W.area(ns, "windows")
-    local quest, gossip, itemText = W.window("QuestFrame"), W.window("GossipFrame"), W.window("ItemTextFrame")
-    QuestFrame, GossipFrame, ItemTextFrame = quest, gossip, itemText
-    local accept = W.button(quest, "QuestFrameAcceptButton")
-    local decline = W.button(quest, "QuestFrameDeclineButton")
-    local close = W.button(quest, "QuestFrameCloseButton")
-    local scroll = CreateFrame("ScrollFrame", "QuestDetailScrollFrame", quest)
-    scroll:SetPoint("BOTTOM", quest, "BOTTOM", 0, 2)
-    local text = quest:CreateFontString(nil, "OVERLAY")
-    text:SetText("Blizzard quest text")
-    local title = quest.TitleContainer.TitleText
-    title:SetTextColor(0.8, 0.7, 0.6, 0.5)
-    local before = L.snapshot({ quest, quest.chrome, accept, decline, close, scroll, text, title, gossip, itemText })
-    W.enable(ns)
-    for _, frame in ipairs({ quest, gossip, itemText }) do
-        A.ok(W.hasTexture(mock, frame, "Media\\parchment.tga"), (frame:GetName() or "NPC window") .. " has parchment")
-        A.alpha(frame.chrome, 0, "old chrome is held")
-    end
-    A.eq(text:GetText(), "Blizzard quest text", "NPC text remains Blizzard-owned")
-    A.eq(accept:GetPoint(), "BOTTOMLEFT", "primary action enters the parchment button band")
-    A.eq(decline:GetPoint(), "BOTTOMRIGHT", "secondary action enters the parchment button band")
-    A.eq(close:GetPoint(), "TOPRIGHT", "close button becomes the parchment corner cross")
-    local _, _, _, _, y = scroll:GetPoint(1)
-    A.ok(y > 2, "scroll text clears the button band")
-    local _, titleSize = title:GetFont()
-    A.eq(titleSize, 15, "title uses the branch-008 ink title size")
-    local tr, tg, tb = title:GetTextColor()
-    A.eq(tr, 0.24); A.eq(tg, 0.16); A.eq(tb, 0.09, "title uses dark ink")
-    ns.Modern.Restore()
-    A.deep(L.diff(before), {}, "parchment restores exact original state")
 end)
 
 h.test("Windows skips absent variants without reporting and does not scan UIParent descendants", function(t)

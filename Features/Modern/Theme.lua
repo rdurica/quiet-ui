@@ -13,6 +13,8 @@ local THEMES = {
         accent = { 0.95, 0.75, 0.25 },
         -- The close cross, and its colour under the mouse.
         glyph = { 0.75, 0.75, 0.75, 1 },
+        -- Body text that Blizzard inked for parchment (NPC dialogs).
+        text = { 0.9, 0.9, 0.9 },
         danger = { 0.85, 0.25, 0.20, 1 },
         bar = "Interface\\Buttons\\WHITE8X8",
     },

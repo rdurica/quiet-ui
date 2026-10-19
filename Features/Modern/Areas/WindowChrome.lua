@@ -4,7 +4,7 @@ local _, ns = ...
 -- PortraitFrameTemplate / ButtonFrameTemplate, NineSlicePanelTemplate, InsetFrameTemplate and
 -- PanelTabButtonTemplate put on a frame. Everything is held through the area journal (alpha),
 -- never hidden, so titles and window content stay. The close button keeps its place and click area; only its art
--- becomes a small dark square with a thin cross.
+-- becomes a bare thin cross.
 
 local Modern = ns.Modern
 
@@ -21,7 +21,7 @@ local TAB_KEYS = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "Rig
 local SELECTED_KEYS = { "SquareBackgroundActive", "LeftActive", "SelectedTexture" }
 
 local CLOSE_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
-local CLOSE_BOX, CROSS_LENGTH = 16, 10
+local CROSS_LENGTH = 12
 
 local tabs = setmetatable({}, { __mode = "k" })    -- tab -> true while its area is applied
 local closes = setmetatable({}, { __mode = "k" })  -- close button -> its skin while the area is applied
@@ -112,10 +112,7 @@ function Modern.TabSystemChrome(skin, frame)
 end
 
 local function CloseParts(button)
-    local fill = button:CreateTexture(nil, "BACKGROUND", nil, -8)
-    fill:SetSize(CLOSE_BOX, CLOSE_BOX)
-    fill:SetPoint("CENTER", button, "CENTER", 0, 0)
-    local parts = { fill }
+    local parts = {}
     for _, angle in ipairs({ 45, -45 }) do
         local line = button:CreateTexture(nil, "OVERLAY")
         line:SetSize(CROSS_LENGTH, 2)
@@ -133,10 +130,8 @@ end
 local function PaintClose(skin, button)
     local theme = Modern.Theme()
     local parts = Parts(skin, button)
-    local over = hovered[button]
-    parts[1]:SetColorTexture(unpack(theme.bg))
-    for i = 2, #parts do parts[i]:SetColorTexture(unpack(over and theme.danger or theme.glyph)) end
-    skin:Border(button, over and theme.danger or theme.border, parts[1])
+    local color = hovered[button] and theme.danger or theme.glyph
+    for _, line in ipairs(parts) do line:SetColorTexture(unpack(color)) end
 end
 
 -- PortraitFrameTemplate / ButtonFrameTemplate name it CloseButton; the world map keeps it on BorderFrame.

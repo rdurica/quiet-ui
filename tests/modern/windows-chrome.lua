@@ -138,7 +138,7 @@ h.test("Reset positions returns character, spellbook and map windows to Blizzard
     A.eq(R.visibleChrome(frame), "", "the skin stays applied")
 end)
 
-h.test("Windows turns the close button into a dark square with a thin cross, red under the mouse, and restores it", function(t)
+h.test("Windows turns the close button into a bare thin cross, red under the mouse, and restores it", function(t)
     local A, ns = t.assert, t.ns
     W.area(ns, "windows")
     local frame = character()
@@ -157,10 +157,10 @@ h.test("Windows turns the close button into a dark square with a thin cross, red
     for _, region in ipairs({ close:GetRegions() }) do
         if region ~= close.normal and region:IsShown() and region._color then own[#own + 1] = region end
     end
-    A.ok(#own >= 6, "a box, its border and two cross lines are drawn")
+    A.eq(#own, 2, "only two cross lines are drawn, no box or border")
     local function crossColor()
         for _, region in ipairs(own) do
-            if region._layer == "OVERLAY" and region:GetWidth() == 10 then return region._color end
+            if region._layer == "OVERLAY" and region:GetWidth() == 12 then return region._color end
         end
     end
     A.deep(crossColor(), theme.glyph, "the cross is grey")

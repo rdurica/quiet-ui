@@ -1,7 +1,7 @@
 local _, ns = ...
 
--- Character, spellbook / talents, professions, auction house, merchant, quest log, bags and the NPC parchment
--- windows. Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
+-- Character, spellbook / talents, professions, auction house, merchant, quest log, bags and the NPC quest, gossip
+-- and item text windows. Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
 -- QuestMapFrame lives inside WorldMapFrame and is never made movable or panelled.
 local Modern = ns.Modern
 
@@ -39,21 +39,13 @@ local function Apply(skin)
     Modern.Auction.Apply(skin, _G.AuctionHouseFrame)
     Modern.Merchant.Apply(skin, _G.MerchantFrame)
     Modern.Bags.Apply(skin)
-    -- Parchment owns the replacement layer and button band; the common journal holds
-    -- the Blizzard chrome as well so it remains hidden when the client repaints it.
-    for _, name in ipairs({ "QuestFrame", "GossipFrame", "ItemTextFrame" }) do
-        Modern.WindowChrome(skin, _G[name])
-    end
-    Modern.Parchment.Apply(skin)
+    Modern.Npc.Apply(skin)
 end
 
 Modern.Register{
     key = "windows",
     label = "Windows",
     apply = Apply,
-    restore = function()
-        Modern.Parchment.Restore()
-    end,
     addons = { "Blizzard_TalentUI", "Blizzard_PlayerSpells", "Blizzard_SpellBookUI", "Blizzard_QuestUI",
         "Blizzard_Professions", "Blizzard_AuctionHouseUI" },
     events = { "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "ITEM_TEXT_READY",
@@ -64,7 +56,7 @@ Modern.Register{
         elseif event == "PLAYER_EQUIPMENT_CHANGED" then
             Modern.Character.Slots(skin)
         else
-            Modern.Parchment.Event(event, skin)
+            Modern.Npc.Event(skin, event)
         end
     end,
 }
