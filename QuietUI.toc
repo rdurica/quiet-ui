@@ -84,6 +84,7 @@ Features\Modern\Areas\Spellbook.lua
 Features\Modern\Areas\Professions.lua
 Features\Modern\Areas\Auction.lua
 Features\Modern\Areas\Merchant.lua
+Features\Modern\Areas\Loot.lua
 Features\Modern\Areas\Npc.lua
 Features\Modern\Areas\Windows.lua
 Features\Modern\Areas\MapBar.lua
@@ -93,6 +94,7 @@ Features\Modern\Areas\MinimapButtons.lua
 Features\Modern\Areas\MinimapHeader.lua
 Features\Modern\Areas\Minimap.lua
 Features\Modern\Areas\Tooltip.lua
+Features\Modern\Areas\Meter.lua
 Features\Modern\Areas\Auras.lua
 Features\Modern\Areas\StatusFx.lua
 Features\Modern\Areas\Status.lua

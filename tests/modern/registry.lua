@@ -6,6 +6,7 @@ local I = h.lib("modern-icons")
 local M = h.lib("modern-map-tip")
 local U = h.lib("modern-units")
 local W = h.lib("modern-windows")
+local D = h.lib("modern-meter")
 
 h.test("ns.Modern exposes the registry API", function(t)
     local A = t.assert
@@ -252,6 +253,13 @@ local function Fixture(t, key)
         ShoppingTooltip1 = M.tooltip("ShoppingTooltip1", false)
         return function(A)
             A.eq(GameTooltipStatusBar:GetAlpha(), 0, "tooltip health bar was hidden")
+        end
+    end
+    if key == "meter" then
+        local window = D.window(1)
+        return function(A)
+            A.alpha(window.Header, 0, "meter art was held")
+            A.eq(window.row:GetStatusBarTexture():GetTexture(), ns.Modern.Theme().bar, "meter row was skinned")
         end
     end
     if key == "units" then

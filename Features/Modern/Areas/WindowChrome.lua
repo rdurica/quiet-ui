@@ -40,6 +40,9 @@ local function HoldKeys(skin, owner, keys)
     end
 end
 
+-- FlatPanelBackgroundTemplate (the loot window's Bg): a frame of flat pieces.
+local FLAT_KEYS = { "TopSection", "BottomEdge", "BottomLeft", "BottomRight" }
+
 -- A frame of nine pieces (or the old single `art`) is chrome only.
 local function Slice(skin, slice)
     if IsTexture(slice) then skin:Hold(slice) else HoldKeys(skin, slice, NINE_KEYS) end
@@ -58,6 +61,7 @@ end
 function Modern.WindowChrome(skin, frame)
     if not ns.Usable(frame) then return end
     HoldKeys(skin, frame, TEXTURE_KEYS)
+    if not IsTexture(frame.Bg) then HoldKeys(skin, frame.Bg, FLAT_KEYS) end
     Slice(skin, frame.NineSlice)
     Inset(skin, frame.Inset)
     Inset(skin, frame.InsetRight)    -- the character window's stats pane
@@ -161,12 +165,12 @@ function Modern.GlyphButton(skin, button, key, build, hover)
     end
 end
 
--- PortraitFrameTemplate / ButtonFrameTemplate name it CloseButton; the world map keeps it on BorderFrame only,
+-- PortraitFrameTemplate / ButtonFrameTemplate name it CloseButton, ScrollingFlatPanelTemplate ClosePanelButton; the world map keeps it on BorderFrame only,
 -- so a missing candidate must not end the search.
 local function FindClose(frame)
     local name = type(frame.GetName) == "function" and frame:GetName()
     local border = ns.Usable(frame.BorderFrame) and frame.BorderFrame or nil
-    local candidates = { frame.CloseButton or false, border and border.CloseButton or false,
+    local candidates = { frame.CloseButton or false, frame.ClosePanelButton or false, border and border.CloseButton or false,
         type(name) == "string" and _G[name .. "CloseButton"] or false }
     for index = 1, #candidates do
         local close = candidates[index]
