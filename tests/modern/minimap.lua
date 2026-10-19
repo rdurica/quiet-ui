@@ -54,7 +54,7 @@ h.test("Minimap restores an absent GetMinimapShape and keeps minimap, queue, eye
     A.eq(GetMinimapShape, nil, "nil global is restored exactly")
 end)
 
-h.test("QuietUI's minimap setup button moves onto the square edge and back onto the round edge", function(t)
+h.test("QuietUI's minimap setup button moves inside the square edge and back onto the round edge", function(t)
     local A, ns = t.assert, t.ns
     F.area(ns, "minimap")
     local map = F.minimap(t.mock)
@@ -66,7 +66,8 @@ h.test("QuietUI's minimap setup button moves onto the square edge and back onto 
 
     F.enable(ns)
     local _, _, _, squareX, squareY = F.point(button)
-    A.ok(math.abs(squareX) >= 70 and math.abs(squareY) >= 70, "button reaches the square edge")
+    A.ok(math.abs(math.abs(squareX) - 56) < 0.001 and math.abs(math.abs(squareY) - 56) < 0.001,
+        "button sits 14 px inside the square edge")
     ns.Modern.Restore()
     local _, _, _, restoredX, restoredY = F.point(button)
     A.eq(restoredX, roundX, "round x restored")

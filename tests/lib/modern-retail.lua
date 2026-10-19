@@ -52,6 +52,13 @@ function R.minimap()
     parts.dial:SetPoint("CENTER", container, "CENTER", 49.5, 77.4)
     local dayCycle = parts.dial:CreateTexture(nil, "BACKGROUND")
     dayCycle.GetAtlas = function() return "UI-HUD-Minimap-DayCycle" end
+    dayCycle:SetAlpha(1)
+    dayCycle:SetSize(33, 33)
+    dayCycle:SetPoint("CENTER", parts.dial, "CENTER", 0, 0)
+    parts.dial.Background = dayCycle
+    parts.dialRing = parts.dial:CreateTexture(nil, "OVERLAY")
+    parts.dialRing.GetAtlas = function() return "UI-HUD-Minimap-FrameCycle" end
+    parts.dialRing:SetAlpha(1)
 
     -- BorderTop: NineSliceCodeTemplate, pieces are textures of the frame.
     parts.border = CreateFrame("Frame", nil, cluster)

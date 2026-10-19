@@ -91,6 +91,8 @@ end
 
 -- Gap between the zone header and the top edge of the square map; the header band fills it.
 local GAP = 1
+-- Room left between the map's right edge and the cluster's; the round buttons sit inside the map instead.
+local EDGE = 4
 -- While docked: the cluster parts and Blizzard's latest container points; the SetPoint hook re-docks.
 local dock
 local docking
@@ -106,12 +108,23 @@ end
 -- 12.0 hangs the map container well below the zone header; the container (map, its buttons and the
 -- coordinates) moves up so the map sits right under the header. A header Edit Mode put underneath
 -- is not anchored to the cluster top, so the container stays where Blizzard put it.
+-- Blizzard keeps room right of the map for its round buttons; the map moves right into it, never left.
+local function Shift(d, x)
+    local right, mapRight = d.cluster:GetRight(), d.map:GetRight()
+    if type(right) ~= "number" or type(mapRight) ~= "number" or type(x) ~= "number" then return x end
+    local clusterScale = d.cluster:GetEffectiveScale() or 1
+    local delta = (right - EDGE) * clusterScale - mapRight * (d.map:GetEffectiveScale() or 1)
+    if delta <= 0 then return x end
+    return x + delta / (d.container:GetEffectiveScale() or 1)
+end
+
 local function Dock()
     local d = dock
     if not d or docking then return end
     local headerY, containerY = Anchored(d.header, d.cluster), Anchored(d.container, d.cluster)
     if not headerY or not containerY then return end
     local _, _, _, x = d.container:GetPoint(1)
+    x = Shift(d, x)
     local scale = d.container:GetScale() or 1
     local mapHeight = d.map:GetHeight() * (d.map:GetScale() or 1)
     local inset = (d.container:GetHeight() - mapHeight) / 2
@@ -145,34 +158,6 @@ local function Docked(skin, cluster, map)
     return true
 end
 
--- WoW Forever's day / night dial: an unnamed child of the container, known by its background atlas.
-local DAY_ATLAS = "UI-HUD-Minimap-DayCycle"
-
-local function DayDial(container)
-    if type(container.GetChildren) ~= "function" then return nil end
-    for _, child in ipairs({ container:GetChildren() }) do
-        if ns.Usable(child) and child ~= Minimap and type(child.GetRegions) == "function" then
-            for _, region in ipairs({ child:GetRegions() }) do
-                local ok, atlas = pcall(function() return region:GetAtlas() end)
-                if ok and atlas == DAY_ATLAS then return child end
-            end
-        end
-    end
-end
-
--- The dial sits further from the right edge than from the top; it moves right into the corner.
-local function Dial(skin, container)
-    local dial = DayDial(container)
-    if not dial or dial:GetNumPoints() ~= 1 then return end
-    local point, relative, relativePoint, x, y = dial:GetPoint(1)
-    if point ~= "CENTER" or relative ~= container or relativePoint ~= "CENTER"
-        or type(x) ~= "number" or type(y) ~= "number" or y <= x then return end
-    local points = Points(dial)
-    skin:Remember(dial, "points", function() Put(dial, points) end)
-    dial:ClearAllPoints()
-    dial:SetPoint("CENTER", container, "CENTER", y, y)
-end
-
 -- The global only exists while the area is applied; restore puts back whatever was there.
 local function Shape(skin, map)
     local shape = GetMinimapShape
@@ -203,10 +188,10 @@ Modern.Register{
         -- 12.0 keeps the zone text in its own header; only an older minimap gets our strip.
         if ns.Usable(cluster) and Docked(skin, cluster, map) then
             Modern.MinimapHeader(skin, cluster, map)
-            Dial(skin, cluster.MinimapContainer)
         else
             Strip(skin, map)
         end
+        Modern.MinimapButtons(skin, map, ns.Usable(cluster) and dock and cluster.MinimapContainer or nil)
         Wheel(skin, map)
         Shape(skin, map)
     end,

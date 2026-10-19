@@ -89,6 +89,7 @@ Features\Modern\Areas\Windows.lua
 Features\Modern\Areas\MapBar.lua
 Features\Modern\Areas\QuestLog.lua
 Features\Modern\Areas\Map.lua
+Features\Modern\Areas\MinimapButtons.lua
 Features\Modern\Areas\MinimapHeader.lua
 Features\Modern\Areas\Minimap.lua
 Features\Modern\Areas\Tooltip.lua
