@@ -112,6 +112,7 @@ function Professions.Apply(skin, frame)
     styled[frame] = skin
     skin:Remember(frame, "modern professions", function() styled[frame] = nil end)
     Modern.Window(skin, frame)
+    Modern.Header(skin, frame)
     Modern.TabChrome(skin, frame.ProfessionsOverviewTab)
     for index = 1, TABS do Modern.TabChrome(skin, frame["Professions" .. index .. "Tab"]) end
     Refresh(skin, frame)

@@ -1,7 +1,8 @@
 local _, ns = ...
 
 -- Square minimap chrome.  Controls owned by Blizzard (tracking, mail, the queue button and the
--- landing page button) deliberately stay out of this area. Retail 12.0 names are resolved first
+-- landing page button) keep their place, click and visibility; only the header row's art is restyled
+-- (MinimapHeader.lua). Retail 12.0 names are resolved first
 -- (MinimapCluster.BorderTop, MinimapCompassTexture, Minimap.ZoomIn / ZoomOut / ZoomHitArea), the
 -- older flat names are the fallback.
 local Modern = ns.Modern
@@ -88,8 +89,8 @@ local function Put(frame, points)
     for _, p in ipairs(points) do frame:SetPoint(unpack(p, 1, p.n)) end
 end
 
--- Gap between the zone header and the top edge of the square map.
-local GAP = 4
+-- Gap between the zone header and the top edge of the square map; the header band fills it.
+local GAP = 1
 -- While docked: the cluster parts and Blizzard's latest container points; the SetPoint hook re-docks.
 local dock
 local docking
@@ -142,17 +143,6 @@ local function Docked(skin, cluster, map)
     end
     Dock()
     return true
-end
-
--- The addon compartment ("1") hangs under the calendar and would cover the docked map's corner;
--- it joins the header row left of the tracking button.
-local function Compartment(skin, cluster)
-    local button, tracking = _G.AddonCompartmentFrame, cluster.Tracking
-    if not ns.Usable(button) or not ns.Usable(tracking) or type(button.ClearAllPoints) ~= "function" then return end
-    local points = Points(button)
-    skin:Remember(button, "points", function() Put(button, points) end)
-    button:ClearAllPoints()
-    button:SetPoint("RIGHT", tracking, "LEFT", -2, 0)
 end
 
 -- WoW Forever's day / night dial: an unnamed child of the container, known by its background atlas.
@@ -212,7 +202,7 @@ Modern.Register{
         skin:Border(map)
         -- 12.0 keeps the zone text in its own header; only an older minimap gets our strip.
         if ns.Usable(cluster) and Docked(skin, cluster, map) then
-            Compartment(skin, cluster)
+            Modern.MinimapHeader(skin, cluster, map)
             Dial(skin, cluster.MinimapContainer)
         else
             Strip(skin, map)

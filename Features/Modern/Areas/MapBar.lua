@@ -2,15 +2,12 @@ local _, ns = ...
 
 -- The world map's top bar and corner buttons, shaped after a frame dump of the Forever 12.0 client. The zone
 -- breadcrumb (navBar) becomes a dark field whose buttons are bare text split by thin rules; their dropdown arrows
--- stay. The tracking filter and pin buttons become small dark squares that keep their icons, and the maximize /
--- minimize buttons take flat glyphs like the close button. Breadcrumb buttons are created as the player browses,
+-- stay. The tracking filter and pin buttons become small dark squares that keep their icons. Breadcrumb buttons are created as the player browses,
 -- so the bar is scanned again for every new button.
 
 local Modern = ns.Modern
 local MapBar = {}
 Modern.MapBar = MapBar
-
-local GLYPH = 10
 
 local function Hold(skin, texture)
     if ns.Usable(texture) then skin:Hold(texture) end
@@ -23,17 +20,6 @@ end
 local function Children(frame)
     if not ns.Usable(frame) or type(frame.GetChildren) ~= "function" then return {} end
     return { frame:GetChildren() }
-end
-
--- Maximize: an outlined square; minimize: one bar.
-local function BoxParts(button)
-    local half = GLYPH / 2 - 1
-    return { Modern.GlyphLine(button, GLYPH, 2, 0, half), Modern.GlyphLine(button, GLYPH, 2, 0, -half),
-        Modern.GlyphLine(button, 2, GLYPH, -half, 0), Modern.GlyphLine(button, 2, GLYPH, half, 0) }
-end
-
-local function BarParts(button)
-    return { Modern.GlyphLine(button, GLYPH, 2, 0, 0) }
 end
 
 -- A thin rule at the right edge splits one breadcrumb from the next.
@@ -89,10 +75,4 @@ function MapBar.Apply(skin, map)
     if not ns.Usable(map) then return end
     MapBar.Breadcrumbs(skin, map)
     Tracking(skin, map)
-    local border = map.BorderFrame
-    local sizing = ns.Usable(border) and border.MaximizeMinimizeFrame
-    if ns.Usable(sizing) then
-        Modern.GlyphButton(skin, sizing.MaximizeButton, "maximize", BoxParts, "text")
-        Modern.GlyphButton(skin, sizing.MinimizeButton, "minimize", BarParts, "text")
-    end
 end

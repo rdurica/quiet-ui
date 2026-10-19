@@ -45,6 +45,7 @@ local function Apply(skin)
     local frame = _G.WorldMapFrame
     if not ns.Usable(frame) then return end
     Modern.Window(skin, frame, "WorldMapFrame")
+    Modern.Header(skin, frame)
     Modern.WindowChrome(skin, frame.BorderFrame)
     Parts(skin, frame)
     styled = skin

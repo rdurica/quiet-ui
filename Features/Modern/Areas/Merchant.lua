@@ -89,6 +89,7 @@ end
 function Merchant.Apply(skin, frame)
     if not ns.Usable(frame) then return end
     Modern.Window(skin, frame)
+    Modern.Header(skin, frame)
     for _, name in ipairs(ART) do Hold(skin, _G[name]) end
     for index = 1, TABS do Modern.TabChrome(skin, _G["MerchantFrameTab" .. index]) end
     for index = 1, ITEMS do Item(skin, _G["MerchantItem" .. index]) end

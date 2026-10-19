@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- Bag windows (ContainerFrameN and ContainerFrameCombinedBags): dark chrome, square slots like the
+-- Bag windows (ContainerFrameN and ContainerFrameCombinedBags): dark chrome with a header band, square slots like the
 -- action bars and a flat border in the item's quality colour from common up (the accent for quest
 -- items). The combined bag has a title drag handle; separate bags keep Blizzard
 -- stacking, so they get none.
@@ -50,7 +50,7 @@ local function Shown(texture)
     return ns.Usable(texture) and type(texture.IsShown) == "function" and texture:IsShown() and true or false
 end
 
--- Poor (grey) items keep the theme border; common (white) and up are framed.
+-- Poor (grey) items keep the theme border; common (white) and up are framed, uncommon and up also glow.
 local MIN_QUALITY = 1
 
 local function Call(func, ...)
@@ -86,21 +86,95 @@ local function QualityColor(quality)
     return { color.r, color.g, color.b, 1 }
 end
 
+-- 12.0 paints an empty slot by putting this atlas (the wing) on the item icon itself.
+local EMPTY_ATLAS = "bags-item-slot64"
+
+-- A slot without an item: the wing atlas on its icon, or (older clients) no icon texture at all.
+local function Vacant(button)
+    local icon = IconOf(button)
+    if not ns.Usable(icon) then return false end
+    if empty[icon] then return true end
+    if type(icon.GetTexture) ~= "function" then return false end
+    local ok, texture = pcall(icon.GetTexture, icon)
+    if not ok or texture ~= nil then return false end
+    local okAtlas, atlas = pcall(icon.GetAtlas or function() end, icon)
+    return not (okAtlas and atlas)
+end
+
 -- Accent while Blizzard shows the quest border, else the item's quality colour (from its data, or from IconBorder
--- when the data is missing), the theme border otherwise.
-local function Border(skin, button)
-    local color
+-- when the data is missing); nil for the theme border. The second value is true when the colour is a real
+-- quality (uncommon and up) or the quest accent, which also tints the slot's glow.
+local function SlotColor(button)
     local border = button.IconBorder
     local quality = ItemQuality(button)
-    if Shown(button.IconQuestTexture) then
-        color = Modern.Theme().accent
-    elseif quality then
-        color = QualityColor(quality)
-    elseif Shown(border) and type(border.GetVertexColor) == "function" then
+    if Shown(button.IconQuestTexture) then return Modern.Theme().accent, true end
+    if quality then return QualityColor(quality), quality > MIN_QUALITY end
+    if Shown(border) and type(border.GetVertexColor) == "function" then
         local r, g, b, a = border:GetVertexColor()
-        if type(r) == "number" and not ns.IsSecret(r) then color = { r, g, b, a or 1 } end
+        if type(r) == "number" and not ns.IsSecret(r) then return { r, g, b, a or 1 }, true end
     end
+end
+
+local function Gradient(texture, from, to)
+    return type(texture.SetGradient) == "function" and type(CreateColor) == "function"
+        and pcall(texture.SetGradient, texture, "VERTICAL", CreateColor(unpack(from)), CreateColor(unpack(to)))
+end
+
+-- Own slot regions: behind an empty slot a socket with a lit top edge and a faint diamond mark; over an item's icon a soft light on the top
+-- half and a glow of the quality colour rising from the bottom. Below the count text (ARTWORK sublevel 2).
+local MARK = 8
+
+local function Look(skin, button)
+    return unpack(skin:Own(button, "slot look", function()
+        local well = button:CreateTexture(nil, "BACKGROUND", nil, -7)
+        well:SetAllPoints(button)
+        local sheen = button:CreateTexture(nil, "BACKGROUND", nil, -6)
+        sheen:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+        sheen:SetPoint("TOPRIGHT", button, "TOPRIGHT", -1, -1)
+        sheen:SetHeight(1)
+        local mark = button:CreateTexture(nil, "BACKGROUND", nil, -5)
+        mark:SetSize(MARK, MARK)
+        mark:SetPoint("CENTER", button, "CENTER", 0, 0)
+        if type(mark.SetRotation) == "function" then pcall(mark.SetRotation, mark, math.rad(45)) end
+        local gloss = button:CreateTexture(nil, "ARTWORK", nil, -8)
+        gloss:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+        gloss:SetPoint("BOTTOMRIGHT", button, "RIGHT", -1, 0)
+        local glow = button:CreateTexture(nil, "ARTWORK", nil, -8)
+        glow:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 1, 1)
+        glow:SetPoint("TOPRIGHT", button, "RIGHT", -1, 0)
+        return { well, sheen, mark, gloss, glow }
+    end))
+end
+
+local function Paint(skin, button)
+    local theme = Modern.Theme()
+    local well, sheen, mark, gloss, glow = Look(skin, button)
+    if Vacant(button) then
+        local top = theme.well
+        skin:Border(button, theme.wellEdge)
+        well:SetColorTexture(unpack(top))
+        if not Gradient(well, { top[1] * 0.55, top[2] * 0.55, top[3] * 0.55, top[4] }, top) then
+            well:SetColorTexture(unpack(top))
+        end
+        sheen:SetColorTexture(1, 1, 1, 0.08)
+        mark:SetColorTexture(1, 1, 1, 0.07)
+        for _, region in ipairs({ well, sheen, mark }) do region:Show() end
+        gloss:Hide()
+        glow:Hide()
+        return
+    end
+    local color, rich = SlotColor(button)
     skin:Border(button, color)
+    for _, region in ipairs({ well, sheen, mark }) do region:Hide() end
+    gloss:SetColorTexture(1, 1, 1, 1)
+    if not Gradient(gloss, { 1, 1, 1, 0 }, { 1, 1, 1, 0.12 }) then gloss:SetColorTexture(1, 1, 1, 0.05) end
+    gloss:Show()
+    glow:SetColorTexture(1, 1, 1, 1)
+    if rich and Gradient(glow, { color[1], color[2], color[3], 0.35 }, { color[1], color[2], color[3], 0 }) then
+        glow:Show()
+    else
+        glow:Hide()
+    end
 end
 
 local function Follow(button)
@@ -112,16 +186,13 @@ local function Follow(button)
                 if type(texture[method]) == "function" then
                     pcall(hooksecurefunc, texture, method, function()
                         local skin = styled[button]
-                        if skin then ns.Run("modern bags", Border, skin, button) end
+                        if skin then ns.Run("modern bags", Paint, skin, button) end
                     end)
                 end
             end
         end
     end
 end
-
--- 12.0 paints an empty slot by putting this atlas (the wing) on the item icon itself.
-local EMPTY_ATLAS = "bags-item-slot64"
 
 -- The empty-slot icon is held invisible; an item's icon gets Blizzard's alpha back.
 local function Empty(skin, icon)
@@ -142,7 +213,9 @@ local function FollowIcon(button, icon)
         if type(icon[method]) == "function" then
             pcall(hooksecurefunc, icon, method, function()
                 local skin = styled[button]
-                if skin then ns.Run("modern bags", Empty, skin, icon) end
+                if not skin then return end
+                ns.Run("modern bags", Empty, skin, icon)
+                ns.Run("modern bags", Paint, skin, button)
             end)
         end
     end
@@ -160,7 +233,7 @@ end
 function Bags.Item(skin, button, equipped)
     if equipped then worn[button] = true end
     if styled[button] then
-        Border(styled[button], button)
+        Paint(styled[button], button)
         return
     end
     styled[button] = skin
@@ -183,14 +256,14 @@ function Bags.Item(skin, button, equipped)
         if ns.Usable(button[key]) then skin:Hold(button[key]) end
     end
     skin:Panel(button)
-    Border(skin, button)
+    Paint(skin, button)
     Follow(button)
 end
 
 -- Repaints the border of a skinned slot after Blizzard updates its item; nothing while the area is off.
 function Bags.Repaint(button)
     local skin = styled[button]
-    if skin then Border(skin, button) end
+    if skin then Paint(skin, button) end
 end
 
 local function SkinItems(skin, bag)
@@ -220,6 +293,7 @@ local function SkinBag(skin, bag)
         else
             Modern.Window(skin, bag)
         end
+        Modern.Header(skin, bag)
         Watch(bag)
         local money = bag.MoneyFrame
         -- The money stays as bare text on the bag background.

@@ -84,3 +84,51 @@ h.test("Windows skips absent variants without reporting and does not scan UIPare
     A.ok(W.isDark(character), "available window still skins")
     A.eq(#mock.printed, 0, "missing variants are intentionally skipped")
 end)
+
+h.test("Top-level windows get a header band with a rule under the title row; nested panels do not", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local f = fixture()
+    local strip = ns.Modern.Theme().strip
+    local function band(frame)
+        for _, region in ipairs(frame._regions) do
+            if region._layer == "BACKGROUND" and region._shown and region._color and region._h == 23 then
+                return true
+            end
+        end
+        return false
+    end
+    W.enable(ns)
+    for _, frame in ipairs({ f.character, f.spellbook, f.talents, f.quest, f.bag, f.combined }) do
+        A.ok(band(frame), frame:GetName() .. " has a header band")
+    end
+    A.ok(not band(CharacterFrameReputationFrame), "a nested character pane has no header band")
+    A.ok(strip[1] > 0.05, "the band is a step above the panel")
+    ns.Modern.Restore()
+    for _, frame in ipairs({ f.character, f.combined }) do
+        A.ok(not band(frame), frame:GetName() .. " loses the band on Restore")
+    end
+end)
+
+h.test("A window's maximize / minimize buttons take flat glyphs like the map's and restore their art", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local f = fixture()
+    local sizing = CreateFrame("Frame", nil, f.spellbook)
+    f.spellbook.MaximizeMinimizeButton = sizing
+    local art = {}
+    for _, key in ipairs({ "MaximizeButton", "MinimizeButton" }) do
+        local button = CreateFrame("Button", nil, sizing)
+        local normal = button:CreateTexture(nil, "ARTWORK")
+        normal:SetAlpha(1)
+        function button:GetNormalTexture() return normal end
+        sizing[key] = button
+        art[key] = normal
+    end
+    W.enable(ns)
+    A.alpha(art.MaximizeButton, 0, "the red maximize art is held")
+    A.alpha(art.MinimizeButton, 0, "the red minimize art is held")
+    ns.Modern.Restore()
+    A.alpha(art.MaximizeButton, 1, "Restore gives the maximize art back")
+    A.alpha(art.MinimizeButton, 1, "and the minimize art")
+end)

@@ -179,6 +179,32 @@ function Modern.CloseButton(skin, frame)
     if button then Modern.GlyphButton(skin, button, "close", CrossParts, "danger") end
 end
 
+local SIZE_GLYPH = 10
+
+-- Maximize: an outlined square; minimize: one bar.
+local function BoxParts(button)
+    local half = SIZE_GLYPH / 2 - 1
+    return { Modern.GlyphLine(button, SIZE_GLYPH, 2, 0, half), Modern.GlyphLine(button, SIZE_GLYPH, 2, 0, -half),
+        Modern.GlyphLine(button, 2, SIZE_GLYPH, -half, 0), Modern.GlyphLine(button, 2, SIZE_GLYPH, half, 0) }
+end
+
+local function BarParts(button)
+    return { Modern.GlyphLine(button, SIZE_GLYPH, 2, 0, 0) }
+end
+
+-- MaximizeMinimizeButtonFrameTemplate: the spellbook keeps it as MaximizeMinimizeButton, the map on BorderFrame.
+function Modern.SizeButtons(skin, frame)
+    local border = ns.Usable(frame.BorderFrame) and frame.BorderFrame or nil
+    for _, sizing in ipairs({ frame.MaximizeMinimizeButton or false, frame.MaximizeMinimizeFrame or false,
+        border and border.MaximizeMinimizeFrame or false }) do
+        if sizing and ns.Usable(sizing) then
+            Modern.GlyphButton(skin, sizing.MaximizeButton, "maximize", BoxParts, "text")
+            Modern.GlyphButton(skin, sizing.MinimizeButton, "minimize", BarParts, "text")
+            return
+        end
+    end
+end
+
 -- Three-piece art (Left, Middle or Center, Right) of a search box, a money bar or a panel button is held. The
 -- field becomes a dark fill with a thin border; a bare one keeps only its content.
 function Modern.Field(skin, frame, bare)
@@ -191,6 +217,40 @@ function Modern.Field(skin, frame, bare)
     skin:Border(frame)
 end
 
+-- The title row of a top-level window becomes a header band a step above the panel, lit from the top, with a rule
+-- under it. Nested panels have no title row, so they never get one.
+local HEADER = 24
+
+-- A header band's fill: theme `strip`, lit towards the top; flat where gradients are missing.
+function Modern.Band(texture)
+    local strip = Modern.Theme().strip
+    local lit = { strip[1] + 0.06, strip[2] + 0.06, strip[3] + 0.06, strip[4] }
+    texture:SetColorTexture(1, 1, 1, 1)
+    local gradient = type(texture.SetGradient) == "function" and type(CreateColor) == "function"
+        and pcall(texture.SetGradient, texture, "VERTICAL", CreateColor(unpack(strip)), CreateColor(unpack(lit)))
+    if not gradient then texture:SetColorTexture(unpack(strip)) end
+end
+
+function Modern.Header(skin, frame)
+    if not ns.Usable(frame) or type(frame.CreateTexture) ~= "function" then return end
+    local theme = Modern.Theme()
+    local band, rule = unpack(skin:Own(frame, "window header", function()
+        local fill = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+        fill:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
+        fill:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1)
+        fill:SetHeight(HEADER - 1)
+        local line = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
+        line:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, 0)
+        line:SetPoint("TOPRIGHT", fill, "BOTTOMRIGHT", 0, 0)
+        line:SetHeight(1)
+        return { fill, line }
+    end))
+    Modern.Band(band)
+    rule:SetColorTexture(unpack(theme.border))
+    band:Show()
+    rule:Show()
+end
+
 -- A window: dark fill and border, Blizzard chrome held, optionally a title drag handle (above `over`).
 function Modern.Window(skin, frame, key, over)
     if not ns.Usable(frame) then return end
@@ -199,6 +259,7 @@ function Modern.Window(skin, frame, key, over)
     Modern.WindowChrome(skin, frame)
     Modern.TabSystemChrome(skin, frame)
     Modern.CloseButton(skin, frame)
+    Modern.SizeButtons(skin, frame)
     if key then
         skin:Remember(frame, "modern movable", function() Modern.ReleaseMovable(frame) end)
         Modern.MakeMovable(frame, key, over)

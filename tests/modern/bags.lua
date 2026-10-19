@@ -262,3 +262,30 @@ h.test("Bags colour the border from the item's own quality, common and up; poor 
     B.refresh(mock, bag)
     A.ok(B.same(B.border(empty), GREEN), "an item put into the slot gets its colour on the next bag update")
 end)
+
+h.test("An empty slot is a lit socket with a quiet edge; a filled slot drops the socket and gets a light over its icon", function(t)
+    local A, ns = t.assert, t.ns
+    local bag = setup(ns)
+    local slot = B.item(bag, "ContainerFrame1Item1")
+    B.atlas(slot)
+    B.empty(slot)
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    local function shown(button, layer, color)
+        for _, region in ipairs(button._regions) do
+            if region._layer == layer and region._shown and region._color
+                and (not color or B.same(region._color, color)) then return true end
+        end
+        return false
+    end
+    A.ok(B.same(B.border(slot), theme.wellEdge), "the empty slot has the quieter well edge")
+    A.ok(shown(slot, "BACKGROUND", theme.well), "and the socket fill behind it")
+    A.ok(not shown(slot, "ARTWORK"), "no light over an empty slot")
+    B.fill(slot, "Interface\\Icons\\INV_Misc_Bag")
+    B.quality(slot, EPIC)
+    A.ok(B.same(B.border(slot), EPIC), "an item placed there gets its quality border")
+    A.ok(not shown(slot, "BACKGROUND", theme.well), "the socket goes")
+    A.ok(shown(slot, "ARTWORK"), "a soft light lies over the icon")
+    ns.Modern.Restore()
+    A.ok(not shown(slot, "ARTWORK") and not shown(slot, "BACKGROUND", theme.well), "Restore hides the slot look")
+end)

@@ -154,6 +154,7 @@ function Auction.Apply(skin, frame)
     styled[frame] = skin
     skin:Remember(frame, "modern auction", function() styled[frame] = nil end)
     Modern.Window(skin, frame)
+    Modern.Header(skin, frame)
     -- The money stays bare text, like the bags' money bar.
     if ns.Usable(frame.MoneyFrameInset) then bare[frame.MoneyFrameInset] = true end
     if ns.Usable(frame.MoneyFrameBorder) then Modern.Character.HoldArt(skin, frame.MoneyFrameBorder) end

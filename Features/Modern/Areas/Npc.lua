@@ -98,6 +98,7 @@ local function Skin(skin, name)
     local win, def = _G[name], WINDOWS[name]
     if not ns.Usable(win) then return end
     Modern.Window(skin, win)
+    Modern.Header(skin, win)
     for _, suffix in ipairs(SUFFIXES) do Hold(skin, _G[name .. suffix]) end
     for _, art in ipairs(def.art or {}) do Hold(skin, _G[art]) end
     for _, panelName in ipairs(def.panels) do

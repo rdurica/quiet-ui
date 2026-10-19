@@ -57,7 +57,7 @@ h.test("12.0 minimap keeps the mouse wheel zoom working", function(t)
     A.eq(map:GetZoom(), 0, "wheel down zooms out")
 end)
 
-h.test("12.0 minimap moves the map up right under the zone header and leaves the zone text there", function(t)
+h.test("12.0 minimap moves the map up right under the zone header and keeps the zone text in the header", function(t)
     local A, ns = t.assert, t.ns
     F.area(ns, "minimap")
     local map, p = R.minimap()
@@ -66,12 +66,12 @@ h.test("12.0 minimap moves the map up right under the zone header and leaves the
     local point, relative, relativePoint, x, y = p.container:GetPoint(1)
     A.eq(point, "TOP"); A.eq(relative, p.cluster); A.eq(relativePoint, "TOP")
     A.eq(x, 11.1, "the map keeps its horizontal place")
-    -- header bottom -23, 4 px gap, map inset (253 - 198) / 2 inside the container: map top at -27
-    A.ok(math.abs(y - 0.5) < 0.001, "map top sits 4 px under the header, got container y " .. tostring(y))
+    -- header bottom -23, 1 px gap, map inset (253 - 198) / 2 inside the container: map top at -24
+    A.ok(math.abs(y - 3.5) < 0.001, "map top sits 1 px under the header, got container y " .. tostring(y))
     local _, mapRelative = map:GetPoint(1)
     A.eq(mapRelative, p.container, "the map itself stays in its container")
     local _, zoneRelative = p.zone:GetPoint(p.zone:GetNumPoints())
-    A.eq(zoneRelative, p.zoneButton, "zone text stays in Blizzard's header")
+    A.eq(zoneRelative and zoneRelative._parent, p.cluster, "zone text stays in the header band on the cluster")
     A.alpha(p.zone, 1, "zone text stays visible")
     for _, child in ipairs(map._children) do
         local _, anchor, anchorPoint = child:GetPoint(1)
@@ -87,7 +87,7 @@ h.test("12.0 minimap keeps the map docked when Blizzard re-anchors the container
     p.container:ClearAllPoints()
     p.container:SetPoint("TOP", p.cluster, "TOP", 11.1, -40) -- Edit Mode applies a layout
     local _, _, _, _, y = p.container:GetPoint(1)
-    A.ok(math.abs(y - 0.5) < 0.001, "docked again after Blizzard's SetPoint")
+    A.ok(math.abs(y - 3.5) < 0.001, "docked again after Blizzard's SetPoint")
     ns.Modern.Restore()
     local _, _, _, _, back = p.container:GetPoint(1)
     A.eq(back, -40, "restore returns Blizzard's latest point")
@@ -108,18 +108,24 @@ h.test("12.0 minimap leaves the container alone when the header sits underneath 
     A.eq(y, -33.3, "container keeps Blizzard's point")
 end)
 
-h.test("12.0 minimap moves the addon compartment into the header row and back", function(t)
+h.test("12.0 minimap moves the addon compartment and the clock under the map and back", function(t)
     local A, ns = t.assert, t.ns
     F.area(ns, "minimap")
-    local _, p = R.minimap()
+    local map, p = R.minimap()
+    TimeManagerClockButton = CreateFrame("Button", "TimeManagerClockButton", p.cluster)
+    TimeManagerClockButton:SetPoint("RIGHT", p.zoneButton, "RIGHT", -3, -1)
     F.enable(ns)
     local point, relative, relativePoint = p.compartment:GetPoint(1)
     A.eq(p.compartment:GetNumPoints(), 1)
-    A.eq(point, "RIGHT"); A.eq(relative, p.cluster.Tracking, "left of the tracking button"); A.eq(relativePoint, "LEFT")
+    A.eq(point, "LEFT"); A.eq(relative, map, "at the map"); A.eq(relativePoint, "BOTTOMLEFT", "left corner under it")
     A.ok(p.compartment:IsShown(), "the compartment stays visible")
+    point, relative, relativePoint = TimeManagerClockButton:GetPoint(1)
+    A.eq(point, "RIGHT"); A.eq(relative, map); A.eq(relativePoint, "BOTTOMRIGHT", "the clock sits under the right corner")
     ns.Modern.Restore()
     local _, back = p.compartment:GetPoint(1)
     A.eq(back, p.calendar, "back under the calendar")
+    _, back = TimeManagerClockButton:GetPoint(1)
+    A.eq(back, p.zoneButton, "the clock is back in the header")
 end)
 
 h.test("12.0 minimap moves the day dial right into the map's top-right corner and back", function(t)
@@ -212,4 +218,50 @@ h.test("12.0 minimap moves QuietUI's minimap button onto the square edge and bac
     local _, _, _, restoredX, restoredY = F.point(button)
     A.eq(restoredX, roundX)
     A.eq(restoredY, roundY)
+end)
+
+h.test("12.0 minimap header becomes a band as wide as the map with the magnifier, centred zone and a calendar page", function(t)
+    local A, ns = t.assert, t.ns
+    F.area(ns, "minimap")
+    local map, p = R.minimap()
+    local function art(owner, key)
+        owner[key] = owner:CreateTexture(nil, "BACKGROUND")
+        owner[key]:SetAlpha(1)
+        return owner[key]
+    end
+    local zoneArt = art(p.zoneButton, "StateTexture")
+    local trackingBg = art(p.tracking, "Background")
+    local lens = art(p.tracking.Button, "StateTexture")
+    local calendar = art(p.calendar, "StateTexture")
+    local count = art(p.compartment, "StateTexture")
+    local before = L.snapshot({ zoneArt, trackingBg, lens, calendar, count, p.zone, p.tracking, p.calendar })
+    F.enable(ns)
+    for _, texture in ipairs({ zoneArt, trackingBg, lens, calendar, count }) do
+        A.alpha(texture, 0, "Blizzard's boxed header art is held")
+    end
+    local band
+    for _, region in ipairs(p.cluster._regions) do
+        if region._layer == "BACKGROUND" and region._shown and region._color then band = region end
+    end
+    A.ok(band, "the cluster draws one header band")
+    A.eq(band._points[1][2], map, "it starts at the map's left edge")
+    A.eq(band._points[2][2], map, "and ends at its right edge")
+    local _, trackAt = p.tracking:GetPoint(1)
+    local _, calendarAt = p.calendar:GetPoint(1)
+    A.eq(trackAt, band, "the magnifier sits at the band's left end")
+    A.eq(calendarAt, band, "the calendar at its right end")
+    local day
+    for _, child in ipairs(p.calendar._children) do
+        for _, region in ipairs(child._regions) do
+            if region._kind == "FontString" and region._shown then day = region._text end
+        end
+    end
+    A.eq(day, tostring(tonumber(os.date("%d"))), "the calendar page shows today's day")
+    for i = 1, p.zone:GetNumPoints() do
+        local _, relative = p.zone:GetPoint(i)
+        A.eq(relative, band, "the zone text spans the band")
+    end
+    ns.Modern.Restore()
+    A.deep(L.diff(before), {}, "Restore returns the header art and points")
+    A.ok(not band._shown, "the band is hidden")
 end)
