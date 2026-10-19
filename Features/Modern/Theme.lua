@@ -16,6 +16,8 @@ local THEMES = {
         -- Body text that Blizzard inked for parchment (NPC dialogs).
         text = { 0.9, 0.9, 0.9 },
         danger = { 0.85, 0.25, 0.20, 1 },
+        -- A section strip (quest log zone headers): a step above the panel, with an accent edge.
+        strip = { 0.16, 0.16, 0.16, 1 },
         bar = "Interface\\Buttons\\WHITE8X8",
     },
 }

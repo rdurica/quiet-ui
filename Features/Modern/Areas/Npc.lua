@@ -72,7 +72,8 @@ local function Resolve(win, ref)
     if ns.Usable(obj) then return obj end
 end
 
-local function Heading(font)
+-- Also used for the quest details page of the map's quest log, which shows the same QuestInfo text.
+function Npc.Heading(font)
     local name = type(font.GetName) == "function" and font:GetName()
     if type(name) == "string" and HEADING_NAMES[name] then return true end
     local parent = type(font.GetParent) == "function" and font:GetParent()
@@ -109,7 +110,7 @@ local function Skin(skin, name)
         local button = Resolve(win, ref)
         if button then Button(skin, button) end
     end
-    Modern.InkTree(skin, win, { tone = Modern.Theme().text, heading = Heading, plain = true })
+    Modern.InkTree(skin, win, { tone = Modern.Theme().text, heading = Npc.Heading, plain = true })
 end
 
 -- Hooks are set once per session and do nothing while the window is not styled.

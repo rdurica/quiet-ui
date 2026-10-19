@@ -20,11 +20,11 @@ local TAB_KEYS = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "Rig
 -- The art Blizzard shows on the selected tab, first match wins.
 local SELECTED_KEYS = { "SquareBackgroundActive", "LeftActive", "SelectedTexture" }
 
-local CLOSE_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
+local GLYPH_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 local CROSS_LENGTH = 12
 
 local tabs = setmetatable({}, { __mode = "k" })    -- tab -> true while its area is applied
-local closes = setmetatable({}, { __mode = "k" })  -- close button -> its skin while the area is applied
+local glyphs = setmetatable({}, { __mode = "k" })  -- glyph button -> { skin, key, build, hover } while applied
 local hovered = setmetatable({}, { __mode = "k" })
 local hooked = setmetatable({}, { __mode = "k" })
 
@@ -111,64 +111,72 @@ function Modern.TabSystemChrome(skin, frame)
     end
 end
 
-local function CloseParts(button)
-    local parts = {}
-    for _, angle in ipairs({ 45, -45 }) do
-        local line = button:CreateTexture(nil, "OVERLAY")
-        line:SetSize(CROSS_LENGTH, 2)
-        line:SetPoint("CENTER", button, "CENTER", 0, 0)
-        if type(line.SetRotation) == "function" then pcall(line.SetRotation, line, math.rad(angle)) end
-        parts[#parts + 1] = line
-    end
-    return parts
+-- One 2 px line of a glyph, `x`, `y` from the button centre, optionally rotated by `angle` degrees.
+function Modern.GlyphLine(button, width, height, x, y, angle)
+    local line = button:CreateTexture(nil, "OVERLAY")
+    line:SetSize(width, height)
+    line:SetPoint("CENTER", button, "CENTER", x or 0, y or 0)
+    if angle and type(line.SetRotation) == "function" then pcall(line.SetRotation, line, math.rad(angle)) end
+    return line
 end
 
-local function Parts(skin, button)
-    return skin:Own(button, "close", function() return CloseParts(button) end)
+local function CrossParts(button)
+    return { Modern.GlyphLine(button, CROSS_LENGTH, 2, 0, 0, 45), Modern.GlyphLine(button, CROSS_LENGTH, 2, 0, 0, -45) }
 end
 
-local function PaintClose(skin, button)
+local function PaintGlyph(button)
+    local state = glyphs[button]
+    if not state then return end
     local theme = Modern.Theme()
-    local parts = Parts(skin, button)
-    local color = hovered[button] and theme.danger or theme.glyph
+    local parts = state.skin:Own(button, state.key, function() return state.build(button) end)
+    local color = hovered[button] and theme[state.hover] or theme.glyph
     for _, line in ipairs(parts) do line:SetColorTexture(unpack(color)) end
 end
 
--- PortraitFrameTemplate / ButtonFrameTemplate name it CloseButton; the world map keeps it on BorderFrame.
-local function FindClose(frame)
-    local name = type(frame.GetName) == "function" and frame:GetName()
-    for _, close in ipairs({ frame.CloseButton, ns.Usable(frame.BorderFrame) and frame.BorderFrame.CloseButton,
-        type(name) == "string" and _G[name .. "CloseButton"] }) do
-        if ns.Usable(close) and type(close.CreateTexture) == "function" then return close end
-    end
-end
-
-function Modern.CloseButton(skin, frame)
-    local button = ns.Usable(frame) and FindClose(frame)
-    if not button then return end
-    for _, getter in ipairs(CLOSE_ART) do
+-- A title-bar button keeps its place, size and click; its art is held and `build(button)` draws a bare glyph of
+-- thin lines in its centre, grey and `theme[hover]` under the mouse.
+function Modern.GlyphButton(skin, button, key, build, hover)
+    if not ns.Usable(button) or type(button.CreateTexture) ~= "function" then return end
+    for _, getter in ipairs(GLYPH_ART) do
         if type(button[getter]) == "function" then
             local ok, texture = pcall(button[getter], button)
             if ok and IsTexture(texture) then skin:Hold(texture) end
         end
     end
-    for _, part in ipairs(Parts(skin, button)) do part:Show() end
-    closes[button] = skin
-    skin:Remember(button, "modern close", function()
-        closes[button] = nil
+    glyphs[button] = { skin = skin, key = key, build = build, hover = hover }
+    for _, part in ipairs(skin:Own(button, key, function() return build(button) end)) do part:Show() end
+    skin:Remember(button, "modern glyph", function()
+        glyphs[button] = nil
         hovered[button] = nil
     end)
-    PaintClose(skin, button)
+    PaintGlyph(button)
     if hooked[button] or type(button.HookScript) ~= "function" then return end
     hooked[button] = true
     for script, on in pairs({ OnEnter = true, OnLeave = false }) do
         pcall(button.HookScript, button, script, function()
-            local owner = closes[button]
-            if not owner then return end
+            if not glyphs[button] then return end
             hovered[button] = on
-            ns.Run("modern close", PaintClose, owner, button)
+            ns.Run("modern glyph", PaintGlyph, button)
         end)
     end
+end
+
+-- PortraitFrameTemplate / ButtonFrameTemplate name it CloseButton; the world map keeps it on BorderFrame only,
+-- so a missing candidate must not end the search.
+local function FindClose(frame)
+    local name = type(frame.GetName) == "function" and frame:GetName()
+    local border = ns.Usable(frame.BorderFrame) and frame.BorderFrame or nil
+    local candidates = { frame.CloseButton or false, border and border.CloseButton or false,
+        type(name) == "string" and _G[name .. "CloseButton"] or false }
+    for index = 1, #candidates do
+        local close = candidates[index]
+        if close and ns.Usable(close) and type(close.CreateTexture) == "function" then return close end
+    end
+end
+
+function Modern.CloseButton(skin, frame)
+    local button = ns.Usable(frame) and FindClose(frame)
+    if button then Modern.GlyphButton(skin, button, "close", CrossParts, "danger") end
 end
 
 -- Three-piece art (Left, Middle or Center, Right) of a search box, a money bar or a panel button is held. The
