@@ -148,6 +148,41 @@ local function HookUpdate()
     end
 end
 
+-- Depth on the flat fill: light on its top half, a shade towards the bottom and a light line under the
+-- top border. They follow the fill, so the empty part stays a flat track. Without gradients only a faint
+-- flat light remains.
+local function Gloss(skin, bar)
+    local fill = bar:GetStatusBarTexture()
+    if not ns.Usable(fill) or type(bar.CreateTexture) ~= "function" then return end
+    local ok, layer, sub = pcall(fill.GetDrawLayer, fill)
+    if not ok or type(layer) ~= "string" then layer, sub = "ARTWORK", 0 end
+    sub = math.min(6, (type(sub) == "number" and sub or 0) + 1)
+    local light, shade, edge = unpack(skin:Own(bar, "gloss", function()
+        return { bar:CreateTexture(nil, layer, nil, sub), bar:CreateTexture(nil, layer, nil, sub),
+            bar:CreateTexture(nil, layer, nil, sub + 1) }
+    end))
+    light:ClearAllPoints()
+    light:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, 0)
+    light:SetPoint("BOTTOMRIGHT", fill, "RIGHT", 0, 0)
+    shade:ClearAllPoints()
+    shade:SetAllPoints(fill)
+    edge:ClearAllPoints()
+    edge:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, -1)
+    edge:SetPoint("TOPRIGHT", fill, "TOPRIGHT", 0, -1)
+    edge:SetHeight(1)
+    edge:SetColorTexture(1, 1, 1, 0.18)
+    light:SetColorTexture(1, 1, 1, 1)
+    shade:SetColorTexture(0, 0, 0, 1)
+    local gradient = type(light.SetGradient) == "function" and type(CreateColor) == "function"
+        and pcall(light.SetGradient, light, "VERTICAL", CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, 0.22))
+        and pcall(shade.SetGradient, shade, "VERTICAL", CreateColor(0, 0, 0, 0.35), CreateColor(0, 0, 0, 0))
+    if not gradient then
+        light:SetColorTexture(1, 1, 1, 0.08)
+        shade:SetColorTexture(0, 0, 0, 0)
+    end
+    for _, region in ipairs({ light, shade, edge }) do region:Show() end
+end
+
 local function Bar(skin, bar, unit, kind, border)
     if not ns.Usable(bar) or type(bar.SetStatusBarTexture) ~= "function" or type(bar.GetStatusBarTexture) ~= "function"
         or type(bar.SetStatusBarColor) ~= "function" then return end
@@ -162,6 +197,7 @@ local function Bar(skin, bar, unit, kind, border)
     skin:Border(bar, border)
     Hook(bar)
     Paint(bar, true)
+    Gloss(skin, bar)
 end
 
 local function Art(skin, frame, name)

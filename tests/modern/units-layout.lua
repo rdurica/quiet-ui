@@ -19,14 +19,16 @@ h.test("player bars start right of a square bordered portrait and come back on r
     enable(ns)
     for _, bar in ipairs({ p.health, p.mana }) do
         A.deep(U.points(bar), {
-            { "TOPLEFT", player, "BOTTOMLEFT", 13, 11 },
+            { "TOPLEFT", player, "BOTTOMLEFT", 31, 11 },
             { "BOTTOMRIGHT", player, "BOTTOMLEFT", 91, 0 },
         }, "bar keeps its right edge and starts after the portrait and a 2 px gap")
     end
-    A.deep(U.points(p.portrait), {
-        { "TOPLEFT", player, "BOTTOMLEFT", 0, 11 },
-        { "BOTTOMRIGHT", player, "BOTTOMLEFT", 11, 0 },
-    }, "portrait square, as tall as health top to power bottom, at the outer edge")
+    local rim = U.points(p.portrait)[1][2]
+    A.deep(U.points(rim), { { "TOPLEFT", player, "BOTTOMLEFT", 0, 29 } }, "rim at the outer edge, level with the name strip's top")
+    A.deep({ rim:GetSize() }, { 29, 29 }, "rim square, from power bottom to the name strip's top")
+    A.deep(rim._color, ns.Modern.Theme().border, "rim in the theme border colour")
+    A.deep(U.points(p.portrait), { { "TOPLEFT", rim, "TOPLEFT", 1, -1 }, { "BOTTOMRIGHT", rim, "BOTTOMRIGHT", -1, 1 } },
+        "portrait 1 px inside the rim")
     A.alpha(p.portrait, 1, "portrait visible")
     A.eq(p.portrait:GetNumMaskTextures(), 0, "round mask removed")
     local l, r = p.portrait:GetTexCoord()
@@ -43,8 +45,10 @@ h.test("player level is a small number in the name's font left of the name; Bliz
     local player = U.frames()[1]
     local p = U.parts(player)
     enable(ns)
-    A.deep(U.points(p.level), { { "BOTTOMLEFT", p.health, "TOPLEFT", 0, 2 } }, "level above the health bar")
-    A.deep(U.points(player.Name), { { "BOTTOMLEFT", p.level, "BOTTOMRIGHT", 3, 0 } }, "name right of the level")
+    local strip = U.nameStrip(player)
+    A.deep(U.points(p.level), { { "LEFT", strip, "LEFT", 3, 0 } }, "level at the start of the name strip")
+    A.deep(U.points(player.Name), { { "LEFT", p.level, "RIGHT", 3, 0 }, { "RIGHT", strip, "RIGHT", -3, 0 } },
+        "name right of the level, up to the strip's end")
     A.eq(select(2, p.level:GetFont()), 10, "level in the name's size")
     A.eq(p.level:GetText(), "20", "level text stays")
     ns.Modern.Apply()
@@ -59,7 +63,7 @@ h.test("the player's combat icon sits small in the portrait's corner and returns
     local before = U.points(p.combat)
     enable(ns)
     A.deep(U.points(p.combat), { { "BOTTOMLEFT", p.portrait, "BOTTOMLEFT", 1, 1 } }, "icon in the portrait corner")
-    A.deep({ p.combat:GetSize() }, { 5, 5 }, "icon under half the portrait's side")
+    A.deep({ p.combat:GetSize() }, { 13, 13 }, "icon under half the portrait's side")
     ns.Modern.Restore()
     A.deep(U.points(p.combat), before, "icon points back")
     A.deep({ p.combat:GetSize() }, { 24, 24 }, "icon size back")
@@ -89,20 +93,20 @@ h.test("target and focus bars widen to the right up to a square: a player's clas
     mock:setUnit("target", { exists = true, player = true })
     mock:setUnit("focus", { exists = true, player = false })
     enable(ns, { classColors = true })
-    local theme = ns.Modern.Theme().bg
+    local theme = ns.Modern.Theme().border
     for _, spec in ipairs({ { 3, { 0.25, 0.78, 0.92 } }, { 5, { theme[1], theme[2], theme[3] } } }) do
         local f = frames[spec[1]]
         local p = U.parts(f)
         A.deep(U.points(p.health), {
             { "TOPLEFT", f, "BOTTOMLEFT", 0, 11 },
-            { "BOTTOMRIGHT", f, "BOTTOMLEFT", 87, 0 },
+            { "BOTTOMRIGHT", f, "BOTTOMLEFT", 69, 0 },
         }, f:GetName() .. " bar ends before the box and a 2 px gap")
         local box = U.levelBox(f)
         A.ok(box, f:GetName() .. " box")
-        A.deep(U.points(box), { { "TOPRIGHT", f, "BOTTOMLEFT", 100, 11 } }, f:GetName() .. " box at the outer edge")
-        A.deep({ box:GetSize() }, { 11, 11 }, f:GetName() .. " box square, as tall as the bars")
+        A.deep(U.points(box), { { "TOPRIGHT", f, "BOTTOMLEFT", 100, 29 } }, f:GetName() .. " box at the outer edge")
+        A.deep({ box:GetSize() }, { 29, 29 }, f:GetName() .. " box square, as tall as the bars and the name strip")
         A.deep(box._color, { spec[2][1], spec[2][2], spec[2][3], 1 }, f:GetName() .. " box fill")
-        A.deep(U.points(p.level), { { "BOTTOMLEFT", p.health, "TOPLEFT", 0, 2 } }, f:GetName() .. " level above the bar")
+        A.deep(U.points(p.level), { { "LEFT", U.nameStrip(f), "LEFT", 3, 0 } }, f:GetName() .. " level in the name strip")
         A.eq(select(2, p.level:GetFont()), 10, f:GetName() .. " level in the name's size")
         A.alpha(p.ring, 0, f:GetName() .. " ring held")
     end
@@ -261,15 +265,72 @@ h.test("player, target and focus names sit left-aligned right of the level; pet 
     enable(ns)
     for _, i in ipairs({ 1, 3, 5 }) do
         local f = frames[i]
-        A.deep(U.points(f.Name), { { "BOTTOMLEFT", U.parts(f).level, "BOTTOMRIGHT", 3, 0 } }, f:GetName() .. " name after the level")
+        A.deep(U.points(f.Name), { { "LEFT", U.parts(f).level, "RIGHT", 3, 0 }, { "RIGHT", U.nameStrip(f), "RIGHT", -3, 0 } },
+            f:GetName() .. " name after the level")
         A.eq(f.Name:GetJustifyH(), "LEFT", f:GetName() .. " name left-aligned")
     end
     for _, i in ipairs({ 2, 4 }) do
-        local f, health = frames[i], U.parts(frames[i]).health
-        A.deep(U.points(f.Name), { { "BOTTOMLEFT", health, "TOPLEFT", 0, 2 }, { "BOTTOMRIGHT", health, "TOPRIGHT", 0, 2 } },
-            f:GetName() .. " name over the health bar")
+        local f, strip = frames[i], U.nameStrip(frames[i])
+        A.deep(U.points(f.Name), { { "LEFT", strip, "LEFT", 3, 0 }, { "RIGHT", strip, "RIGHT", -3, 0 } },
+            f:GetName() .. " name spans the strip")
         A.eq(f.Name:GetJustifyH(), "LEFT", f:GetName() .. " name left-aligned")
     end
     ns.Modern.Restore()
     for _, f in ipairs(frames) do A.deep(U.points(f.Name), before[f], f:GetName() .. " name restored") end
+end)
+
+h.test("every unit name sits on a dark bordered strip above the health bar, hidden on restore", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = U.frames()
+    enable(ns)
+    local bg = ns.Modern.Theme().bg
+    for _, f in ipairs(frames) do
+        local strip, health = U.nameStrip(f), U.parts(f).health
+        A.ok(strip, f:GetName() .. " strip")
+        A.deep(U.points(strip), { { "BOTTOMLEFT", health, "TOPLEFT", 0, 2 }, { "BOTTOMRIGHT", health, "TOPRIGHT", 0, 2 } },
+            f:GetName() .. " strip as wide as the health bar, just above it")
+        A.eq(strip._h, 16, f:GetName() .. " strip fits the name with padding")
+        local fills = U.anchoredTo(f, strip, "BACKGROUND")
+        A.ok(#fills >= 2, f:GetName() .. " strip filled")
+        for _, fill in ipairs(fills) do
+            A.deep(fill._color or fill._vertex, bg, f:GetName() .. " strip in the theme background")
+        end
+        A.ok(U.borderOn(f, strip), f:GetName() .. " strip bordered")
+    end
+    mock:fire("PLAYER_TARGET_CHANGED")
+    for _, f in ipairs(frames) do A.alpha(U.nameStrip(f), 1, f:GetName() .. " strip stays visible after laying out again") end
+    ns.Modern.Restore()
+    for _, f in ipairs(frames) do A.ok(not U.nameStrip(f), f:GetName() .. " strip hidden") end
+end)
+
+h.test("bar fills get a light top, a shaded bottom and a top edge line that follow the fill", function(t)
+    local A, ns = t.assert, t.ns
+    local frames = U.frames()
+    enable(ns)
+    for _, f in ipairs(frames) do
+        for _, bar in ipairs({ U.parts(f).health, U.parts(f).mana }) do
+            A.eq(#U.gloss(bar), 3, f:GetName() .. " gloss on the fill")
+        end
+    end
+    ns.Modern.Apply()
+    A.eq(#U.gloss(U.parts(frames[1]).health), 3, "applying again adds no more")
+    ns.Modern.Restore()
+    A.eq(#U.gloss(U.parts(frames[1]).health), 0, "gloss hidden on restore")
+end)
+
+h.test("the name strip's top corner away from the portrait is rounded", function(t)
+    local A, ns = t.assert, t.ns
+    local frames = U.frames()
+    enable(ns)
+    for _, spec in ipairs({ { 1, "TOPRIGHT" }, { 3, "TOPLEFT" }, { 5, "TOPLEFT" } }) do
+        local f = frames[spec[1]]
+        local strip, found = U.nameStrip(f), {}
+        for _, r in ipairs(U.anchoredTo(f, strip)) do
+            if type(r._texture) == "string" and r._texture:find("corner%-") then
+                A.deep(U.points(r), { { spec[2], strip, spec[2], 0, 0 } }, f:GetName() .. " corner piece at " .. spec[2])
+                found[r._texture:match("corner%-%a+")] = true
+            end
+        end
+        A.ok(found["corner-fill"] and found["corner-line"], f:GetName() .. " quarter disc fill and arc")
+    end
 end)

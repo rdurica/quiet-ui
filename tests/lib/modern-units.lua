@@ -248,7 +248,47 @@ function U.classIcon(frame)
     end
 end
 
+-- The anchor of the dark strip QuietUI draws under a unit's name: a shown background region anchored to the
+-- health bar; the strip's pieces are anchored to it.
+function U.nameStrip(frame)
+    local health = U.parts(frame).health
+    for _, r in ipairs(frame._regions or {}) do
+        if r._layer == "BACKGROUND" and r._shown and r._color and r._points[1] and r._points[1][2] == health then
+            return r
+        end
+    end
+end
+
+-- Shown regions of the frame anchored to `anchor`, optionally only those in `layer`.
+function U.anchoredTo(frame, anchor, layer)
+    local list = {}
+    for _, r in ipairs(frame._regions or {}) do
+        if r._shown and (not layer or r._layer == layer) then
+            for _, point in ipairs(r._points) do
+                if point[2] == anchor then list[#list + 1] = r; break end
+            end
+        end
+    end
+    return list
+end
+
+-- Shown regions of a bar anchored to its fill texture.
+function U.gloss(bar)
+    local fill, list = bar:GetStatusBarTexture(), {}
+    for _, r in ipairs(bar._regions or {}) do
+        if r ~= fill and r._shown then
+            for _, point in ipairs(r._points) do
+                if point[2] == fill then list[#list + 1] = r; break end
+            end
+        end
+    end
+    return list
+end
+
 function U.border(bar) return #edges(bar, bar) >= 4 end
+
+-- A border drawn by `owner` on the edges of `anchor` (a texture's border belongs to its frame).
+function U.borderOn(owner, anchor) return #edges(owner, anchor) >= 4 end
 
 function U.onePixel(bar)
     local list = edges(bar, bar)
