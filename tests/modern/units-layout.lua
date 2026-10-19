@@ -17,15 +17,17 @@ h.test("player bars start right of a square bordered portrait and come back on r
     local p = U.parts(player)
     local before = { U.points(p.health), U.points(p.mana), U.points(p.level), U.points(p.portrait) }
     enable(ns)
-    for _, bar in ipairs({ p.health, p.mana }) do
-        A.deep(U.points(bar), {
-            { "TOPLEFT", player, "BOTTOMLEFT", 31, 11 },
-            { "BOTTOMRIGHT", player, "BOTTOMLEFT", 91, 0 },
-        }, "bar keeps its right edge and starts after the portrait and a 2 px gap")
-    end
+    A.deep(U.points(p.health), {
+        { "TOPLEFT", player, "BOTTOMLEFT", 43, 11 },
+        { "BOTTOMRIGHT", player, "BOTTOMLEFT", 91, 0 },
+    }, "health keeps its right edge and starts after the portrait and a 2 px gap")
+    A.deep(U.points(p.mana), {
+        { "TOPLEFT", player, "BOTTOMLEFT", 43, 1 },
+        { "BOTTOMRIGHT", player, "BOTTOMLEFT", 91, -15 },
+    }, "power 16 px tall, its top border on the health bar's bottom border")
     local rim = U.points(p.portrait)[1][2]
-    A.deep(U.points(rim), { { "TOPLEFT", player, "BOTTOMLEFT", 0, 29 } }, "rim at the outer edge, level with the name strip's top")
-    A.deep({ rim:GetSize() }, { 29, 29 }, "rim square, from power bottom to the name strip's top")
+    A.deep(U.points(rim), { { "TOPLEFT", player, "BOTTOMLEFT", 0, 26 } }, "rim at the outer edge, level with the name strip's top")
+    A.deep({ rim:GetSize() }, { 41, 41 }, "rim square, from power bottom to the name strip's top")
     A.deep(rim._color, ns.Modern.Theme().border, "rim in the theme border colour")
     A.deep(U.points(p.portrait), { { "TOPLEFT", rim, "TOPLEFT", 1, -1 }, { "BOTTOMRIGHT", rim, "BOTTOMRIGHT", -1, 1 } },
         "portrait 1 px inside the rim")
@@ -63,26 +65,32 @@ h.test("the player's combat icon sits small in the portrait's corner and returns
     local before = U.points(p.combat)
     enable(ns)
     A.deep(U.points(p.combat), { { "BOTTOMLEFT", p.portrait, "BOTTOMLEFT", 1, 1 } }, "icon in the portrait corner")
-    A.deep({ p.combat:GetSize() }, { 13, 13 }, "icon under half the portrait's side")
+    A.deep({ p.combat:GetSize() }, { 18, 18 }, "icon under half the portrait's side")
     ns.Modern.Restore()
     A.deep(U.points(p.combat), before, "icon points back")
     A.deep({ p.combat:GetSize() }, { 24, 24 }, "icon size back")
 end)
 
-h.test("power value texts are a little smaller than Blizzard's, health texts keep their size", function(t)
+h.test("bar value texts are 12 pt in Blizzard's face with a shadow instead of the outline; Blizzard's style returns", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()
     enable(ns)
     ns.Modern.Apply()
     for _, f in ipairs(frames) do
         local p = U.parts(f)
-        for _, key in ipairs({ "TextString", "LeftText", "RightText" }) do
-            A.deep({ p.mana[key]:GetFont() }, { "Fonts\\FRIZQT__.TTF", 9, "OUTLINE" }, f:GetName() .. " power " .. key)
-            A.eq(select(2, p.health[key]:GetFont()), 10, f:GetName() .. " health " .. key)
+        for _, bar in ipairs({ p.health, p.mana }) do
+            for _, key in ipairs({ "TextString", "LeftText", "RightText" }) do
+                local text = bar[key]
+                A.deep({ text:GetFont() }, { "Fonts\\FRIZQT__.TTF", 12, "" }, f:GetName() .. " " .. key .. " 12 pt, no outline")
+                A.deep({ text:GetShadowOffset() }, { 1, -1 }, f:GetName() .. " " .. key .. " shadow offset")
+                A.deep({ text:GetShadowColor() }, { 0, 0, 0, 1 }, f:GetName() .. " " .. key .. " black shadow")
+            end
         end
     end
     ns.Modern.Restore()
-    A.eq(select(2, U.parts(frames[1]).mana.TextString:GetFont()), 10, "power font back")
+    local text = U.parts(frames[1]).mana.TextString
+    A.deep({ text:GetFont() }, { "Fonts\\FRIZQT__.TTF", 10, "OUTLINE" }, "Blizzard's font back")
+    A.deep({ text:GetShadowOffset() }, { 0, 0 }, "shadow offset back")
 end)
 
 h.test("target and focus bars widen to the right up to a square: a player's class colour, an NPC's portrait", function(t)
@@ -99,12 +107,12 @@ h.test("target and focus bars widen to the right up to a square: a player's clas
         local p = U.parts(f)
         A.deep(U.points(p.health), {
             { "TOPLEFT", f, "BOTTOMLEFT", 0, 11 },
-            { "BOTTOMRIGHT", f, "BOTTOMLEFT", 69, 0 },
+            { "BOTTOMRIGHT", f, "BOTTOMLEFT", 57, 0 },
         }, f:GetName() .. " bar ends before the box and a 2 px gap")
         local box = U.levelBox(f)
         A.ok(box, f:GetName() .. " box")
-        A.deep(U.points(box), { { "TOPRIGHT", f, "BOTTOMLEFT", 100, 29 } }, f:GetName() .. " box at the outer edge")
-        A.deep({ box:GetSize() }, { 29, 29 }, f:GetName() .. " box square, as tall as the bars and the name strip")
+        A.deep(U.points(box), { { "TOPRIGHT", f, "BOTTOMLEFT", 100, 26 } }, f:GetName() .. " box at the outer edge")
+        A.deep({ box:GetSize() }, { 41, 41 }, f:GetName() .. " box square, as tall as the bars and the name strip")
         A.deep(box._color, { spec[2][1], spec[2][2], spec[2][3], 1 }, f:GetName() .. " box fill")
         A.deep(U.points(p.level), { { "LEFT", U.nameStrip(f), "LEFT", 3, 0 } }, f:GetName() .. " level in the name strip")
         A.eq(select(2, p.level:GetFont()), 10, f:GetName() .. " level in the name's size")
@@ -151,7 +159,9 @@ h.test("a wider Blizzard power bar gets the health bar's inner edge", function(t
     local p = U.parts(target)
     function p.mana:GetLeft() return -3 end
     enable(ns)
-    A.deep(U.points(p.mana), U.points(p.health), "power bar as long as the health bar")
+    local health, mana = U.points(p.health), U.points(p.mana)
+    A.eq(mana[1][4], health[1][4], "power bar starts at the health bar's left edge")
+    A.eq(mana[2][4], health[2][4], "power bar ends at the health bar's right edge")
 end)
 
 h.test("a player target shows the class icon in the box with a class-coloured border; an NPC shows none", function(t)
@@ -287,8 +297,8 @@ h.test("every unit name sits on a dark bordered strip above the health bar, hidd
     for _, f in ipairs(frames) do
         local strip, health = U.nameStrip(f), U.parts(f).health
         A.ok(strip, f:GetName() .. " strip")
-        A.deep(U.points(strip), { { "BOTTOMLEFT", health, "TOPLEFT", 0, 2 }, { "BOTTOMRIGHT", health, "TOPRIGHT", 0, 2 } },
-            f:GetName() .. " strip as wide as the health bar, just above it")
+        A.deep(U.points(strip), { { "BOTTOMLEFT", health, "TOPLEFT", 0, -1 }, { "BOTTOMRIGHT", health, "TOPRIGHT", 0, -1 } },
+            f:GetName() .. " strip as wide as the health bar, sharing its top border line")
         A.eq(strip._h, 16, f:GetName() .. " strip fits the name with padding")
         local fills = U.anchoredTo(f, strip, "BACKGROUND")
         A.ok(#fills >= 2, f:GetName() .. " strip filled")
@@ -303,14 +313,13 @@ h.test("every unit name sits on a dark bordered strip above the health bar, hidd
     for _, f in ipairs(frames) do A.ok(not U.nameStrip(f), f:GetName() .. " strip hidden") end
 end)
 
-h.test("bar fills get a light top, a shaded bottom and a top edge line that follow the fill", function(t)
+h.test("bar fills get a light top and a shaded bottom that follow the fill; only health gets a top edge line", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()
     enable(ns)
     for _, f in ipairs(frames) do
-        for _, bar in ipairs({ U.parts(f).health, U.parts(f).mana }) do
-            A.eq(#U.gloss(bar), 3, f:GetName() .. " gloss on the fill")
-        end
+        A.eq(#U.gloss(U.parts(f).health), 3, f:GetName() .. " health gloss with the edge line")
+        A.eq(#U.gloss(U.parts(f).mana), 2, f:GetName() .. " power gloss without the edge line")
     end
     ns.Modern.Apply()
     A.eq(#U.gloss(U.parts(frames[1]).health), 3, "applying again adds no more")

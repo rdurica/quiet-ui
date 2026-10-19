@@ -9,6 +9,9 @@ local function enable(ns, extra)
     ns.Modern.Apply()
 end
 
+-- Fills are drawn at 80 % of the unit's colour, so the white value text stands out.
+local function dim(c) return { c[1] * 0.8, c[2] * 0.8, c[3] * 0.8 } end
+
 local function setup(t)
     local frames = U.frames()
     local tokens = U.installColours(t.mock)
@@ -37,7 +40,7 @@ h.test("class colours on: player target gets its class colour, re-applied after 
     mock:setUnit("target", { exists = true, player = true })
     mock:setUnit("player", { exists = true, player = true })
     enable(ns)
-    local mage = { 0.25, 0.78, 0.92 }
+    local mage = dim({ 0.25, 0.78, 0.92 })
     local health = U.parts(frames[3]).health
     A.deep({ U.rgb(health) }, mage, "class colour on apply")
     A.deep({ U.rgb(U.parts(frames[1]).health) }, mage, "player frame class colour")
@@ -54,11 +57,11 @@ h.test("class colours on: hostile NPC target gets its reaction colour after Bliz
     mock:setUnit("target", { exists = true, player = false })
     enable(ns)
     local health = U.parts(frames[3]).health
-    A.deep({ U.rgb(health) }, { 0.8, 0.1, 0.1 }, "reaction colour on apply")
+    A.deep({ U.rgb(health) }, dim({ 0.8, 0.1, 0.1 }), "reaction colour on apply")
     health:SetStatusBarColor(0, 1, 0)
-    A.deep({ U.rgb(health) }, { 0.8, 0.1, 0.1 }, "reaction colour follows Blizzard update")
+    A.deep({ U.rgb(health) }, dim({ 0.8, 0.1, 0.1 }), "reaction colour follows Blizzard update")
     health:SetStatusBarTexture("UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health")
-    A.deep({ U.rgb(health) }, { 0.8, 0.1, 0.1 }, "reaction colour follows retexture")
+    A.deep({ U.rgb(health) }, dim({ 0.8, 0.1, 0.1 }), "reaction colour follows retexture")
     QuietUICharDB.modernize.classColors = false
     ns.Modern.Apply()
     health:SetStatusBarColor(0, 1, 0)
@@ -85,17 +88,17 @@ h.test("power bars keep the flat texture and the power type colour after UnitFra
     mock:setUnit("target", { exists = true, player = false })
     enable(ns)
     local mana, rage = U.parts(frames[1]).mana, U.parts(frames[3]).mana
-    A.deep({ U.rgb(mana) }, { 0, 0, 1 }, "mana colour on apply")
-    A.deep({ U.rgb(rage) }, { 1, 0, 0 }, "rage colour on apply")
+    A.deep({ U.rgb(mana) }, dim({ 0.2, 0.45, 0.9 }), "mana in a softer blue than Blizzard's on apply")
+    A.deep({ U.rgb(rage) }, dim({ 1, 0, 0 }), "rage colour on apply")
     UnitFrameManaBar_UpdateType(mana)
     UnitFrameManaBar_UpdateType(rage)
     A.eq(U.statusTexture(mana), ns.Modern.Theme().bar, "player power keeps flat texture")
     A.eq(U.statusTexture(rage), ns.Modern.Theme().bar, "target power keeps flat texture")
-    A.deep({ U.rgb(mana) }, { 0, 0, 1 }, "mana colour after update")
-    A.deep({ U.rgb(rage) }, { 1, 0, 0 }, "rage colour after update")
+    A.deep({ U.rgb(mana) }, dim({ 0.2, 0.45, 0.9 }), "softer mana after update")
+    A.deep({ U.rgb(rage) }, dim({ 1, 0, 0 }), "rage colour after update")
     tokens.target = "ENERGY"
     UnitFrameManaBar_UpdateType(rage)
-    A.deep({ U.rgb(rage) }, { 1, 1, 0 }, "power type change recolours")
+    A.deep({ U.rgb(rage) }, dim({ 1, 1, 0 }), "power type change recolours")
     for _, f in ipairs({ frames[2], frames[4] }) do
         A.eq(U.statusTexture(U.parts(f).mana), ns.Modern.Theme().bar, f:GetName() .. " power texture")
     end

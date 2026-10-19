@@ -33,6 +33,8 @@ local COMBAT_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.AttackIc
 local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
 
 local GREEN = { 0.2, 0.8, 0.2 }
+local MANA = { 0.2, 0.45, 0.9 } -- Blizzard's pure blue is the loudest colour on the frame
+local FILL = 0.8 -- bar fills are dimmed, so the white value text stands out on light colours
 local RARE = { 0.85, 0.85, 0.85, 1 }
 local BOSS = { 0.9, 0.15, 0.15, 1 }
 
@@ -104,6 +106,7 @@ end
 local function PowerColour(unit)
     if type(UnitPowerType) ~= "function" or type(PowerBarColor) ~= "table" then return end
     local kind, token = UnitPowerType(unit)
+    if not ns.IsSecret(token) and token == "MANA" then return unpack(MANA) end
     return Colours(PowerBarColor[token] or PowerBarColor[kind])
 end
 
@@ -116,7 +119,7 @@ local function Paint(bar, retexture)
         if retexture then bar:SetStatusBarTexture(info.texture) end
         local r, g, b
         if info.kind == "health" then r, g, b = HealthColour(info.unit) else r, g, b = PowerColour(info.unit) end
-        if r and g and b then bar:SetStatusBarColor(r, g, b, 1) end
+        if r and g and b then bar:SetStatusBarColor(r * FILL, g * FILL, b * FILL, 1) end
     end)
     info.busy = nil
 end
@@ -150,8 +153,8 @@ end
 
 -- Depth on the flat fill: light on its top half, a shade towards the bottom and a light line under the
 -- top border. They follow the fill, so the empty part stays a flat track. Without gradients only a faint
--- flat light remains.
-local function Gloss(skin, bar)
+-- flat light remains. The thin power bar skips the edge line: on it light and line read as a stripe.
+local function Gloss(skin, bar, thin)
     local fill = bar:GetStatusBarTexture()
     if not ns.Usable(fill) or type(bar.CreateTexture) ~= "function" then return end
     local ok, layer, sub = pcall(fill.GetDrawLayer, fill)
@@ -180,7 +183,8 @@ local function Gloss(skin, bar)
         light:SetColorTexture(1, 1, 1, 0.08)
         shade:SetColorTexture(0, 0, 0, 0)
     end
-    for _, region in ipairs({ light, shade, edge }) do region:Show() end
+    for _, region in ipairs({ light, shade }) do region:Show() end
+    if thin then edge:Hide() else edge:Show() end
 end
 
 local function Bar(skin, bar, unit, kind, border)
@@ -197,7 +201,7 @@ local function Bar(skin, bar, unit, kind, border)
     skin:Border(bar, border)
     Hook(bar)
     Paint(bar, true)
-    Gloss(skin, bar)
+    Gloss(skin, bar, kind == "power")
 end
 
 local function Art(skin, frame, name)

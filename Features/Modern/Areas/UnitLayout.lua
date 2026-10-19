@@ -8,9 +8,11 @@ local _, ns = ...
 
 local Modern = ns.Modern
 
-local GAP = 2
+local GAP = 2             -- between the portrait or box and the bars
+local SHARE = 1           -- stacked strip, health and power overlap so their 1 px borders become one line
+local POWER_HEIGHT = 16   -- the power bar's least height, so BAR_TEXT fits in it
+local BAR_TEXT = 12       -- value text size on both bars; Blizzard's is too small to read
 local TEXT_POINTS = { TextString = { "CENTER", 0 }, LeftText = { "LEFT", 2 }, RightText = { "RIGHT", -2 } }
-local POWER_TEXT = 0.85   -- the power bar is thinner than its value text
 local PORTRAIT_CROP = 0.12
 local COMBAT_ICON = 0.45  -- of the portrait's side
 local NAME_PAD = 3        -- around the name inside its strip
@@ -125,16 +127,29 @@ local function Font(skin, text, face, size, flags)
     skin:Set(text, "SetFont", face, math.max(1, math.floor(size + 0.5)), flags)
 end
 
--- The fill's mask has the old bar size and would clip the widened fill; the texts follow the bar.
-local function Contents(skin, bar, scale)
+-- Blizzard's outline fills the digits in on a light fill; a drop shadow keeps them open.
+local function Unoutlined(flags)
+    if type(flags) ~= "string" then return "" end
+    return (flags:gsub("THICKOUTLINE", ""):gsub("OUTLINE", ""):gsub("^[%s,]+", ""):gsub("[%s,]+$", ""))
+end
+
+local function Shadow(skin, text)
+    if type(text.GetShadowOffset) == "function" then skin:Set(text, "SetShadowOffset", 1, -1) end
+    if type(text.GetShadowColor) == "function" then skin:Set(text, "SetShadowColor", 0, 0, 0, 1) end
+end
+
+-- The fill's mask has the old bar size and would clip the widened fill; the texts follow the bar, at
+-- BAR_TEXT points in Blizzard's face, without outline and with a shadow.
+local function Contents(skin, bar)
     local fill = type(bar.GetStatusBarTexture) == "function" and bar:GetStatusBarTexture()
     if ns.Usable(fill) then Modern.NoMask(skin, fill) end
     for key, spec in pairs(TEXT_POINTS) do
         local text = bar[key]
         if ns.Usable(text) and type(text.SetPoint) == "function" then
             Anchor(skin, text, { spec[1], bar, spec[1], spec[2], 0 })
-            local base = scale and BaseFont(skin, text)
-            if base then Font(skin, text, base[1], base[2] * scale, base[3]) end
+            local base = BaseFont(skin, text)
+            if base then Font(skin, text, base[1], BAR_TEXT, Unoutlined(base[3])) end
+            Shadow(skin, text)
         end
     end
 end
@@ -149,7 +164,7 @@ local function Pin(region, ...)
     for _, p in ipairs({ ... }) do region:SetPoint(unpack(p)) end
 end
 
--- A dark strip above the health bar and as wide as it, so the name reads on any background. Its top corner
+-- A dark strip on top of the health bar and as wide as it, so the name reads on any background. Its top corner
 -- away from the portrait is rounded. The translucent fill is a body, a top band short of the corner and a
 -- quarter disc that never overlap, so its alpha stays even. Returns the invisible full-size anchor the texts
 -- align to.
@@ -165,7 +180,7 @@ local function NameStrip(skin, frame, parts)
     local theme = Modern.Theme()
     local o, i = parts.right and "LEFT" or "RIGHT", parts.right and "RIGHT" or "LEFT"
     local inward = parts.right and RADIUS or -RADIUS
-    Pin(strip, { "BOTTOMLEFT", parts.health, "TOPLEFT", 0, GAP }, { "BOTTOMRIGHT", parts.health, "TOPRIGHT", 0, GAP })
+    Pin(strip, { "BOTTOMLEFT", parts.health, "TOPLEFT", 0, -SHARE }, { "BOTTOMRIGHT", parts.health, "TOPRIGHT", 0, -SHARE })
     strip:SetHeight(StripHeight(skin, parts))
     strip:SetColorTexture(0, 0, 0, 0)
     Pin(body, { "TOPLEFT", strip, "TOPLEFT", 0, -RADIUS }, { "BOTTOMRIGHT", strip, "BOTTOMRIGHT", 0, 0 })
@@ -294,16 +309,20 @@ function Modern.UnitLayout(skin, frame, parts)
     local outer = parts.right and pr[2] or pr[1]
     local level = ns.Usable(parts.level) and type(parts.level.GetPoint) == "function"
     -- The square reaches from the power bar's bottom to the top of the name strip.
-    local top = hr[3] + ((level or parts.shown) and GAP + StripHeight(skin, parts) or 0)
-    local size = top - mr[4]
+    local top = hr[3] + ((level or parts.shown) and StripHeight(skin, parts) - SHARE or 0)
+    -- The power bar hangs from the health bar's bottom border, at least POWER_HEIGHT tall.
+    local powerTop = hr[4] + SHARE
+    local powerBottom = powerTop - math.max(mr[3] - mr[4], POWER_HEIGHT)
+    local size = top - powerBottom
     local inset = (level or parts.shown) and size + GAP or 0
     for _, bar in ipairs({ health, mana }) do
-        local rect = bar == health and hr or mr
+        local t, b = hr[3], hr[4]
+        if bar == mana then t, b = powerTop, powerBottom end
         -- Both bars share the health bar's inner edge: Blizzard's target power bar is a little wider.
         local l, r = hr[1], hr[2]
         if parts.right then r = outer - inset else l = outer + inset end
-        Anchor(skin, bar, { "TOPLEFT", frame, "BOTTOMLEFT", l, rect[3] }, { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r, rect[4] })
-        Contents(skin, bar, bar == mana and POWER_TEXT or nil)
+        Anchor(skin, bar, { "TOPLEFT", frame, "BOTTOMLEFT", l, t }, { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r, b })
+        Contents(skin, bar)
     end
     local box
     if parts.shown then box = Portrait(skin, frame, parts, outer, top, size)

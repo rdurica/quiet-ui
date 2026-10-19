@@ -54,6 +54,11 @@ local function bar(parent, atlas, colour)
         local text = parent:CreateFontString(nil, "OVERLAY")
         text:SetPoint(spec[2], parent, spec[2], 0, 0)
         text:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+        text._shadowOffset, text._shadowColor = { 0, 0 }, { 0, 0, 0, 0 }
+        function text:SetShadowOffset(...) self._shadowOffset = { ... } end
+        function text:GetShadowOffset() return unpack(self._shadowOffset) end
+        function text:SetShadowColor(...) self._shadowColor = { ... } end
+        function text:GetShadowColor() return unpack(self._shadowColor) end
         value[spec[1]] = text
     end
     value._statusColor = colour
