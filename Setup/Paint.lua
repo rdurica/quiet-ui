@@ -170,17 +170,5 @@ function Setup.Paint()
         local max = math.max(0, count * 44 - Setup.GROUP_VIEW_H)
         S.frame.groupScroll:SetVerticalScroll(math.min(S.frame.groupScroll:GetVerticalScroll(), max))
     end
-    if S.frame.tabs then
-        for _, tab in ipairs(S.frame.tabs) do
-            local on = tab.id == S.frame.page
-            if tab.SetBackdropBorderColor then
-                if on then tab:SetBackdropBorderColor(0.95, 0.75, 0.25, 1)
-                else tab:SetBackdropBorderColor(0.75, 0.6, 0.28, 0.95) end
-            end
-            if tab.label and tab.label.SetTextColor then
-                if on then tab.label:SetTextColor(0.95, 0.75, 0.25)
-                else tab.label:SetTextColor(0.85, 0.85, 0.85) end
-            end
-        end
-    end
+    if S.frame.tabs then Setup.PaintTabs(S.frame) end
 end

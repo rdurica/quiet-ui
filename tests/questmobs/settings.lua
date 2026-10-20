@@ -136,7 +136,7 @@ h.test("Setup keeps one height on every tab and fits the tallest page", function
     local ui = t.mock:findByName("QuietUISetup")
     choice(ui)
     local height = ui._h
-    A.ok(height <= 474, "Setup must stay compact")
+    A.ok(height <= 600, "Setup must stay compact")
     local tallest = 0
     for _, page in ipairs(ui.pages) do if page._h > tallest then tallest = page._h end end
     for index, tab in ipairs(ui.tabs) do

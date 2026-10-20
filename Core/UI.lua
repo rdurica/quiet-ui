@@ -37,24 +37,6 @@ end
 
 -- Dialog chrome shared by the Setup window and the Layout prompt.
 
--- Gold edge for input fields, short tabs and steppers.
-function ns.GoldEdge(widget)
-    if not widget.SetBackdrop then return false end
-    local ok = pcall(function()
-        widget:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8X8",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
-            tile = true,
-            tileSize = 16,
-            edgeSize = 4,
-            insets = { left = 1, right = 1, top = 1, bottom = 1 },
-        })
-        widget:SetBackdropColor(0.08, 0.06, 0.04, 0.92)
-        widget:SetBackdropBorderColor(0.75, 0.6, 0.28, 0.95)
-    end)
-    return ok
-end
-
 -- A separate texture keeps every dialog opaque even without BackdropTemplate.
 function ns.DialogBackground(widget)
     local fill = widget:CreateTexture(nil, "BACKGROUND", nil, -8)
@@ -102,42 +84,4 @@ function ns.RaiseDialog(widget)
     end
     Scan(UIParent)
     if widget:GetFrameLevel() <= highest then widget:SetFrameLevel(highest + 1) end
-end
-
-
-function ns.ApplyTitle(widget, text)
-    if widget.SetTitle then
-        local ok = pcall(widget.SetTitle, widget, text)
-        if ok then return end
-    end
-    local title = widget.TitleText
-    if not title and widget.TitleContainer then
-        title = widget.TitleContainer.TitleText
-    end
-    if title and title.SetText then
-        title:SetText(text)
-    end
-end
-
-function ns.DialogGoldWindow(widget)
-    if not widget.SetBackdrop then return false end
-    local ok = pcall(function()
-        widget:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
-            tile = true,
-            tileSize = 32,
-            edgeSize = 32,
-            insets = { left = 11, right = 12, top = 12, bottom = 11 },
-        })
-        widget:SetBackdropColor(1, 1, 1, 1)
-        widget:SetBackdropBorderColor(1, 1, 1, 1)
-    end)
-    return ok
-end
-
-
-function ns.PortraitChrome(widget)
-    return widget.SetTitle or widget.TitleText or widget.TitleContainer
-        or widget.PortraitContainer or widget.portrait
 end

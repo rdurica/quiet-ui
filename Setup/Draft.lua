@@ -12,8 +12,14 @@ Setup.draft = {}
 Setup.Pages = {}
 local draft = Setup.draft
 
-Setup.CONTENT_W = 560
-Setup.GROUP_VIEW_H = 264
+Setup.CONTENT_W = 700
+-- Two columns of a page, and the left edge of the right one.
+Setup.COLUMN_W = 330
+Setup.RIGHT_X = Setup.CONTENT_W - Setup.COLUMN_W
+Setup.GROUP_VIEW_H = 352
+-- Centres of the Always visible and Only on hover columns (Visible and Groups tabs).
+Setup.ALWAYS_X = Setup.CONTENT_W - 220
+Setup.HOVER_X = Setup.CONTENT_W - 90
 
 Setup.ROWS = {
     { key = "xp", label = "XP bar" },

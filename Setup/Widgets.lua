@@ -4,43 +4,12 @@ local _, ns = ...
 local Setup = ns.Setup
 local draft = Setup.draft
 
-function Setup.SkinSmall(button, gold)
-    if gold == nil then gold = true end
-    if not gold or not ns.GoldEdge(button) then ns.Flat(button, 1) end
-    ns.DialogBackground(button)
-    -- Texture edges also work when SetBackdrop is unavailable.
-    for _, edge in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-        local line = button:CreateTexture(nil, "BORDER")
-        if gold then line:SetColorTexture(0.75, 0.6, 0.28, 0.95)
-        else line:SetColorTexture(0.85, 0.85, 0.85, 0.35) end
-        if edge == "TOP" or edge == "BOTTOM" then
-            line:SetHeight(1)
-            line:SetPoint(edge .. "LEFT", 0, 0)
-            line:SetPoint(edge .. "RIGHT", 0, 0)
-        else
-            line:SetWidth(1)
-            line:SetPoint("TOP" .. edge, 0, 0)
-            line:SetPoint("BOTTOM" .. edge, 0, 0)
-        end
-    end
-    if button.label and button.label.SetTextColor then
-        if gold then button.label:SetTextColor(0.95, 0.75, 0.25)
-        else button.label:SetTextColor(0.9, 0.9, 0.9) end
-    end
-    if type(button.HookScript) == "function" then
-        button:HookScript("OnEnable", function(self) self:SetAlpha(1) end)
-        button:HookScript("OnDisable", function(self) self:SetAlpha(0.45) end)
-    end
-end
-
 function Setup.PaintBox(box, on)
     if not box then return end
-    if box.SetChecked then
-        box:SetChecked(on and true or false)
-        return
+    if box.SetChecked then box:SetChecked(on and true or false) end
+    if box.check then
+        if on then box.check:Show() else box.check:Hide() end
     end
-    if not box.check then return end
-    if on then box.check:Show() else box.check:Hide() end
 end
 
 function Setup.ButtonText(button, text)
@@ -49,80 +18,82 @@ function Setup.ButtonText(button, text)
 end
 
 function Setup.Button(parent, text, onClick)
-    local ok, button = pcall(CreateFrame, "Button", nil, parent, "UIPanelButtonTemplate")
-    if not ok or not button then
-        button = ns.Backdropped("Button", nil, parent)
-        button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        button.label:SetPoint("CENTER")
-        if type(button.SetFontString) == "function" then button:SetFontString(button.label) end
-        Setup.SkinSmall(button, false)
-        local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-        highlight:SetAllPoints()
-        highlight:SetColorTexture(0.95, 0.75, 0.25, 0.2)
-    elseif type(button.GetFontString) == "function" then
-        button.label = button:GetFontString()
-    end
-    button:SetSize(112, 22)
+    local button = CreateFrame("Button", nil, parent)
+    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    button.label:SetPoint("LEFT", 8, 0)
+    button.label:SetPoint("RIGHT", -8, 0)
+    if type(button.SetFontString) == "function" then button:SetFontString(button.label) end
+    Setup.Control(button)
+    Setup.Hover(button)
+    button:SetSize(128, 26)
     Setup.ButtonText(button, text)
     button:SetScript("OnClick", onClick)
     return button
 end
 
-function Setup.CheckMark(parent)
-    -- The loose checkbox textures draw only the tick on this client. The template keeps the box.
-    local ok, box = pcall(CreateFrame, "CheckButton", nil, parent, "UICheckButtonTemplate")
-    if ok and box and box.SetChecked then
-        box:SetSize(22, 22)
-        box:EnableMouse(false)
-        if box.Text then box.Text:Hide() end
-        local text = box.GetFontString and box:GetFontString()
-        if text then text:Hide() end
-        return box
+-- A button that opens a list: left-aligned choice and a chevron on the right.
+function Setup.Selector(parent, text, onClick)
+    local button = Setup.Button(parent, text, onClick)
+    button.label:SetJustifyH("LEFT")
+    button.label:SetPoint("LEFT", 10, 0)
+    button.label:SetPoint("RIGHT", -32, 0)
+    for _, part in ipairs({ { -20, -45 }, { -15, 45 } }) do
+        local line = button:CreateTexture(nil, "OVERLAY")
+        line:SetSize(7, 2)
+        line:SetPoint("CENTER", button, "RIGHT", part[1], 0)
+        if type(line.SetRotation) == "function" then pcall(line.SetRotation, line, math.rad(part[2])) end
+        line:SetColorTexture(unpack(Setup.Colors().glyph))
     end
-    box = parent:CreateTexture(nil, "ARTWORK")
-    box:SetSize(20, 20)
-    box:SetTexture("Interface\\Buttons\\UI-CheckBox-Up")
-    box.check = parent:CreateTexture(nil, "OVERLAY")
-    box.check:SetAllPoints(box)
-    box.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    return button
+end
+
+-- A square box with an accent fill when checked. The row around it takes the click.
+function Setup.CheckMark(parent)
+    local box = CreateFrame("CheckButton", nil, parent)
+    box:SetSize(16, 16)
+    box:EnableMouse(false)
+    Setup.Control(box)
+    box.check = box:CreateTexture(nil, "ARTWORK")
+    box.check:SetPoint("TOPLEFT", 4, -4)
+    box.check:SetPoint("BOTTOMRIGHT", -4, 4)
+    box.check:SetColorTexture(unpack(Setup.Colors().accent))
     box.check:Hide()
     return box
 end
 
 function Setup.Choice(parent, text, onClick)
     local button = CreateFrame("Button", nil, parent)
-    button:SetSize(Setup.CONTENT_W, 22)
+    button:SetSize(Setup.CONTENT_W, 24)
     button.box = Setup.CheckMark(button)
-    button.box:SetPoint("LEFT", 0, 0)
-    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    button.label:SetPoint("LEFT", button.box, "RIGHT", 4, 0)
+    button.box:SetPoint("LEFT", 2, 0)
+    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    button.label:SetPoint("LEFT", button.box, "RIGHT", 10, 0)
+    button.label:SetPoint("RIGHT", 0, 0)
+    button.label:SetJustifyH("LEFT")
     button.label:SetText(text)
-    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(0.95, 0.75, 0.25, 0.12)
+    Setup.Hover(button, 0.08)
     button:SetScript("OnClick", onClick)
     return button
 end
 
 function Setup.Mini(parent, text, onClick)
-    local button = ns.Backdropped("Button", nil, parent)
-    button:SetSize(22, 22)
-    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(24, 24)
+    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     button.label:SetPoint("CENTER")
     button.label:SetText(text)
-    Setup.SkinSmall(button)
-    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(0.95, 0.75, 0.25, 0.2)
+    Setup.Control(button)
+    Setup.Hover(button)
     button:SetScript("OnClick", onClick)
     return button
 end
 
 function Setup.TargetBox(parent, onClick)
     local button = CreateFrame("Button", nil, parent)
-    button:SetSize(44, 22)
+    button:SetSize(44, 24)
     button.box = Setup.CheckMark(button)
     button.box:SetPoint("CENTER")
+    Setup.Hover(button, 0.08)
     button:SetScript("OnClick", onClick)
     button:SetScript("OnEnter", function(self)
         if self.mode and GameTooltip then
@@ -139,14 +110,14 @@ end
 
 function Setup.Stepper(parent, label, onDelta)
     local row = CreateFrame("Frame", nil, parent)
-    row:SetSize(Setup.CONTENT_W, 22)
-    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row:SetSize(Setup.CONTENT_W, 24)
+    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     row.label:SetPoint("LEFT", 2, 0)
     row.label:SetText(label)
     row.plus = Setup.Mini(row, "+", function() onDelta(1) end)
     row.minus = Setup.Mini(row, "-", function() onDelta(-1) end)
-    row.value = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.value:SetWidth(44)
+    row.value = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.value:SetWidth(72)
     row.value:SetJustifyH("CENTER")
     row.plus:SetPoint("RIGHT", 0, 0)
     row.value:SetPoint("RIGHT", row.plus, "LEFT", -4, 0)
@@ -154,27 +125,39 @@ function Setup.Stepper(parent, label, onDelta)
     return row
 end
 
+-- A text field: dark fill, thin edge, accent edge while typing. Enter and Escape only leave it.
+function Setup.Field(parent, width, letters)
+    local box = CreateFrame("EditBox", nil, parent)
+    box:SetSize(width, 24)
+    box:SetFontObject("GameFontHighlight")
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(letters)
+    box:SetTextInsets(8, 8, 0, 0)
+    box:SetJustifyH("LEFT")
+    Setup.Control(box)
+    box:SetScript("OnEditFocusGained", function(self) Setup.EdgeColor(self, Setup.Colors().accent) end)
+    box:SetScript("OnEditFocusLost", function(self) Setup.EdgeColor(self, Setup.Colors().border) end)
+    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    return box
+end
+
+local function FieldRow(parent, label)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetSize(Setup.CONTENT_W, 24)
+    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.label:SetPoint("LEFT", 2, 0)
+    row.label:SetText(label)
+    return row
+end
+
 -- Empty means bar 1. Escape only leaves the field, so the window stays open.
 function Setup.SpellField(parent)
-    local row = CreateFrame("Frame", nil, parent)
-    row:SetSize(Setup.CONTENT_W, 22)
-    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.label:SetPoint("LEFT", 2, 0)
-    row.label:SetText("Spell")
-    local box = ns.Backdropped("EditBox", nil, row)
-    box:SetSize(144, 22)
+    local row = FieldRow(parent, "Spell")
+    local box = Setup.Field(row, 180, 48)
     box:SetPoint("RIGHT", 0, 0)
-    box:SetFontObject("GameFontHighlightSmall")
-    box:SetAutoFocus(false)
-    box:SetMaxLetters(48)
-    box:SetTextInsets(6, 6, 0, 0)
-    box:SetJustifyH("LEFT")
-    if box.SetTextColor then box:SetTextColor(1, 0.95, 0.8, 1) end
-    local gold = ns.GoldEdge(box)
-    if not gold then ns.Flat(box, 0.9) end
-    box._quietGold = gold and true or false
-    local hint = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("LEFT", 6, 0)
+    local hint = Setup.Muted(box:CreateFontString(nil, "OVERLAY", "GameFontHighlight"))
+    hint:SetPoint("LEFT", 8, 0)
     hint:SetText("Bar 1")
     box.hint = hint
     local function ShowHint(self)
@@ -189,43 +172,18 @@ function Setup.SpellField(parent)
         draft.rangeSpell = self:GetText() or ""
         ShowHint(self)
     end)
-    box:SetScript("OnEditFocusGained", function(self)
-        ShowHint(self)
-        if self._quietGold and self.SetBackdropBorderColor then
-            self:SetBackdropBorderColor(1, 0.86, 0.4, 1)
-        end
-    end)
-    box:SetScript("OnEditFocusLost", function(self)
-        ShowHint(self)
-        if self._quietGold and self.SetBackdropBorderColor then
-            self:SetBackdropBorderColor(0.75, 0.6, 0.28, 0.95)
-        end
-    end)
-    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    box:HookScript("OnEditFocusGained", ShowHint)
+    box:HookScript("OnEditFocusLost", ShowHint)
     ShowHint(box)
     row.edit = box
     return row
 end
 
 function Setup.PercentField(parent, label, key)
-    local row = CreateFrame("Frame", nil, parent)
-    row:SetSize(Setup.CONTENT_W, 22)
-    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.label:SetPoint("LEFT", 2, 0)
-    row.label:SetText(label)
-    local box = ns.Backdropped("EditBox", nil, row)
-    box:SetSize(72, 22)
+    local row = FieldRow(parent, label)
+    local box = Setup.Field(row, 72, 16)
     box:SetPoint("RIGHT", 0, 0)
-    box:SetFontObject("GameFontHighlightSmall")
-    box:SetAutoFocus(false)
-    box:SetMaxLetters(16)
-    box:SetTextInsets(6, 6, 0, 0)
-    box:SetJustifyH("LEFT")
-    if not ns.GoldEdge(box) then ns.Flat(box, 0.9) end
     box:SetScript("OnTextChanged", function(self) draft[key] = self:GetText() or "" end)
-    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     row.edit = box
     return row
 end
@@ -250,19 +208,25 @@ function Setup.Help(parent, label, title, text)
     return button
 end
 
+-- An accent title over a thin rule that spans the row.
 function Setup.Section(parent, text, help)
-    -- Gold title only. The old group-indicator bar is the classic paperdoll and collides with the column titles.
     local row = CreateFrame("Frame", nil, parent)
-    row:SetSize(Setup.CONTENT_W, 16)
+    row:SetSize(Setup.CONTENT_W, 24)
     row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     row.label:SetPoint("TOPLEFT", 0, 0)
     row.label:SetText(text)
+    row.label:SetTextColor(unpack(Setup.Colors().accent))
+    row.rule = row:CreateTexture(nil, "BORDER")
+    row.rule:SetPoint("TOPLEFT", 0, -19)
+    row.rule:SetPoint("TOPRIGHT", 0, -19)
+    row.rule:SetHeight(1)
+    row.rule:SetColorTexture(unpack(Setup.Colors().border))
     if help then row.help = Setup.Help(row, row.label, text, help) end
     return row
 end
 
 function Setup.Body(parent, text)
-    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     label:SetWidth(Setup.CONTENT_W)
     label:SetJustifyH("LEFT")
     label:SetJustifyV("TOP")
@@ -270,8 +234,13 @@ function Setup.Body(parent, text)
     return label
 end
 
+-- Secondary text: grey, under a row or at the end of a page.
+function Setup.Note(parent, text)
+    return Setup.Muted(Setup.Body(parent, text))
+end
+
 function Setup.ColumnLabel(parent, text)
-    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local label = Setup.Muted(parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"))
     label:SetText(text)
     return label
 end
@@ -280,12 +249,11 @@ function Setup.SelectMenu(owner, key, anchor, entries)
     local menu = owner[key]
     if menu and menu:IsShown() then menu:Hide(); return end
     if not menu then
-        menu = ns.Backdropped("Frame", nil, owner)
+        menu = CreateFrame("Frame", nil, owner)
         menu:SetFrameStrata("DIALOG")
         menu:SetFrameLevel(owner:GetFrameLevel() + 60)
-        ns.Flat(menu, 1)
         ns.DialogBackground(menu)
-        if menu.SetBackdropBorderColor then menu:SetBackdropBorderColor(0.95, 0.75, 0.25, 0.7) end
+        Setup.Edge(menu)
         menu:EnableMouse(true)
         menu.items = {}
         owner[key] = menu
@@ -293,13 +261,14 @@ function Setup.SelectMenu(owner, key, anchor, entries)
     for _, item in ipairs(menu.items) do item:Hide() end
     menu:ClearAllPoints()
     menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -8)
-    menu:SetSize(300, 12 + 28 * math.min(#entries, 8))
+    local width = math.max(300, anchor:GetWidth() or 0)
+    menu:SetSize(width, 12 + 28 * math.min(#entries, 8))
     if not menu.scroll then
         menu.scroll = CreateFrame("ScrollFrame", nil, menu)
         menu.scroll:SetPoint("TOPLEFT", 6, -6)
         menu.scroll:SetPoint("BOTTOMRIGHT", -6, 6)
         menu.content = CreateFrame("Frame", nil, menu.scroll)
-        menu.content:SetWidth(288)
+        menu.content:SetWidth(width - 12)
         menu.scroll:SetScrollChild(menu.content)
         menu.scroll:EnableMouseWheel(true)
         menu.scroll:SetScript("OnMouseWheel", function(_, delta)
@@ -316,7 +285,7 @@ function Setup.SelectMenu(owner, key, anchor, entries)
         if not item then
             item = CreateFrame("Button", nil, menu.content)
             item:RegisterForClicks("LeftButtonUp")
-            item.label = item:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            item.label = item:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             item.label:SetPoint("LEFT", 18, 0)
             item.label:SetPoint("RIGHT", -8, 0)
             item.label:SetJustifyH("LEFT")
@@ -332,7 +301,7 @@ function Setup.SelectMenu(owner, key, anchor, entries)
             hover:SetColorTexture(0.95, 0.75, 0.25, 0.16)
             menu.items[index] = item
         end
-        item:SetSize(288, 26)
+        item:SetSize(width - 12, 26)
         item:ClearAllPoints()
         item:SetPoint("TOPLEFT", 0, -(index - 1) * 28)
         Setup.ButtonText(item, entry.name)

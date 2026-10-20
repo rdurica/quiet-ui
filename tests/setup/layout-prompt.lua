@@ -3,8 +3,8 @@
 -- backdrops, because the mock frames do not model stacking.
 local h = ...
 local M = h.lib("setupmodel")
-local same, scenario, opaque, darkControl, nativeAction = M.same, M.scenario, M.opaque, M.darkControl, M.nativeAction
-local goldSmall, tint, fillBounds, click, modes = M.goldSmall, M.tint, M.fillBounds, M.click, M.modes
+local scenario, opaque, darkControl = M.scenario, M.opaque, M.darkControl
+local fillBounds, click, modes = M.fillBounds, M.click, M.modes
 
 for _, mode in ipairs(modes) do
     h.test('layout prompt appearance: ' .. mode.name, function(t)
@@ -45,9 +45,6 @@ for _, mode in ipairs(modes) do
                 and tooltip.level == 2000 and tooltip.strata == 'TOOLTIP' and tooltip.alpha == 1 and tooltip.shown
                 and fullscreen.level == 3000 and fullscreen.strata == 'FULLSCREEN' and fullscreen.alpha == 1 and fullscreen.shown
         end
-        local function actionStyle(button)
-            return mode.nativeButtons == false and darkControl(button) or nativeAction(button)
-        end
         -- Later sibling dialogs may have escalated their levels before the prompt opens.
         other:SetFrameLevel(700)
         raisedContent:SetFrameLevel(other.level + 100)
@@ -67,14 +64,11 @@ for _, mode in ipairs(modes) do
         expect(fillBounds(prompt, opaque(prompt)), 'prompt fill stays behind gear/chrome and inside bounds')
         expect(prompt:GetFrameStrata() == 'DIALOG' and prompt.level > other.level, 'layout prompt raises above ordinary sibling dialog')
         expect(prompt.yes.level > prompt.level and prompt.no.level > prompt.level, 'prompt controls are above its fill')
-        expect(actionStyle(prompt.yes) and actionStyle(prompt.no), 'layout prompt actions use native appearance or missing-template fallback')
+        expect(darkControl(prompt.yes) and darkControl(prompt.no), 'layout prompt actions use the flat dark control')
         expect(aboveForeign(prompt), 'layout prompt fill is above foreign DIALOG descendants')
         expect(prompt.yes.level > raisedContent.level, 'layout prompt controls are above foreign DIALOG descendants')
         expect(preservedForeign(), 'layout prompt preserves foreign dialog and higher strata state')
-        if mode.portrait then
-            expect(prompt.portrait.shown and prompt.portrait.texture ~= nil and prompt.portrait.texture ~= 'player'
-                and not prompt.CloseButton.shown, 'gear chrome preserved and unanswered close hidden')
-        elseif mode.backdrop then expect(prompt.backdrop and prompt.backdrop.edgeFile:find('Gold'), 'layout prompt keeps gold fallback') end
+        expect(prompt.template == nil and prompt.title and not prompt.close, 'flat prompt has a title and no close without an answer')
         prompt:Hide()
         expect(QuietUIDB.layoutHash == nil and layoutState() == writes, 'hiding prompt records no answer')
         prompt:Show(); click(prompt.no)

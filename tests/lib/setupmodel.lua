@@ -201,20 +201,6 @@ local function darkControl(button)
     end
     return false
 end
-local function nativeAction(button)
-    return button.template == 'UIPanelButtonTemplate' and button.normalTexture == button.nativeNormal
-        and button.nativeNormal and button.nativeNormal.shown
-end
-local function goldSmall(button)
-    if button.backdrop and button.backdrop.edgeFile and button.backdrop.edgeFile:find('Gold') then return true end
-    local color = button.borderColor
-    if color and color[1] > color[2] and color[2] > color[3] then return true end
-    for _, texture in ipairs(button.textures) do
-        local c = texture.color
-        if texture.shown and texture.layer == 'BORDER' and c and c[1] > c[2] and c[2] > c[3] then return true end
-    end
-    return false
-end
 local function tint(button)
     local label = button.label or button.font
     local color = label and label.textColor
@@ -247,5 +233,5 @@ local modes = {
     { name = 'Raise failing', portrait = true, backdrop = true, raiseFails = true },
 }
 return { same = same, scenario = scenario, opaque = opaque, darkControl = darkControl,
-    nativeAction = nativeAction, goldSmall = goldSmall, tint = tint, fillBounds = fillBounds,
+    tint = tint, fillBounds = fillBounds,
     click = click, modes = modes }

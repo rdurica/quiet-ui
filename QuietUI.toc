@@ -100,6 +100,7 @@ Features\Modern\Areas\StatusFx.lua
 Features\Modern\Areas\Status.lua
 Features\Modern\Feature.lua
 Setup\Draft.lua
+Setup\Style.lua
 Setup\Paint.lua
 Setup\Widgets.lua
 Setup\Window.lua
