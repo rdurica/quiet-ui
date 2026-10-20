@@ -1,5 +1,5 @@
 -- Unit identity can be secret on 12.0: UnitIsPlayer / UnitClass / UnitReaction may return secret values, which
--- must not be used as a table key or a branch. Health then falls back to the flat green.
+-- must not be used as a table key or a branch. The name then keeps Blizzard's colour.
 local h = ...
 local L = h.lib("modern")
 local U = h.lib("modern-units")
@@ -21,34 +21,31 @@ local function setup(t)
     return frames, secret
 end
 
-local function green(A, health, why)
-    local r, g, b = U.rgb(health)
-    A.ok(g > r and g > b, why .. ", got " .. r .. "," .. g .. "," .. b)
-end
 
 local function run(t, mutate)
     local A, ns, mock = t.assert, t.ns, t.mock
     local frames, secret = setup(t)
     mock:setUnit("target", { exists = true, player = true })
+    frames[3].Name:SetTextColor(1, 0.82, 0)
     mutate(secret)
     QuietUICharDB = { modernize = { enabled = true } }
     ns.Modern.Apply()
     local health = U.parts(frames[3]).health
     health:SetStatusBarColor(0, 1, 0)
     A.eq(L.errors(mock), 0, "no error reported")
-    green(A, health, "health is the flat green")
+    A.deep({ frames[3].Name:GetTextColor() }, { 1, 0.82, 0, 1 }, "name keeps Blizzard's colour")
     A.eq(U.statusTexture(health), ns.Modern.Theme().bar, "theme texture still applied")
 end
 
-h.test("a secret UnitIsPlayer gives flat green health without an error", function(t)
+h.test("a secret UnitIsPlayer keeps Blizzard's name colour without an error", function(t)
     run(t, function(secret) UnitIsPlayer = function() return secret(true) end end)
 end)
 
-h.test("a secret UnitClass token gives flat green health without an error", function(t)
+h.test("a secret UnitClass token keeps Blizzard's name colour without an error", function(t)
     run(t, function(secret) UnitClass = function() return "Mage", secret("MAGE"), 8 end end)
 end)
 
-h.test("a secret UnitReaction gives flat green health without an error", function(t)
+h.test("a secret UnitReaction keeps Blizzard's name colour without an error", function(t)
     run(t, function(secret)
         t.mock:setUnit("target", { exists = true, player = false })
         UnitReaction = function() return secret(2) end

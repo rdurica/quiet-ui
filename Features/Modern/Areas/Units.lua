@@ -1,13 +1,13 @@
 local _, ns = ...
 
 -- Unit frames (retail 12.0 structure, with the older flat names as fallbacks). Frame art is held,
--- bars get the theme texture, a background and a border, and Blizzard's own bar updates are
--- followed by a repaint of the colour. Hooks only act on bars that are tracked, so they are
+-- bars get the theme texture inside one dark box, and Blizzard's own bar updates are followed by a
+-- repaint of the colour. Hooks only act on bars that are tracked, so they are
 -- inert while the area is off. Health and power values are never read.
 
 local Modern = ns.Modern
 
--- The third field: Blizzard draws the portrait right of the bars; the fourth: the portrait stays.
+-- The third field: Blizzard draws the portrait right of the bars; the fourth: the player's own frame.
 local FRAMES = {
     { "PlayerFrame", "player", false, true }, { "PetFrame", "pet" }, { "TargetFrame", "target", true },
     { "TargetFrameToT", "targettarget" }, { "FocusFrame", "focus", true },
@@ -31,16 +31,18 @@ local LEVEL_PATHS = { "PlayerFrameContent.PlayerFrameContentMain.PlayerLevelText
 local NAME_PATHS = { "name", "Name", "TargetFrameContent.TargetFrameContentMain.Name" }
 local COMBAT_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.AttackIcon" }
 local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
+-- The player's resting "zzz" and its glow.
+local REST_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.PlayerRestLoop" }
+local REST_GLOBALS = { "PlayerRestLoop", "PlayerRestIcon", "PlayerRestGlow" }
 
-local GREEN = { 0.2, 0.8, 0.2 }
+local HEALTH = { 0.22, 0.23, 0.25 } -- a quiet graphite fill; the white value text reads on it
+local EDGE = { 0, 0, 0, 1 }          -- the box border sinks into the box instead of outlining it
 local MANA = { 0.2, 0.45, 0.9 } -- Blizzard's pure blue is the loudest colour on the frame
-local FILL = 0.8 -- bar fills are dimmed, so the white value text stands out on light colours
 local RARE = { 0.85, 0.85, 0.85, 1 }
 local BOSS = { 0.9, 0.15, 0.15, 1 }
 
 local tracked = setmetatable({}, { __mode = "k" }) -- bar -> { unit, kind, texture, busy } while applied
 local hooked = setmetatable({}, { __mode = "k" })
-local held = setmetatable({}, { __mode = "k" })    -- portrait -> true while held at alpha 0
 local hookedUpdate
 
 local function Dig(root, path)
@@ -66,41 +68,25 @@ local function Colours(color)
     return color.r or color[1], color.g or color[2], color.b or color[3]
 end
 
--- Identity can be secret on 12.0: it is never a branch or a table key, health falls back to flat green.
-local function HealthColour(unit)
-    if not ns.Settings.ModernClassColors() then return unpack(GREEN) end
+-- The name's class or reaction colour. Identity can be secret on 12.0: it is never a branch or a table
+-- key, and the name then keeps Blizzard's colour (nil).
+local function NameColour(unit)
     local r, g, b
     local player = type(UnitIsPlayer) == "function" and UnitIsPlayer(unit)
-    if ns.IsSecret(player) then return unpack(GREEN) end
+    if ns.IsSecret(player) then return end
     if player then
         local token
         if type(UnitClass) == "function" then token = select(2, UnitClass(unit)) end
-        if ns.IsSecret(token) then return unpack(GREEN) end
+        if ns.IsSecret(token) then return end
         local c = type(C_ClassColor) == "table" and type(C_ClassColor.GetClassColor) == "function"
             and C_ClassColor.GetClassColor(token)
         r, g, b = Colours(c or (type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[token]))
     elseif type(UnitReaction) == "function" and type(FACTION_BAR_COLORS) == "table" then
         local reaction = UnitReaction(unit, "player")
-        if ns.IsSecret(reaction) then return unpack(GREEN) end
+        if ns.IsSecret(reaction) then return end
         r, g, b = Colours(FACTION_BAR_COLORS[reaction])
     end
     if r and g and b then return r, g, b end
-    return unpack(GREEN)
-end
-
-local CLASS_ICONS = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
-local ICON_INSET = 0.02 -- of the sheet, trims the icon's rounded corners
-
--- A player's class icon from Blizzard's class sheet; nil for NPCs, a secret identity or a missing sheet.
-local function ClassIcon(unit)
-    if type(UnitIsPlayer) ~= "function" or type(UnitClass) ~= "function" or type(CLASS_ICON_TCOORDS) ~= "table" then return end
-    local player = UnitIsPlayer(unit)
-    if ns.IsSecret(player) or not player then return end
-    local token = select(2, UnitClass(unit))
-    if type(token) ~= "string" or ns.IsSecret(token) then return end
-    local c = CLASS_ICON_TCOORDS[token]
-    if type(c) ~= "table" then return end
-    return { CLASS_ICONS, c[1] + ICON_INSET, c[2] - ICON_INSET, c[3] + ICON_INSET, c[4] - ICON_INSET }
 end
 
 local function PowerColour(unit)
@@ -118,8 +104,8 @@ local function Paint(bar, retexture)
     ns.Run("modern units", function()
         if retexture then bar:SetStatusBarTexture(info.texture) end
         local r, g, b
-        if info.kind == "health" then r, g, b = HealthColour(info.unit) else r, g, b = PowerColour(info.unit) end
-        if r and g and b then bar:SetStatusBarColor(r * FILL, g * FILL, b * FILL, 1) end
+        if info.kind == "health" then r, g, b = unpack(HEALTH) else r, g, b = PowerColour(info.unit) end
+        if r and g and b then bar:SetStatusBarColor(r, g, b, 1) end
     end)
     info.busy = nil
 end
@@ -151,43 +137,7 @@ local function HookUpdate()
     end
 end
 
--- Depth on the flat fill: light on its top half, a shade towards the bottom and a light line under the
--- top border. They follow the fill, so the empty part stays a flat track. Without gradients only a faint
--- flat light remains. The thin power bar skips the edge line: on it light and line read as a stripe.
-local function Gloss(skin, bar, thin)
-    local fill = bar:GetStatusBarTexture()
-    if not ns.Usable(fill) or type(bar.CreateTexture) ~= "function" then return end
-    local ok, layer, sub = pcall(fill.GetDrawLayer, fill)
-    if not ok or type(layer) ~= "string" then layer, sub = "ARTWORK", 0 end
-    sub = math.min(6, (type(sub) == "number" and sub or 0) + 1)
-    local light, shade, edge = unpack(skin:Own(bar, "gloss", function()
-        return { bar:CreateTexture(nil, layer, nil, sub), bar:CreateTexture(nil, layer, nil, sub),
-            bar:CreateTexture(nil, layer, nil, sub + 1) }
-    end))
-    light:ClearAllPoints()
-    light:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, 0)
-    light:SetPoint("BOTTOMRIGHT", fill, "RIGHT", 0, 0)
-    shade:ClearAllPoints()
-    shade:SetAllPoints(fill)
-    edge:ClearAllPoints()
-    edge:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, -1)
-    edge:SetPoint("TOPRIGHT", fill, "TOPRIGHT", 0, -1)
-    edge:SetHeight(1)
-    edge:SetColorTexture(1, 1, 1, 0.18)
-    light:SetColorTexture(1, 1, 1, 1)
-    shade:SetColorTexture(0, 0, 0, 1)
-    local gradient = type(light.SetGradient) == "function" and type(CreateColor) == "function"
-        and pcall(light.SetGradient, light, "VERTICAL", CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, 0.22))
-        and pcall(shade.SetGradient, shade, "VERTICAL", CreateColor(0, 0, 0, 0.35), CreateColor(0, 0, 0, 0))
-    if not gradient then
-        light:SetColorTexture(1, 1, 1, 0.08)
-        shade:SetColorTexture(0, 0, 0, 0)
-    end
-    for _, region in ipairs({ light, shade }) do region:Show() end
-    if thin then edge:Hide() else edge:Show() end
-end
-
-local function Bar(skin, bar, unit, kind, border)
+local function Bar(skin, bar, unit, kind)
     if not ns.Usable(bar) or type(bar.SetStatusBarTexture) ~= "function" or type(bar.GetStatusBarTexture) ~= "function"
         or type(bar.SetStatusBarColor) ~= "function" then return end
     if type(bar.GetStatusBarColor) == "function" then
@@ -197,11 +147,8 @@ local function Bar(skin, bar, unit, kind, border)
     local old = CurrentTexture(bar)
     if old then skin:Remember(bar, "status texture", function() pcall(bar.SetStatusBarTexture, bar, old) end) end
     tracked[bar] = { unit = unit, kind = kind, texture = Modern.Theme().bar }
-    skin:Panel(bar)
-    skin:Border(bar, border)
     Hook(bar)
     Paint(bar, true)
-    Gloss(skin, bar, kind == "power")
 end
 
 local function Art(skin, frame, name)
@@ -220,9 +167,9 @@ local function Art(skin, frame, name)
     end
 end
 
--- The portrait is gone, so the target's rarity moves to its health bar border.
+-- The portrait is gone, so the target's rarity moves to the border of its bar box.
 local function RarityColour(unit)
-    local color = Modern.Theme().border
+    local color = EDGE
     if unit == "target" and type(UnitClassification) == "function" then
         local kind = UnitClassification(unit)
         if ns.IsSecret(kind) then kind = nil end
@@ -233,33 +180,52 @@ local function RarityColour(unit)
     return color
 end
 
+-- With class colours on, the name takes its class or reaction colour; otherwise, or for a secret identity,
+-- Blizzard's colour, read once per apply cycle.
+local base = setmetatable({}, { __mode = "k" })
+local function Name(skin, label, unit)
+    if not ns.Usable(label) or type(label.SetTextColor) ~= "function" or type(label.GetTextColor) ~= "function" then return end
+    if not base[label] then
+        base[label] = { label:GetTextColor() }
+        skin:Remember(label, "name colour", function()
+            pcall(label.SetTextColor, label, unpack(base[label]))
+            base[label] = nil
+        end)
+    end
+    local r, g, b
+    if ns.Settings.ModernClassColors() then r, g, b = NameColour(unit) end
+    if r and g and b then label:SetTextColor(r, g, b) else label:SetTextColor(unpack(base[label])) end
+end
+
+local function Rest(skin, frame)
+    local list = { Find(frame, REST_PATHS) }
+    for _, key in ipairs(REST_GLOBALS) do list[#list + 1] = _G[key] end
+    for _, art in pairs(list) do
+        if ns.Usable(art) and type(art.SetAlpha) == "function" then skin:Hold(art) end
+    end
+end
+
 local function Unit(skin, spec)
     local name, unit = spec[1], spec[2]
     local frame = _G[name]
     if not ns.Usable(frame) then return end
     Art(skin, frame, name)
     local health, mana = Find(frame, HEALTH_PATHS, name .. "HealthBar"), Find(frame, POWER_PATHS, name .. "ManaBar")
-    Bar(skin, health, unit, "health", RarityColour(unit))
+    Bar(skin, health, unit, "health")
     Bar(skin, mana, unit, "power")
-    -- Portraits stay for the player and NPC targets; the others are held at alpha 0 and the bars take
-    -- their space. A target turning from NPC to player holds it again.
+    local label = Find(frame, NAME_PATHS, name == "PlayerFrame" and "PlayerName" or name .. "TextureFrameName")
+    if not spec[4] then Name(skin, label, unit) end
+    if spec[4] then Rest(skin, frame) end
+    -- The portrait is held at alpha 0 in place; the bars take its space.
     local portrait = Find(frame, PORTRAIT_PATHS, name == "PetFrame" and "PetPortrait" or nil)
     if not portrait then return end
-    local icon = spec[3] and ClassIcon(unit) or nil
-    local inside = spec[3] and not icon
-    if spec[4] or inside then
-        if held[portrait] then ns.ReleaseAlpha(portrait) end
-        held[portrait] = nil
-    else
-        skin:Hold(portrait)
-        held[portrait] = true
-    end
+    skin:Hold(portrait)
     Modern.UnitLayout(skin, frame, { health = health, mana = mana, portrait = portrait, right = spec[3],
-        shown = spec[4], combat = spec[4] and Find(frame, COMBAT_PATHS, "PlayerAttackIcon") or nil,
-        colour = { HealthColour(unit) }, icon = icon, inside = inside,
+        player = spec[4], border = RarityColour(unit),
+        combat = spec[4] and Find(frame, COMBAT_PATHS, "PlayerAttackIcon") or nil,
         level = Find(frame, LEVEL_PATHS, name == "PlayerFrame" and "PlayerLevelText" or name .. "TextureFrameLevelText"),
         skull = Find(frame, SKULL_PATHS, name .. "TextureFrameHighLevelTexture"),
-        name = Find(frame, NAME_PATHS, name == "PlayerFrame" and "PlayerName" or name .. "TextureFrameName") })
+        name = label })
 end
 
 local function Apply(skin)
@@ -287,6 +253,5 @@ Modern.Register{
     -- Untrack first: the journal's undo then restores texture and colour without the hooks answering.
     restore = function()
         for bar in pairs(tracked) do tracked[bar] = nil end
-        for portrait in pairs(held) do held[portrait] = nil end
     end,
 }

@@ -214,11 +214,11 @@ function Frame:IsPlaying() return self._playing == true end
 function Frame:SetTexture(v) self._texture = v end
 function Frame:GetTexture() return self._texture end
 function Frame:SetColorTexture(...) self._color = { ... } end
--- On a texture the vertex alpha is the texture's alpha, set past any SetAlpha hook.
+-- On a texture or font string the vertex alpha is its alpha, set past any SetAlpha hook.
 function Frame:SetVertexColor(...)
     self._vertex = { ... }
     local a = select(4, ...)
-    if self._kind == "Texture" and a ~= nil then self._alpha = a end
+    if (self._kind == "Texture" or self._kind == "FontString") and a ~= nil then self._alpha = a end
 end
 function Frame:SetTexCoord(...) self._texCoord = { ... } end
 function Frame:GetTexCoord()
@@ -246,7 +246,11 @@ function Frame:GetFont()
     return f[1], f[2], f[3]
 end
 function Frame:SetFontObject(v) self._fontObject = v end
-function Frame:SetTextColor(...) self._textColor = { ... } end
+function Frame:SetTextColor(...)
+    self._textColor = { ... }
+    local a = select(4, ...)
+    if self._kind == "FontString" and a ~= nil then self._alpha = a end
+end
 function Frame:GetTextColor()
     local c = self._textColor or { 1, 1, 1, 1 }
     return c[1], c[2], c[3], c[4] or 1

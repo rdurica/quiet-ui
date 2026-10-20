@@ -66,7 +66,7 @@ h.test("units skin frames in place without changing size, points or fade alpha",
     end
 end)
 
-h.test("health and power bars get the theme texture, a themed background and a one pixel border", function(t)
+h.test("health and power bars get the theme texture inside one bordered box and carry no border of their own", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()
     local old = {}
@@ -80,16 +80,16 @@ h.test("health and power bars get the theme texture, a themed background and a o
         local p = U.parts(f)
         for _, value in ipairs({ p.health, p.mana }) do
             A.eq(U.statusTexture(value), ns.Modern.Theme().bar, f:GetName() .. " bar texture")
-            A.ok(U.panel(value), f:GetName() .. " bar has themed background")
-            A.ok(U.onePixel(value), f:GetName() .. " bar has one pixel border")
+            A.ok(not U.border(value), f:GetName() .. " bar has no own border")
         end
+        A.ok(U.onePixelOn(f, U.barBox(f)), f:GetName() .. " box has a one pixel border")
     end
     ns.Modern.Restore()
     for _, f in ipairs(frames) do
         local p = U.parts(f)
         A.eq(U.statusTexture(p.health), old[f][1], f:GetName() .. " health texture restored")
         A.eq(U.statusTexture(p.mana), old[f][2], f:GetName() .. " power texture restored")
-        A.ok(not U.border(p.health), f:GetName() .. " own border hidden")
+        A.ok(not U.barBox(f), f:GetName() .. " box hidden")
     end
 end)
 
@@ -103,8 +103,6 @@ h.test("units restore every treatment when their area or Modernize turns off, th
     QuietUICharDB.modernize.units = false
     ns.Modern.Apply()
     A.eq(U.statusTexture(p.health), original, "bar texture restored")
-    A.deep({ p.portrait:GetTexCoord() }, { 0, 1, 0, 1 }, "portrait crop restored")
-    A.eq(p.portrait:GetMaskTexture(1), p.mask, "mask restored")
     A.alpha(p.portrait, 1, "portrait released")
     QuietUICharDB.modernize.units = nil
     ns.Modern.Apply()

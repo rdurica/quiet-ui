@@ -49,10 +49,14 @@ function ns.EnsureAlphaHook(frame)
     if type(frame.SetAlphaFromBoolean) == "function" then
         pcall(hooksecurefunc, frame, "SetAlphaFromBoolean", function(self) Reapply(self, nil) end)
     end
-    -- On a texture the vertex colour's alpha is its alpha (the ToT portrait gets one every frame).
-    if type(frame.SetVertexColor) == "function" and type(frame.GetObjectType) == "function"
-        and frame:GetObjectType() == "Texture" then
+    -- On a texture or text the vertex colour's alpha is its alpha (the ToT portrait gets one every frame,
+    -- the player's level text one on every level update).
+    local kind = type(frame.GetObjectType) == "function" and frame:GetObjectType()
+    if type(frame.SetVertexColor) == "function" and (kind == "Texture" or kind == "FontString") then
         pcall(hooksecurefunc, frame, "SetVertexColor", function(self, _, _, _, a) Reapply(self, a) end)
+    end
+    if type(frame.SetTextColor) == "function" and kind == "FontString" then
+        pcall(hooksecurefunc, frame, "SetTextColor", function(self, _, _, _, a) Reapply(self, a) end)
     end
 end
 

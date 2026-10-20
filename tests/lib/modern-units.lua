@@ -6,7 +6,8 @@
 --     BossPortraitFrameTexture}; .TargetFrameContent.TargetFrameContentMain.{HealthBarsContainer.HealthBar,
 --     ManaBar, ReputationColor, LevelText}
 -- The level text sits in a ring texture anchored to it (WoW Forever art, name unknown).
--- The player's combat swords: PlayerFrameContent.PlayerFrameContentContextual.AttackIcon.
+-- The player's combat swords and resting "zzz": PlayerFrameContent.PlayerFrameContentContextual.AttackIcon
+--   and .PlayerRestLoop.
 --   TargetFrameToT: Portrait, PortraitMask, FrameTexture, HealthBar, ManaBar directly on the frame
 --   PetFrame: Portrait / PortraitMask keys; PetFrameTexture, PetFrameFlash, PetFrameHealthBar,
 --     PetFrameManaBar as named globals
@@ -98,6 +99,7 @@ local function finish(f, unit, kind, p)
     p.health.unit, p.mana.unit = unit, unit
     f.Name = f:CreateFontString(nil, "OVERLAY")
     f.Name:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+    f.Name:SetTextColor(1, 0.82, 0, 1) -- GameFontNormalSmall
     f:SetSize(232, 100)
     parts[f] = p
     _G[f:GetName()] = f
@@ -121,6 +123,7 @@ local function player()
     contextual.AttackIcon = texture(contextual, ATLAS .. "Player-CombatIcon", true)
     contextual.AttackIcon:SetSize(24, 24)
     contextual.AttackIcon:SetPoint("TOPLEFT", lvl, "BOTTOMLEFT", 0, -2)
+    contextual.PlayerRestLoop = sub(contextual)
     local hb = sub(main); main.HealthBarsContainer = hb
     hb.HealthBar = bar(hb, ATLAS .. "Player-PortraitOn-Bar-Health", { 0, 1, 0, 1 })
     hb.HealthBar:SetPoint("TOPLEFT", hb, "TOPLEFT", 85, -26)
@@ -130,7 +133,7 @@ local function player()
     return finish(f, "player", "Player", { portrait = icon, mask = mask, health = hb.HealthBar, mana = area.ManaBar,
         art = { c.FrameTexture, c.AlternatePowerFrameTexture, c.VehicleFrameTexture, c.FrameFlash, main.StatusTexture },
         flash = c.FrameFlash, status = main.StatusTexture, level = lvl, ring = ring,
-        combat = contextual.AttackIcon })
+        combat = contextual.AttackIcon, rest = contextual.PlayerRestLoop })
 end
 
 local function target(name, unit)
@@ -237,44 +240,22 @@ local function edges(owner, anchor)
     return list
 end
 
--- The square QuietUI draws where a target or focus portrait was: a shown square background fill on the frame.
-function U.levelBox(frame)
+-- The dark box QuietUI draws behind a unit's bars: a shown background fill on the frame, anchored to it.
+function U.barBox(frame)
     for _, r in ipairs(frame._regions or {}) do
-        if r._layer == "BACKGROUND" and r._shown and r._color and r._w == r._h then return r end
-    end
-end
-
--- The class icon QuietUI shows in that square for a player unit.
-function U.classIcon(frame)
-    for _, r in ipairs(frame._regions or {}) do
-        if r._layer == "ARTWORK" and r._shown and type(r._texture) == "string" and r._texture:find("CLASSES") then
+        if r._layer == "BACKGROUND" and r._shown and r._color and r._points[1] and r._points[1][2] == frame then
             return r
         end
     end
 end
 
--- The anchor of the dark strip QuietUI draws under a unit's name: a shown background region anchored to the
--- health bar; the strip's pieces are anchored to it.
-function U.nameStrip(frame)
-    local health = U.parts(frame).health
-    for _, r in ipairs(frame._regions or {}) do
-        if r._layer == "BACKGROUND" and r._shown and r._color and r._points[1] and r._points[1][2] == health then
-            return r
-        end
+-- Colour of the border the frame draws on its bar box.
+function U.boxBorderColor(frame)
+    local box = U.barBox(frame)
+    if not box then return end
+    for _, r in ipairs(edges(frame, box)) do
+        if r._color then return r._color end
     end
-end
-
--- Shown regions of the frame anchored to `anchor`, optionally only those in `layer`.
-function U.anchoredTo(frame, anchor, layer)
-    local list = {}
-    for _, r in ipairs(frame._regions or {}) do
-        if r._shown and (not layer or r._layer == layer) then
-            for _, point in ipairs(r._points) do
-                if point[2] == anchor then list[#list + 1] = r; break end
-            end
-        end
-    end
-    return list
 end
 
 -- Shown regions of a bar anchored to its fill texture.
@@ -294,6 +275,14 @@ function U.border(bar) return #edges(bar, bar) >= 4 end
 
 -- A border drawn by `owner` on the edges of `anchor` (a texture's border belongs to its frame).
 function U.borderOn(owner, anchor) return #edges(owner, anchor) >= 4 end
+
+function U.onePixelOn(owner, anchor)
+    local list = edges(owner, anchor)
+    for _, r in ipairs(list) do
+        if r._w ~= 1 and r._h ~= 1 then return false end
+    end
+    return #list >= 4
+end
 
 function U.onePixel(bar)
     local list = edges(bar, bar)

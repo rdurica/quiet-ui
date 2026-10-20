@@ -1,25 +1,22 @@
 local _, ns = ...
 
--- Unit frames without portraits: health and power bars take the portrait's space. Where the frame has a
--- level, a square as tall as the bars and the name strip sits at the outer edge: the player's portrait; for target and focus
--- a player's class icon or an NPC's portrait. The level is a small number before the name, both on a dark strip. Edges are layout numbers, never unit values.
+-- Unit frames as one compact bar: no portrait, one dark box with a 1 px border takes the portrait's space;
+-- the health bar fills it and the power bar is a thin line along its bottom. The value sits in the health
+-- bar; name and level sit above the box, the player shows neither. Edges are layout numbers, never unit values.
 -- Each bar's rect is read once per apply cycle, before anything moves: Blizzard re-anchors target bars
 -- on every classification check, and its SetPoint is answered by putting the layout back.
 
 local Modern = ns.Modern
 
-local GAP = 2             -- between the portrait or box and the bars
-local SHARE = 1           -- stacked strip, health and power overlap so their 1 px borders become one line
-local POWER_HEIGHT = 16   -- the power bar's least height, so BAR_TEXT fits in it
-local BAR_TEXT = 12       -- value text size on both bars; Blizzard's is too small to read
-local TEXT_POINTS = { TextString = { "CENTER", 0 }, LeftText = { "LEFT", 2 }, RightText = { "RIGHT", -2 } }
-local PORTRAIT_CROP = 0.12
-local COMBAT_ICON = 0.45  -- of the portrait's side
-local NAME_PAD = 3        -- around the name inside its strip
--- The name strip's outer top corner: a quarter disc fill and a 1 px arc, drawn as the top-right quarter.
-local CORNER_FILL = "Interface\\AddOns\\QuietUI\\Media\\corner-fill"
-local CORNER_LINE = "Interface\\AddOns\\QuietUI\\Media\\corner-line"
-local RADIUS = 6
+local BOX_HEIGHT = 28     -- the box on frames with a level (and the player's)
+local SMALL_HEIGHT = 18   -- on pet and target of target
+local INSET = 1           -- the box border
+local POWER_HEIGHT = 4    -- a thin line, too small for its value text
+local POWER_GAP = 1       -- dark line between health and power
+local BAR_TEXT = 12       -- value text size; Blizzard's is too small to read
+local TEXT_POINTS = { TextString = { "CENTER", 0 }, LeftText = { "LEFT", 4 }, RightText = { "RIGHT", -4 } }
+local NAME_GAP = 3        -- between the health bar's top and the name
+local COMBAT_ICON = 16
 
 local rects = setmetatable({}, { __mode = "k" })  -- bar -> Blizzard rect relative to the frame, this cycle
 local laid = setmetatable({}, { __mode = "k" })   -- region -> points held while applied
@@ -92,15 +89,14 @@ local function IsTexture(region)
     return ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
 end
 
--- The ring art around the level: textures anchored to the level text, or the one it is anchored to. Our own
--- box and name strip are skipped: once laid out, the level is anchored to the strip.
-local function Ring(skin, level, box, strip)
+-- The ring art around the level: textures anchored to the level text, or the one it is anchored to.
+local function Ring(skin, level)
     local _, rel = level:GetPoint(1)
-    if rel ~= box and rel ~= strip and IsTexture(rel) then skin:Hold(rel) end
+    if IsTexture(rel) then skin:Hold(rel) end
     local parent = type(level.GetParent) == "function" and level:GetParent()
     if not ns.Usable(parent) or type(parent.GetRegions) ~= "function" then return end
     for _, region in ipairs({ parent:GetRegions() }) do
-        if region ~= level and region ~= box and region ~= strip and IsTexture(region) and type(region.GetPoint) == "function" then
+        if region ~= level and IsTexture(region) and type(region.GetPoint) == "function" then
             for i = 1, region:GetNumPoints() do
                 if select(2, region:GetPoint(i)) == level then
                     skin:Hold(region)
@@ -138,14 +134,16 @@ local function Shadow(skin, text)
     if type(text.GetShadowColor) == "function" then skin:Set(text, "SetShadowColor", 0, 0, 0, 1) end
 end
 
--- The fill's mask has the old bar size and would clip the widened fill; the texts follow the bar, at
--- BAR_TEXT points in Blizzard's face, without outline and with a shadow.
-local function Contents(skin, bar)
+-- The fill's mask has the old bar size and would clip the widened fill. Health texts follow the bar, at
+-- BAR_TEXT points in Blizzard's face, without outline and with a shadow; the thin power bar holds its own.
+local function Contents(skin, bar, thin)
     local fill = type(bar.GetStatusBarTexture) == "function" and bar:GetStatusBarTexture()
     if ns.Usable(fill) then Modern.NoMask(skin, fill) end
     for key, spec in pairs(TEXT_POINTS) do
         local text = bar[key]
-        if ns.Usable(text) and type(text.SetPoint) == "function" then
+        if ns.Usable(text) and thin then
+            skin:Hold(text)
+        elseif ns.Usable(text) and type(text.SetPoint) == "function" then
             Anchor(skin, text, { spec[1], bar, spec[1], spec[2], 0 })
             local base = BaseFont(skin, text)
             if base then Font(skin, text, base[1], BAR_TEXT, Unoutlined(base[3])) end
@@ -154,179 +152,76 @@ local function Contents(skin, bar)
     end
 end
 
-local function StripHeight(skin, parts)
-    local font = ns.Usable(parts.name) and BaseFont(skin, parts.name)
-    return math.floor((font and font[2] or 10) + 2 * NAME_PAD + 0.5)
+local function Movable(region)
+    return ns.Usable(region) and type(region.SetPoint) == "function" and type(region.GetPoint) == "function"
 end
 
-local function Pin(region, ...)
-    region:ClearAllPoints()
-    for _, p in ipairs({ ... }) do region:SetPoint(unpack(p)) end
-end
-
--- A dark strip on top of the health bar and as wide as it, so the name reads on any background. Its top corner
--- away from the portrait is rounded. The translucent fill is a body, a top band short of the corner and a
--- quarter disc that never overlap, so its alpha stays even. Returns the invisible full-size anchor the texts
--- align to.
-local function NameStrip(skin, frame, parts)
-    local list = skin:Own(frame, "name strip", function()
-        local made = {}
-        for i = 1, 4 do made[i] = frame:CreateTexture(nil, "BACKGROUND") end
-        for i = 5, 9 do made[i] = frame:CreateTexture(nil, "BORDER") end
-        return made
-    end)
-    if not list then return end
-    local strip, body, band, disc, top, side, bottom, inner, arc = unpack(list)
-    local theme = Modern.Theme()
-    local o, i = parts.right and "LEFT" or "RIGHT", parts.right and "RIGHT" or "LEFT"
-    local inward = parts.right and RADIUS or -RADIUS
-    Pin(strip, { "BOTTOMLEFT", parts.health, "TOPLEFT", 0, -SHARE }, { "BOTTOMRIGHT", parts.health, "TOPRIGHT", 0, -SHARE })
-    strip:SetHeight(StripHeight(skin, parts))
-    strip:SetColorTexture(0, 0, 0, 0)
-    Pin(body, { "TOPLEFT", strip, "TOPLEFT", 0, -RADIUS }, { "BOTTOMRIGHT", strip, "BOTTOMRIGHT", 0, 0 })
-    Pin(band, { "TOP" .. i, strip, "TOP" .. i, 0, 0 }, { "BOTTOM" .. o, strip, "TOP" .. o, inward, -RADIUS })
-    Pin(disc, { "TOP" .. o, strip, "TOP" .. o, 0, 0 })
-    Pin(arc, { "TOP" .. o, strip, "TOP" .. o, 0, 0 })
-    Pin(top, { "TOP" .. i, strip, "TOP" .. i, 0, 0 }, { "TOP" .. o, strip, "TOP" .. o, inward, 0 })
-    Pin(side, { "TOP" .. o, strip, "TOP" .. o, 0, -RADIUS }, { "BOTTOM" .. o, strip, "BOTTOM" .. o, 0, 0 })
-    Pin(bottom, { "BOTTOMLEFT", strip, "BOTTOMLEFT", 0, 0 }, { "BOTTOMRIGHT", strip, "BOTTOMRIGHT", 0, 0 })
-    Pin(inner, { "TOP" .. i, strip, "TOP" .. i, 0, 0 }, { "BOTTOM" .. i, strip, "BOTTOM" .. i, 0, 0 })
-    top:SetHeight(1)
-    bottom:SetHeight(1)
-    side:SetWidth(1)
-    inner:SetWidth(1)
-    for _, corner in ipairs({ disc, arc }) do
-        corner:SetSize(RADIUS, RADIUS)
-        corner:SetTexCoord(parts.right and 1 or 0, parts.right and 0 or 1, 0, 1)
+-- Target and focus: the level in the name's font, then the name, above the health bar's left end. The
+-- high-level skull takes the level's place. Without a level (pet, target of target) the name starts there.
+local function Labels(skin, parts)
+    local health, level, name = parts.health, parts.level, parts.name
+    local start = { "BOTTOMLEFT", health, "TOPLEFT", 0, NAME_GAP + INSET }
+    local after = start
+    if Movable(level) then
+        Ring(skin, level)
+        local nameFont = ns.Usable(name) and BaseFont(skin, name)
+        local base = BaseFont(skin, level)
+        if nameFont and base then Font(skin, level, nameFont[1], nameFont[2], base[3]) end
+        Anchor(skin, level, start)
+        if Movable(parts.skull) then Anchor(skin, parts.skull, { "CENTER", level, "CENTER", 0, 0 }) end
+        after = { "BOTTOMLEFT", level, "BOTTOMRIGHT", 3, 0 }
     end
-    disc:SetTexture(CORNER_FILL)
-    disc:SetVertexColor(unpack(theme.bg))
-    arc:SetTexture(CORNER_LINE)
-    arc:SetVertexColor(unpack(theme.border))
-    for _, fill in ipairs({ body, band }) do fill:SetColorTexture(unpack(theme.bg)) end
-    for _, line in ipairs({ top, side, bottom, inner }) do line:SetColorTexture(unpack(theme.border)) end
-    for _, region in ipairs(list) do region:Show() end
-    return strip
-end
-
--- The level is a small number in the name's font left of the name, both inside the name strip.
-local function LevelName(skin, frame, parts, box)
-    local level, name = parts.level, parts.name
-    local strip = NameStrip(skin, frame, parts)
-    Ring(skin, level, box, strip)
-    local nameFont = ns.Usable(name) and BaseFont(skin, name)
-    local base = BaseFont(skin, level)
-    if nameFont and base then Font(skin, level, nameFont[1], nameFont[2], base[3]) end
-    if not strip then return end
-    Anchor(skin, level, { "LEFT", strip, "LEFT", NAME_PAD, 0 })
-    if ns.Usable(name) and type(name.SetPoint) == "function" then
-        if type(name.SetJustifyH) == "function" then skin:Set(name, "SetJustifyH", "LEFT") end
-        Anchor(skin, name, { "LEFT", level, "RIGHT", 3, 0 }, { "RIGHT", strip, "RIGHT", -NAME_PAD, 0 })
-    end
-end
-
--- Without a level (pet, target of target) the name spans the strip.
-local function BarName(skin, frame, parts)
-    local name = parts.name
-    if not ns.Usable(name) or type(name.SetPoint) ~= "function" then return end
-    local strip = NameStrip(skin, frame, parts)
-    if not strip then return end
+    if not Movable(name) then return end
     if type(name.SetJustifyH) == "function" then skin:Set(name, "SetJustifyH", "LEFT") end
-    Anchor(skin, name, { "LEFT", strip, "LEFT", NAME_PAD, 0 }, { "RIGHT", strip, "RIGHT", -NAME_PAD, 0 })
+    Anchor(skin, name, after, { "BOTTOMRIGHT", health, "TOPRIGHT", 0, NAME_GAP + INSET })
 end
 
--- A portrait as a square picture: no round mask, the faded rim cropped.
-local function Square(skin, portrait)
-    Modern.NoMask(skin, portrait)
-    if type(portrait.SetTexCoord) == "function" then
-        skin:Set(portrait, "SetTexCoord", PORTRAIT_CROP, 1 - PORTRAIT_CROP, PORTRAIT_CROP, 1 - PORTRAIT_CROP)
+-- The player knows their own name and level; the combat icon sits small above the bar's left end.
+local function PlayerLabels(skin, parts)
+    for _, text in ipairs({ parts.name, parts.level }) do
+        if ns.Usable(text) then skin:Hold(text) end
     end
+    if Movable(parts.level) then Ring(skin, parts.level) end
+    local combat = parts.combat
+    if not Movable(combat) then return end
+    if type(combat.SetSize) == "function" then skin:Set(combat, "SetSize", COMBAT_ICON, COMBAT_ICON) end
+    Anchor(skin, combat, { "BOTTOMLEFT", parts.health, "TOPLEFT", -INSET, NAME_GAP + INSET })
 end
 
--- Target and focus: a square where the portrait was, filled with its border colour: the class colour behind a
--- player's class icon, the theme border behind an NPC's portrait; either sits 1 px inside. The high-level
--- skull sits in it.
-local function ColourBox(skin, frame, parts, outer, top, size)
-    local box = skin:Own(frame, "level box", function() return frame:CreateTexture(nil, "BACKGROUND") end)
+-- The dark box behind both bars, with the 1 px border in the theme or the target's rarity colour.
+local function Box(skin, frame, parts, l, r, top, bottom)
+    local box = skin:Own(frame, "bar box", function() return frame:CreateTexture(nil, "BACKGROUND") end)
     if not box then return end
     box:ClearAllPoints()
-    box:SetPoint(parts.right and "TOPRIGHT" or "TOPLEFT", frame, "BOTTOMLEFT", outer, top)
-    box:SetSize(size, size)
-    local c = parts.icon and parts.colour or Modern.Theme().border
-    box:SetColorTexture(c[1], c[2], c[3], 1)
+    box:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", l, top)
+    box:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", r, bottom)
+    box:SetColorTexture(unpack(Modern.Theme().bg))
     box:Show()
-    local icon = skin:Own(frame, "class icon", function() return frame:CreateTexture(nil, "ARTWORK") end)
-    if icon and parts.icon then
-        icon:ClearAllPoints()
-        icon:SetPoint("TOPLEFT", box, "TOPLEFT", 1, -1)
-        icon:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -1, 1)
-        icon:SetTexture(parts.icon[1])
-        icon:SetTexCoord(unpack(parts.icon, 2, 5))
-        icon:Show()
-    elseif icon then
-        icon:Hide()
-    end
-    if parts.inside then
-        Square(skin, parts.portrait)
-        Anchor(skin, parts.portrait, { "TOPLEFT", box, "TOPLEFT", 1, -1 }, { "BOTTOMRIGHT", box, "BOTTOMRIGHT", -1, 1 })
-    end
-    if ns.Usable(parts.skull) then Anchor(skin, parts.skull, { "CENTER", box, "CENTER", 0, 0 }) end
-    return box
+    skin:Border(frame, parts.border, box)
 end
 
--- The player's portrait: square and unmasked, 1 px inside a rim in the theme border colour where the box
--- would be; the combat icon sits in its corner.
-local function Portrait(skin, frame, parts, outer, top, size)
-    local portrait = parts.portrait
-    local rim = skin:Own(frame, "portrait rim", function() return frame:CreateTexture(nil, "BACKGROUND") end)
-    if not rim then return end
-    rim:ClearAllPoints()
-    rim:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", outer, top)
-    rim:SetSize(size, size)
-    rim:SetColorTexture(unpack(Modern.Theme().border))
-    rim:Show()
-    Square(skin, portrait)
-    Anchor(skin, portrait, { "TOPLEFT", rim, "TOPLEFT", 1, -1 }, { "BOTTOMRIGHT", rim, "BOTTOMRIGHT", -1, 1 })
-    local combat = parts.combat
-    if ns.Usable(combat) and type(combat.SetPoint) == "function" then
-        local side = math.floor(size * COMBAT_ICON + 0.5)
-        if type(combat.SetSize) == "function" then skin:Set(combat, "SetSize", side, side) end
-        Anchor(skin, combat, { "BOTTOMLEFT", portrait, "BOTTOMLEFT", 1, 1 })
-    end
-    return portrait
-end
-
--- parts: health, mana, portrait (held at alpha 0 unless shown), shown (the player's portrait stays), level,
--- skull, name, combat (the player's attack icon), colour (the box's { r, g, b }), icon ({ file, l, r, t, b } of
--- a player's class icon), inside (an NPC's portrait shows in the box), right (portrait right of bars).
+-- parts: health, mana, portrait (held at alpha 0 by the caller), right (portrait right of the bars),
+-- player (no name or level, the combat icon instead), border (box border colour), level, skull, name, combat.
 function Modern.UnitLayout(skin, frame, parts)
     local health, mana, portrait = parts.health, parts.mana, parts.portrait
     if not ns.Usable(health) or not ns.Usable(mana) or not ns.Usable(portrait) then return end
     local fl, fb = frame:GetLeft(), frame:GetBottom()
     if not Numbers(fl, fb) then return end
-    local hr, mr, pr = Rect(skin, health, fl, fb), Rect(skin, mana, fl, fb), Rect(skin, portrait, fl, fb)
-    if not hr or not mr or not pr or hr[3] <= mr[4] then return end
-    local outer = parts.right and pr[2] or pr[1]
-    local level = ns.Usable(parts.level) and type(parts.level.GetPoint) == "function"
-    -- The square reaches from the power bar's bottom to the top of the name strip.
-    local top = hr[3] + ((level or parts.shown) and StripHeight(skin, parts) - SHARE or 0)
-    -- The power bar hangs from the health bar's bottom border, at least POWER_HEIGHT tall.
-    local powerTop = hr[4] + SHARE
-    local powerBottom = powerTop - math.max(mr[3] - mr[4], POWER_HEIGHT)
-    local size = top - powerBottom
-    local inset = (level or parts.shown) and size + GAP or 0
-    for _, bar in ipairs({ health, mana }) do
-        local t, b = hr[3], hr[4]
-        if bar == mana then t, b = powerTop, powerBottom end
-        -- Both bars share the health bar's inner edge: Blizzard's target power bar is a little wider.
-        local l, r = hr[1], hr[2]
-        if parts.right then r = outer - inset else l = outer + inset end
-        Anchor(skin, bar, { "TOPLEFT", frame, "BOTTOMLEFT", l, t }, { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r, b })
-        Contents(skin, bar)
-    end
-    local box
-    if parts.shown then box = Portrait(skin, frame, parts, outer, top, size)
-    elseif level then box = ColourBox(skin, frame, parts, outer, top, size) end
-    if level and box then LevelName(skin, frame, parts, box)
-    elseif not level and not parts.shown then BarName(skin, frame, parts) end
+    local hr, pr = Rect(skin, health, fl, fb), Rect(skin, portrait, fl, fb)
+    if not hr or not pr then return end
+    -- The box reaches from the portrait's outer edge to the health bar's far edge, up from its bottom.
+    local l, r = hr[1], hr[2]
+    if parts.right then r = pr[2] else l = pr[1] end
+    local big = parts.player or Movable(parts.level)
+    local bottom = hr[4]
+    local top = bottom + (big and BOX_HEIGHT or SMALL_HEIGHT)
+    Box(skin, frame, parts, l, r, top, bottom)
+    local powerTop = bottom + INSET + POWER_HEIGHT
+    Anchor(skin, health, { "TOPLEFT", frame, "BOTTOMLEFT", l + INSET, top - INSET },
+        { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r - INSET, powerTop + POWER_GAP })
+    Anchor(skin, mana, { "TOPLEFT", frame, "BOTTOMLEFT", l + INSET, powerTop },
+        { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r - INSET, bottom + INSET })
+    Contents(skin, health)
+    Contents(skin, mana, true)
+    if parts.player then PlayerLabels(skin, parts) else Labels(skin, parts) end
 end

@@ -1,5 +1,4 @@
--- Modern unit frames: pet and target of target lose their portraits, the target's rarity on its health bar
--- border (retail 12.0).
+-- Modern unit frames: every portrait is held, the target's rarity on its bar box border (retail 12.0).
 local h = ...
 local U = h.lib("modern-units")
 
@@ -10,14 +9,11 @@ local function enable(ns, extra)
     ns.Modern.Apply()
 end
 
-h.test("pet and target of target portraits are held at alpha 0 in place; player and NPC target portraits stay", function(t)
+h.test("every unit portrait is held at alpha 0 in place", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()
     enable(ns)
-    for _, i in ipairs({ 1, 3, 5 }) do
-        A.alpha(U.parts(frames[i]).portrait, 1, frames[i]:GetName() .. " portrait stays visible")
-    end
-    for _, i in ipairs({ 2, 4 }) do
+    for i = 1, #frames do
         local f = frames[i]
         local p = U.parts(f).portrait
         A.alpha(p, 0, f:GetName() .. " portrait held")
@@ -33,20 +29,17 @@ h.test("pet and target of target portraits are held at alpha 0 in place; player 
     end
 end)
 
-h.test("pet and target of target portraits stay hidden when Blizzard sets their vertex colour every frame", function(t)
+h.test("portraits stay hidden when Blizzard sets their vertex colour every frame", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()
     enable(ns)
-    for _, i in ipairs({ 2, 4 }) do
+    for i = 1, #frames do
         local p = U.parts(frames[i]).portrait
         p:SetVertexColor(1, 1, 1, 1)
         A.alpha(p, 0, frames[i]:GetName() .. " portrait hidden after a white vertex colour")
         p:SetVertexColor(0.35, 0.35, 0.35, 1)
         A.alpha(p, 0, frames[i]:GetName() .. " portrait hidden after the dead grey")
     end
-    local player = U.parts(frames[1]).portrait
-    player:SetVertexColor(1, 1, 1, 1)
-    A.alpha(player, 1, "the player's portrait is not held")
     ns.Modern.Restore()
     for _, i in ipairs({ 2, 4 }) do
         local p = U.parts(frames[i]).portrait
@@ -65,40 +58,36 @@ h.test("the resting glow around the player frame is held hidden", function(t)
     A.alpha(status, 1, "resting glow released")
 end)
 
-h.test("target health border is gold for elite, silver for rare, red for bosses and themed otherwise", function(t)
+h.test("target box border is gold for elite, silver for rare, red for bosses and themed otherwise", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local target = U.frames()[3]
     U.installColours(mock)
     enable(ns)
-    local theme = ns.Modern.Theme().border
     for _, spec in ipairs({
         { "elite", { 0.95, 0.75, 0.25 } },
         { "rare", { 0.85, 0.85, 0.85 } },
         { "rareelite", { 0.85, 0.85, 0.85 } },
         { "worldboss", { 0.9, 0.15, 0.15 } },
         { "boss", { 0.9, 0.15, 0.15 } },
-        { "normal", { theme[1], theme[2], theme[3] } },
+        { "normal", { 0, 0, 0 } },
     }) do
         mock:setUnit("target", { exists = true, player = false, classification = spec[1] })
         mock:fire("PLAYER_TARGET_CHANGED")
-        local c = U.borderColor(U.parts(target).health)
-        A.ok(c, spec[1] .. " health border exists")
-        A.deep({ c[1], c[2], c[3] }, spec[2], spec[1] .. " health border")
-        local m = U.borderColor(U.parts(target).mana)
-        A.deep({ m[1], m[2], m[3] }, { theme[1], theme[2], theme[3] }, spec[1] .. " power border stays themed")
+        local c = U.boxBorderColor(target)
+        A.ok(c, spec[1] .. " box border exists")
+        A.deep({ c[1], c[2], c[3] }, spec[2], spec[1] .. " box border")
     end
 end)
 
-h.test("other units keep the theme health border whatever the target is", function(t)
+h.test("other units keep the dark box border whatever the target is", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local frames = U.frames()
     mock:setUnit("target", { exists = true, player = false, classification = "elite" })
     enable(ns)
     mock:fire("PLAYER_TARGET_CHANGED")
-    local theme = ns.Modern.Theme().border
     for _, i in ipairs({ 1, 2, 4, 5 }) do
-        local c = U.borderColor(U.parts(frames[i]).health)
+        local c = U.boxBorderColor(frames[i])
         A.ok(c, frames[i]:GetName() .. " border")
-        A.deep({ c[1], c[2], c[3] }, { theme[1], theme[2], theme[3] }, frames[i]:GetName() .. " theme border")
+        A.deep({ c[1], c[2], c[3] }, { 0, 0, 0 }, frames[i]:GetName() .. " dark border")
     end
 end)
