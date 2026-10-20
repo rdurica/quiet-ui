@@ -262,3 +262,39 @@ h.test("bar fills are flat: no light, shade or edge line on them", function(t)
         end
     end
 end)
+
+h.test("a player target or focus shows its class icon before the level; an NPC shows none", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = U.frames()
+    U.installColours(mock)
+    CLASS_ICON_TCOORDS = { MAGE = { 0.25, 0.5, 0, 0.25 } }
+    mock:setUnit("target", { exists = true, player = true })
+    mock:setUnit("focus", { exists = true, player = false })
+    enable(ns)
+    local target = U.parts(frames[3])
+    local icon = U.classIcon(frames[3])
+    A.ok(icon, "class icon shown")
+    A.ok(icon._texture:find("CHARACTERCREATE"), "Blizzard's class sheet")
+    local c = icon._texCoord
+    A.ok(c[1] > 0.25 and c[2] < 0.5 and c[3] > 0 and c[4] < 0.25, "mage cell, rounded corners trimmed")
+    A.deep(U.points(icon), { { "BOTTOMLEFT", target.health, "TOPLEFT", -1, 4 } }, "icon at the box's left end")
+    A.deep({ icon:GetSize() }, { 14, 14 }, "icon small")
+    A.deep(U.points(target.level), { { "LEFT", icon, "RIGHT", 3, 0 } }, "level after the icon")
+    A.ok(not U.classIcon(frames[5]), "NPC focus has no icon")
+    A.deep(U.points(U.parts(frames[5]).level), { { "BOTTOMLEFT", U.parts(frames[5]).health, "TOPLEFT", 0, 4 } },
+        "NPC level at the box's left end")
+    for _, i in ipairs({ 1, 2, 4 }) do A.ok(not U.classIcon(frames[i]), frames[i]:GetName() .. " no icon") end
+    mock:setUnit("target", { exists = true, player = false })
+    mock:fire("PLAYER_TARGET_CHANGED")
+    A.ok(not U.classIcon(frames[3]), "icon gone for an NPC target")
+    A.deep(U.points(target.level), { { "BOTTOMLEFT", target.health, "TOPLEFT", 0, 4 } }, "level back at the start")
+    for n = 1, 3 do
+        mock:setUnit("target", { exists = true, player = true })
+        mock:fire("PLAYER_TARGET_CHANGED")
+        A.ok(U.classIcon(frames[3]), "icon back for a player target #" .. n)
+        A.alpha(U.classIcon(frames[3]), 1, "icon visible, not taken for level ring art #" .. n)
+    end
+    ns.Modern.Restore()
+    A.ok(not U.classIcon(frames[3]), "icon hidden on restore")
+    CLASS_ICON_TCOORDS = nil
+end)

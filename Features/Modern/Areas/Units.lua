@@ -35,7 +35,7 @@ local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentMain.HighLevelTextur
 local REST_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.PlayerRestLoop" }
 local REST_GLOBALS = { "PlayerRestLoop", "PlayerRestIcon", "PlayerRestGlow" }
 
-local HEALTH = { 0.22, 0.23, 0.25 } -- a quiet graphite fill; the white value text reads on it
+local HEALTH = { 0.14, 0.15, 0.16 } -- a quiet near-black fill; the white value text reads on it
 local EDGE = { 0, 0, 0, 1 }          -- the box border sinks into the box instead of outlining it
 local MANA = { 0.2, 0.45, 0.9 } -- Blizzard's pure blue is the loudest colour on the frame
 local RARE = { 0.85, 0.85, 0.85, 1 }
@@ -87,6 +87,21 @@ local function NameColour(unit)
         r, g, b = Colours(FACTION_BAR_COLORS[reaction])
     end
     if r and g and b then return r, g, b end
+end
+
+local CLASS_ICONS = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
+local ICON_INSET = 0.02 -- of the sheet, trims the icon's rounded corners
+
+-- A player's class icon from Blizzard's class sheet; nil for NPCs, a secret identity or a missing sheet.
+local function ClassIcon(unit)
+    if type(UnitIsPlayer) ~= "function" or type(UnitClass) ~= "function" or type(CLASS_ICON_TCOORDS) ~= "table" then return end
+    local player = UnitIsPlayer(unit)
+    if ns.IsSecret(player) or not player then return end
+    local token = select(2, UnitClass(unit))
+    if type(token) ~= "string" or ns.IsSecret(token) then return end
+    local c = CLASS_ICON_TCOORDS[token]
+    if type(c) ~= "table" then return end
+    return { CLASS_ICONS, c[1] + ICON_INSET, c[2] - ICON_INSET, c[3] + ICON_INSET, c[4] - ICON_INSET }
 end
 
 local function PowerColour(unit)
@@ -221,7 +236,7 @@ local function Unit(skin, spec)
     if not portrait then return end
     skin:Hold(portrait)
     Modern.UnitLayout(skin, frame, { health = health, mana = mana, portrait = portrait, right = spec[3],
-        player = spec[4], border = RarityColour(unit),
+        player = spec[4], border = RarityColour(unit), icon = spec[3] and ClassIcon(unit) or nil,
         combat = spec[4] and Find(frame, COMBAT_PATHS, "PlayerAttackIcon") or nil,
         level = Find(frame, LEVEL_PATHS, name == "PlayerFrame" and "PlayerLevelText" or name .. "TextureFrameLevelText"),
         skull = Find(frame, SKULL_PATHS, name .. "TextureFrameHighLevelTexture"),

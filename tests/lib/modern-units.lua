@@ -249,6 +249,15 @@ function U.barBox(frame)
     end
 end
 
+-- The class icon QuietUI shows before a player target's level.
+function U.classIcon(frame)
+    for _, r in ipairs(frame._regions or {}) do
+        if r._layer == "ARTWORK" and r._shown and type(r._texture) == "string" and r._texture:find("CLASSES") then
+            return r
+        end
+    end
+end
+
 -- Colour of the border the frame draws on its bar box.
 function U.boxBorderColor(frame)
     local box = U.barBox(frame)

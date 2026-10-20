@@ -17,6 +17,7 @@ local BAR_TEXT = 12       -- value text size; Blizzard's is too small to read
 local TEXT_POINTS = { TextString = { "CENTER", 0 }, LeftText = { "LEFT", 4 }, RightText = { "RIGHT", -4 } }
 local NAME_GAP = 3        -- between the health bar's top and the name
 local COMBAT_ICON = 16
+local CLASS_ICON = 14     -- the class icon before a player target's level
 
 local rects = setmetatable({}, { __mode = "k" })  -- bar -> Blizzard rect relative to the frame, this cycle
 local laid = setmetatable({}, { __mode = "k" })   -- region -> points held while applied
@@ -89,14 +90,15 @@ local function IsTexture(region)
     return ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
 end
 
--- The ring art around the level: textures anchored to the level text, or the one it is anchored to.
-local function Ring(skin, level)
+-- The ring art around the level: textures anchored to the level text, or the one it is anchored to. Our
+-- own class icon is skipped: once laid out, the level is anchored to it.
+local function Ring(skin, level, own)
     local _, rel = level:GetPoint(1)
-    if IsTexture(rel) then skin:Hold(rel) end
+    if rel ~= own and IsTexture(rel) then skin:Hold(rel) end
     local parent = type(level.GetParent) == "function" and level:GetParent()
     if not ns.Usable(parent) or type(parent.GetRegions) ~= "function" then return end
     for _, region in ipairs({ parent:GetRegions() }) do
-        if region ~= level and IsTexture(region) and type(region.GetPoint) == "function" then
+        if region ~= level and region ~= own and IsTexture(region) and type(region.GetPoint) == "function" then
             for i = 1, region:GetNumPoints() do
                 if select(2, region:GetPoint(i)) == level then
                     skin:Hold(region)
@@ -156,14 +158,34 @@ local function Movable(region)
     return ns.Usable(region) and type(region.SetPoint) == "function" and type(region.GetPoint) == "function"
 end
 
--- Target and focus: the level in the name's font, then the name, above the health bar's left end. The
--- high-level skull takes the level's place. Without a level (pet, target of target) the name starts there.
-local function Labels(skin, parts)
+-- A player target's class icon at the box's left end; hidden for an NPC. Returns it while shown.
+local function Icon(skin, frame, parts)
+    local icon = skin:Own(frame, "class icon", function() return frame:CreateTexture(nil, "ARTWORK") end)
+    if not icon then return end
+    if not parts.icon then
+        icon:Hide()
+        return
+    end
+    icon:ClearAllPoints()
+    icon:SetPoint("BOTTOMLEFT", parts.health, "TOPLEFT", -INSET, NAME_GAP + INSET)
+    icon:SetSize(CLASS_ICON, CLASS_ICON)
+    icon:SetTexture(parts.icon[1])
+    icon:SetTexCoord(unpack(parts.icon, 2, 5))
+    icon:Show()
+    return icon
+end
+
+-- Target and focus: a player's class icon, the level in the name's font, then the name, above the health
+-- bar's left end. The high-level skull takes the level's place. Without a level (pet, target of target) the
+-- name starts there.
+local function Labels(skin, frame, parts)
     local health, level, name = parts.health, parts.level, parts.name
     local start = { "BOTTOMLEFT", health, "TOPLEFT", 0, NAME_GAP + INSET }
+    local icon = parts.right and Icon(skin, frame, parts)
+    if icon then start = { "LEFT", icon, "RIGHT", 3, 0 } end
     local after = start
     if Movable(level) then
-        Ring(skin, level)
+        Ring(skin, level, skin:Own(frame, "class icon", function() return frame:CreateTexture(nil, "ARTWORK") end))
         local nameFont = ns.Usable(name) and BaseFont(skin, name)
         local base = BaseFont(skin, level)
         if nameFont and base then Font(skin, level, nameFont[1], nameFont[2], base[3]) end
@@ -201,7 +223,8 @@ local function Box(skin, frame, parts, l, r, top, bottom)
 end
 
 -- parts: health, mana, portrait (held at alpha 0 by the caller), right (portrait right of the bars),
--- player (no name or level, the combat icon instead), border (box border colour), level, skull, name, combat.
+-- player (no name or level, the combat icon instead), border (box border colour), icon ({ file, l, r, t, b }
+-- of a player target's class icon), level, skull, name, combat.
 function Modern.UnitLayout(skin, frame, parts)
     local health, mana, portrait = parts.health, parts.mana, parts.portrait
     if not ns.Usable(health) or not ns.Usable(mana) or not ns.Usable(portrait) then return end
@@ -223,5 +246,5 @@ function Modern.UnitLayout(skin, frame, parts)
         { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r - INSET, bottom + INSET })
     Contents(skin, health)
     Contents(skin, mana, true)
-    if parts.player then PlayerLabels(skin, parts) else Labels(skin, parts) end
+    if parts.player then PlayerLabels(skin, parts) else Labels(skin, frame, parts) end
 end
