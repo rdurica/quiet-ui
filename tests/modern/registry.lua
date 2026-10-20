@@ -7,6 +7,7 @@ local M = h.lib("modern-map-tip")
 local U = h.lib("modern-units")
 local W = h.lib("modern-windows")
 local D = h.lib("modern-meter")
+local C = h.lib("modern-castbars")
 
 h.test("ns.Modern exposes the registry API", function(t)
     local A = t.assert
@@ -267,6 +268,13 @@ local function Fixture(t, key)
         return function(A)
             A.ok(U.hidden(frames.player), "unit frame art was held")
             A.eq(U.statusTexture(frames.player.HealthBar), ns.Modern.Theme().bar, "unit health bar was skinned")
+        end
+    end
+    if key == "castbars" then
+        local bar = C.castbar("PlayerCastingBarFrame")
+        return function(A)
+            A.alpha(bar.Border, 0, "cast bar art was held")
+            A.eq(bar:GetHeight(), 18, "cast bar was laid out")
         end
     end
     if key == "windows" then

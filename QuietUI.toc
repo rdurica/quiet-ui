@@ -76,6 +76,7 @@ Features\Modern\Areas\BarFeedback.lua
 Features\Modern\Areas\Bars.lua
 Features\Modern\Areas\UnitLayout.lua
 Features\Modern\Areas\Units.lua
+Features\Modern\Areas\CastBars.lua
 Features\Modern\Areas\WindowChrome.lua
 Features\Modern\Areas\Bags.lua
 Features\Modern\Areas\Character.lua

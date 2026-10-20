@@ -51,7 +51,7 @@ to `` ` `` if the key is free; change it under **QuietUI** in **Key Bindings**.
 Open `/quiet setup`, change your choices, then click **Save**. **X** or **Escape**
 closes the window without saving. Tabs: General (presets and layout), Visible,
 Bars, Groups, Player, Misc. (chat, quest updates, highlights, quest mobs), Modern, and Info.
-Modernize is off by default. The Modern tab can give bars, unit frames, windows,
+Modernize is off by default. The Modern tab can give bars, unit frames, cast bars, windows,
 map, minimap, tooltips, damage meter, auras and XP/reputation a dark, square look. Choose areas
 individually, drag supported windows by their title, or reset their saved positions.
 Turning Modernize or QuietUI off restores the original look.

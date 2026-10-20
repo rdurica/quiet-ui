@@ -2,7 +2,7 @@
 
 The Modern tab of `/quiet setup`. Modernize gives Blizzard's windows and frames a quiet dark look by skinning them in place. Skins change textures, colours, TexCoords, points of windows and their own child regions; fade rules (bars, player frame, XP bar, auras, party) stay alpha-only and are untouched, and a skin never hides a frame with `Hide()`, `Show()` or a state driver.
 
-Modernize skins action bars, unit frames, windows, map, minimap, tooltips, the damage meter, auras and XP/reputation. Each area can be enabled independently. Client frame variants are resolved at run time; missing parts are skipped. The actual look and client compatibility are checked in game.
+Modernize skins action bars, unit frames, cast bars, windows, map, minimap, tooltips, the damage meter, auras and XP/reputation. Each area can be enabled independently. Client frame variants are resolved at run time; missing parts are skipped. The actual look and client compatibility are checked in game.
 
 ## Settings
 
@@ -55,6 +55,17 @@ Apply: skin player, pet, target, target of target and focus in place. The retail
 - Health and power values are never read. The unit frames' own points, size and every existing fade rule stay.
 
 Restore: restore bar textures, colours, masks and points, the value text points, fonts and shadows, name (its justification and colour), level text font and points, skull points, the combat icon size and points, hide the bar box and its border, release held art (portraits, power value texts, the player's name, level and resting icon, level rings included) and hide own regions (the class icon included). The hooks stay installed but do nothing while the area is off.
+
+## Cast bars
+
+Apply: skin the cast bars of player, pet, target and focus in place (`PlayerCastingBarFrame`, classic `CastingBarFrame`, `PetCastingBarFrame`, `TargetFrameSpellBar`, `FocusFrameSpellBar`). Parts are the retail `CastingBarMixin` keys with the classic `<name><Part>` globals as fallbacks; a missing part is skipped. Nameplate cast bars are recycled across units and stay Blizzard's.
+- Frame art (`Border`, `BorderShield`, `TextBorder`, `Background`, `Flash`, `ChannelShadow`, `StandardGlow`, `CraftGlow`, `InterruptGlow`, `Shine`) is held at alpha 0; because Blizzard animates the flash and glows past `SetAlpha`, their vertex alpha is 0 too (colour kept). The spark stays.
+- The bar gets a theme panel behind it and a 1 px theme border. The fill takes the theme flat texture; Blizzard re-texturing it on every cast (`SetStatusBarTexture`) or recolouring it (`SetStatusBarColor`) is answered by putting the flat texture and the cast colour back (hooked with `hooksecurefunc`). The colour follows the retail `barType`: accent for a cast (standard, empowered, crafting), green (0.30, 0.75, 0.35) for a channel, grey (0.55) for an uninterruptible cast and the theme danger colour when interrupted. A client without `barType` keeps Blizzard's colours.
+- Layout: the player's bar is 18 px tall, the pet, target and focus bars 14 px (width and points stay Blizzard's). The spell name sits inside the bar, left-aligned 4 px from its left end, and the cast time (`CastTimeText`) 4 px from its right end; both are outlined. Blizzard's `SetLook` (Edit Mode's look change) is answered by laying the bar out again (hooked with `hooksecurefunc`).
+- Spell icon: Blizzard keeps the player's icon hidden but still sets its texture, so every bar gets an own square icon, as tall as the bar, 2 px left of it, cropped `0.08, 0.92, 0.08, 0.92` with a 1 px theme border. It mirrors the texture Blizzard sets on its `Icon` (`SetTexture` hooked; the current texture is copied on apply), and Blizzard's icon is held at alpha 0. A bar without a Blizzard icon shows an empty own icon.
+- The bars' alpha and visibility stay Blizzard's.
+
+Restore: restore the fill texture and colour, the bar height, the text points, justification and fonts, release held art (Blizzard's icon included) and its vertex colour, and hide the panel, borders and the own icon. The hooks stay but do nothing while the area is off.
 
 ## Windows
 
