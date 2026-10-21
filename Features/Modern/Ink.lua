@@ -35,6 +35,13 @@ local function Light(r, g, b)
     return math.min(1, r * f), math.min(1, g * f), math.min(1, b * f)
 end
 
+-- A font instance without a font object reports itself; SetFontObject(self) crashes the client.
+local function FontObject(font, object)
+    if object == font or not ns.Usable(object) or type(object.GetObjectType) ~= "function" then return end
+    local ok, kind = pcall(object.GetObjectType, object)
+    if ok and kind == "Font" then return object end
+end
+
 local function IsHTML(font)
     return type(font.GetObjectType) == "function" and font:GetObjectType() == "SimpleHTML"
 end
@@ -55,7 +62,7 @@ local function Dress(font)
         local saved = { font = { face, size, flags } }
         if type(font.GetFontObject) == "function" then
             local okObject, object = pcall(font.GetFontObject, font)
-            if okObject then saved.object = object end
+            if okObject then saved.object = FontObject(font, object) end
         end
         if type(font.GetShadowColor) == "function" then saved.shadow = { font:GetShadowColor() } end
         if type(font.GetShadowOffset) == "function" then saved.offset = { font:GetShadowOffset() } end
@@ -129,7 +136,7 @@ local function Hook(font)
         pcall(hooksecurefunc, font, "SetFontObject", function(_, object)
             if busy then return end
             -- Blizzard's new font object is what Undo puts back.
-            if dressed[font] then dressed[font].object = object end
+            if dressed[font] then dressed[font].object = FontObject(font, object) end
             ns.Profiler.Run("modern ink", LightenAll, font)
         end)
     end
@@ -158,7 +165,9 @@ function Modern.Ink(skin, font, tone, plain)
             end
         end)
     end
-    styles[font] = { tone = tone, plain = plain }
+    -- Swapping an edit box's font back on undo crashes the client; an edit box only takes the ink.
+    local box = type(font.GetObjectType) == "function" and font:GetObjectType() == "EditBox"
+    styles[font] = { tone = tone, plain = plain and not box }
     LightenAll(font)
     Hook(font)
 end

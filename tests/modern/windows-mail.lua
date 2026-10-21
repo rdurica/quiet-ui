@@ -106,3 +106,22 @@ h.test("Windows frames a mail attachment in its quality colour and crops it", fu
     slot:SetNormalTexture("Interface\\Icons\\INV_Fabric_Wool")
     A.eq(#t.mock.printed, 0, "a send slot changed while the area is off reports nothing")
 end)
+
+h.test("the letter body edit box takes the light ink but keeps Blizzard's font, so restore never sets one", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = mailbox()
+    local body = c.body
+    -- The client reports a font instance without a font object as its own font object.
+    function body:GetFontObject() return self end
+    local fontCalls = 0
+    local setFont, setObject = body.SetFont, body.SetFontObject
+    function body:SetFont(...) fontCalls = fontCalls + 1; return setFont(self, ...) end
+    function body:SetFontObject(...) fontCalls = fontCalls + 1; return setObject(self, ...) end
+    W.enable(ns)
+    A.ok(body:GetTextColor() > 0.5, "the body of a new letter is light")
+    ns.Modern.Restore()
+    A.eq(fontCalls, 0, "changing an edit box's font crashes the client on restore")
+    A.eq(body:GetFont(), "Fonts\\FRIZQT__.TTF", "Blizzard's face stays")
+    A.eq(select(1, body:GetTextColor()), 0.18, "Blizzard's ink is back")
+end)
