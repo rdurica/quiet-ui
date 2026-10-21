@@ -135,6 +135,10 @@ local slowAcc = 0
 local fallbackAcc = 0
 -- No focus API: a full button walk stays near 20 Hz instead of every pixel.
 local FALLBACK_RESCAN = 0.05
+-- A running fade steps 30 times a second with the summed time, as the smooth faders do; a change
+-- (focus, HUD, flyout, Glance) still applies on its own frame, so things appear at once.
+local HOT_STEP = 1 / 30
+local hotElapsed = 0
 
 local function PointerMoved()
     if type(GetCursorPosition) ~= "function" then
@@ -204,13 +208,16 @@ events:SetScript("OnUpdate", function(_, elapsed)
     lastFlyout = flyout
     lastGlance = glance
     lastShowAll = showAll
-    if rescan or wasHot then
-        Run(nil, ns.Registry.Fade, elapsed, rescan)
+    hotElapsed = hotElapsed + elapsed
+    if rescan or (wasHot and hotElapsed >= HOT_STEP) then
+        Run(nil, ns.Registry.Fade, wasHot and hotElapsed or elapsed, rescan)
+        hotElapsed = 0
         wasHot = ns.FrameHot()
     end
     if slow then
         if not rescan and not wasHot then
             Run(nil, ns.Registry.Fade, elapsed, false, true)
+            hotElapsed = 0
             if ns.FrameHot() then wasHot = true end
         end
         ns.Registry.Phase("tick")
