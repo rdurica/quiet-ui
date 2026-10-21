@@ -16,12 +16,14 @@ h.test("Tooltip themes GameTooltip, item reference and shopping tooltips with Ni
     for _, tip in ipairs({ GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2 }) do
         A.ok(tip.NineSlice == nil or tip.NineSlice:GetAlpha() == 0, (tip:GetName() or "shopping") .. " NineSlice is hidden")
         A.ok(tip._backdropColor or #tip._regions > 0, (tip:GetName() or "shopping") .. " has themed background")
-        A.ok(F.borderColor(tip), (tip:GetName() or "shopping") .. " has a one-pixel border")
+        F.sameColor(A, F.topColor(tip), ns.Modern.Theme().border, (tip:GetName() or "shopping") .. " top edge")
+        local border = F.borderColor(tip)
+        A.ok(not border or border[4] == 0, (tip:GetName() or "shopping") .. " has no frame border")
     end
     A.eq(GameTooltipStatusBar:GetAlpha(), 0, "unit health bar is hidden")
 end)
 
-h.test("Tooltip item quality updates its border and restore returns Blizzard's colour and chrome", function(t)
+h.test("Tooltip item quality updates its top edge and restore returns Blizzard's colour and chrome", function(t)
     local A, ns = t.assert, t.ns
     F.area(ns, "tooltip")
     GameTooltip, GameTooltipStatusBar = F.tooltip("GameTooltip", false)
@@ -34,7 +36,7 @@ h.test("Tooltip item quality updates its border and restore returns Blizzard's c
     local update = GameTooltip:GetScript("OnTooltipSetItem") or GameTooltip:GetScript("OnShow")
     A.type(update, "function", "quality updates when the item tooltip changes")
     update(GameTooltip)
-    F.sameColor(A, F.borderColor(GameTooltip), EPIC, "epic border")
+    F.sameColor(A, F.topColor(GameTooltip), EPIC, "epic top edge")
     ns.Modern.Restore()
     F.sameColor(A, GameTooltip._backdropBorder, old, "Blizzard border after restore")
 end)
@@ -83,18 +85,18 @@ h.test("old backdrop tooltip gets exactly one OnShow hook for the session and Se
     A.eq(tip._setScript, 0, "SetScript was never called by the area")
 end)
 
-h.test("old backdrop tooltip OnShow hook repaints the quality border while on and is inert once off", function(t)
+h.test("old backdrop tooltip OnShow hook repaints the quality edge while on and is inert once off", function(t)
     local A, ns = t.assert, t.ns
     local tip = oldTip(ns)
     tip:SetBackdropBorderColor(0.1, 0.2, 0.3, 0.4)
     F.enable(ns)
     tip._item = { "Epic Item", "item:12345" }
     tip:Hide(); tip:Show()
-    F.sameColor(A, F.borderColor(tip), EPIC, "epic border after show")
+    F.sameColor(A, F.topColor(tip), EPIC, "epic top edge after show")
     A.eq(tip._native, 1, "Blizzard's own OnShow ran")
     tip._item = nil
     tip:Hide(); tip:Show()
-    F.sameColor(A, F.borderColor(tip), ns.Modern.Theme().border, "theme border for a non-item")
+    F.sameColor(A, F.topColor(tip), ns.Modern.Theme().border, "theme top edge for a non-item")
     ns.Modern.Restore()
     F.sameColor(A, tip._backdropBorder, { 0.1, 0.2, 0.3, 0.4 }, "Blizzard border after restore")
     tip._item = { "Epic Item", "item:12345" }

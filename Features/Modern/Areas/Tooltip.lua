@@ -1,6 +1,7 @@
 local _, ns = ...
 
--- Tooltip chrome. Tooltips are secure frames: a tooltip with a NineSlice (every 12.0 tooltip) never
+-- Tooltip chrome: a borderless grey panel with an accent edge and a glow along the top in the item's
+-- quality colour (theme border otherwise). Tooltips are secure frames: a tooltip with a NineSlice (every 12.0 tooltip) never
 -- gets a script replaced, and OnTooltipSetItem is never touched (it throws on 12.0). Item quality
 -- and the player's class colour arrive through TooltipDataProcessor post calls registered at load;
 -- a hook on Show returns a tooltip to the theme border. Both do nothing for a tooltip this area did not skin. An old
@@ -10,6 +11,7 @@ local _, ns = ...
 local Modern = ns.Modern
 
 local TIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2" }
+local EDGE, GLOW, GLOW_ALPHA = 2, 64, 0.15
 local skinned = setmetatable({}, { __mode = "k" })    -- tip -> { skin, nine } while the area is applied
 local hooked = setmetatable({}, { __mode = "k" })
 
@@ -38,18 +40,42 @@ local function Quality(link, id)
     return quality
 end
 
--- Item quality colour from common up, or the theme border.
+-- The glow fades from the edge down; a client without gradients gets a faint flat wash.
+local function Glow(texture, rgb)
+    texture:SetColorTexture(1, 1, 1, 1)
+    local gradient = type(texture.SetGradient) == "function" and type(CreateColor) == "function"
+        and pcall(texture.SetGradient, texture, "VERTICAL", CreateColor(rgb[1], rgb[2], rgb[3], 0),
+            CreateColor(rgb[1], rgb[2], rgb[3], GLOW_ALPHA))
+    if not gradient then texture:SetColorTexture(rgb[1], rgb[2], rgb[3], GLOW_ALPHA / 3) end
+end
+
+local function Top(skin, tip, rgb)
+    local edge, glow = unpack(skin:Own(tip, "tooltip top", function()
+        local line = tip:CreateTexture(nil, "BORDER", nil, 1)
+        line:SetPoint("TOPLEFT", tip, "TOPLEFT", 0, 0)
+        line:SetPoint("TOPRIGHT", tip, "TOPRIGHT", 0, 0)
+        line:SetHeight(EDGE)
+        local wash = tip:CreateTexture(nil, "BORDER", nil, 0)
+        wash:SetPoint("TOPLEFT", line, "BOTTOMLEFT", 0, 0)
+        wash:SetPoint("TOPRIGHT", line, "BOTTOMRIGHT", 0, 0)
+        wash:SetHeight(GLOW)
+        return { line, wash }
+    end))
+    edge:SetColorTexture(unpack(rgb))
+    Glow(glow, rgb)
+    edge:Show()
+    glow:Show()
+end
+
+-- Item quality colour from uncommon up, or the theme border.
 local function Paint(tip, data)
     local record = skinned[tip]
     if not record or not ns.Usable(tip) then return end
     local link = Link(tip, data)
     local quality = link and Quality(link, ItemID(link, data))
-    -- Poor (grey) items keep the theme border, like the bag slots.
-    local color = quality and quality >= 1 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
-    local rgb = color and { color.r, color.g, color.b, color.a or 1 } or Modern.Theme().border
-    -- With a NineSlice the backdrop colours belong to the held art; only own lines are painted.
-    if not record.nine and tip.SetBackdropBorderColor then tip:SetBackdropBorderColor(unpack(rgb)) end
-    record.skin:Border(tip, rgb)
+    -- Poor and common items keep the theme border: a white glow reads as glare.
+    local color = quality and quality >= 2 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    Top(record.skin, tip, color and { color.r, color.g, color.b, 1 } or Modern.Theme().border)
 end
 
 local function Safe(tip, data)
@@ -86,11 +112,12 @@ local function Backdrop(skin, tip)
     if tip.SetBackdropColor then
         local old = type(tip.GetBackdropColor) == "function" and { tip:GetBackdropColor() } or nil
         skin:Remember(tip, "backdrop", function() if old then tip:SetBackdropColor(unpack(old)) end end)
-        tip:SetBackdropColor(unpack(theme.bg))
+        tip:SetBackdropColor(unpack(theme.tip))
     end
     if tip.SetBackdropBorderColor then
         local old = type(tip.GetBackdropBorderColor) == "function" and { tip:GetBackdropBorderColor() } or nil
         skin:Remember(tip, "backdrop border", function() if old then tip:SetBackdropBorderColor(unpack(old)) end end)
+        tip:SetBackdropBorderColor(0, 0, 0, 0)
     end
 end
 
@@ -106,11 +133,15 @@ end
 local function ApplyTip(skin, tip)
     if not ns.Usable(tip) then return end
     local nine = ns.Usable(tip.NineSlice) and tip.NineSlice or nil
-    skin:Panel(tip)
-    skin:Border(tip)
-    if nine then skin:Hold(nine) else Backdrop(skin, tip) end
+    if nine then
+        skin:Hold(nine)
+        skin:Panel(tip, Modern.Theme().tip)
+    else
+        Backdrop(skin, tip)
+    end
     Bar(skin, tip)
-    skinned[tip] = { skin = skin, nine = nine ~= nil }
+    skinned[tip] = { skin = skin }
+    Top(skin, tip, Modern.Theme().border)
     Watch(tip, nine ~= nil)
 end
 

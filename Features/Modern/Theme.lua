@@ -18,6 +18,8 @@ local THEMES = {
         danger = { 0.85, 0.25, 0.20, 1 },
         -- A section strip (quest log zone headers): a step above the panel, with an accent edge.
         strip = { 0.16, 0.16, 0.16, 1 },
+        -- A tooltip: a grey a step under the header band, nearly opaque so text stays readable over the world.
+        tip = { 0.11, 0.11, 0.12, 0.95 },
         -- An empty bag slot: a socket a step above the panel (top colour, darker towards the bottom), quieter edge.
         well = { 0.13, 0.13, 0.13, 0.9 },
         wellEdge = { 0.22, 0.22, 0.22, 1 },

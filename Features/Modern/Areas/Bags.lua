@@ -170,7 +170,7 @@ local function Paint(skin, button)
     if not Gradient(gloss, { 1, 1, 1, 0 }, { 1, 1, 1, 0.12 }) then gloss:SetColorTexture(1, 1, 1, 0.05) end
     gloss:Show()
     glow:SetColorTexture(1, 1, 1, 1)
-    if rich and Gradient(glow, { color[1], color[2], color[3], 0.35 }, { color[1], color[2], color[3], 0 }) then
+    if rich and Gradient(glow, { color[1], color[2], color[3], 0.2 }, { color[1], color[2], color[3], 0 }) then
         glow:Show()
     else
         glow:Hide()

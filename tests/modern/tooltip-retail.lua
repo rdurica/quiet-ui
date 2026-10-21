@@ -19,7 +19,7 @@ local function fixture(ns)
     return { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2 }
 end
 
-h.test("12.0 tooltips get the themed background and a 1px border and hide their NineSlice art", function(t)
+h.test("12.0 tooltips get a grey background and a top edge, no frame border, and hide their NineSlice art", function(t)
     local A, ns = t.assert, t.ns
     local tips = fixture(ns)
     F.enable(ns)
@@ -27,8 +27,9 @@ h.test("12.0 tooltips get the themed background and a 1px border and hide their 
     for _, tip in ipairs(tips) do
         local name = tip:GetName()
         A.alpha(tip.NineSlice, 0, name .. " NineSlice art is held hidden")
-        A.ok(R.hasColor(tip, theme.bg), name .. " has the theme background")
-        F.sameColor(A, F.borderColor(tip), theme.border, name .. " theme border")
+        A.ok(R.hasColor(tip, theme.tip), name .. " has the tooltip background")
+        F.sameColor(A, F.topColor(tip), theme.border, name .. " theme top edge")
+        A.falsy(F.borderColor(tip), name .. " has no frame border")
     end
     A.eq(GameTooltipStatusBar:GetAlpha(), 0, "unit health bar is hidden")
     A.eq(L.errors(t.mock), 0, "no Report on the retail shapes")
@@ -39,22 +40,22 @@ h.test("12.0 item post call colours GameTooltip and ItemRefTooltip with the epic
     fixture(ns)
     F.enable(ns)
     R.showItem(mock, GameTooltip, 4)
-    F.sameColor(A, F.borderColor(GameTooltip), EPIC, "GameTooltip epic border")
+    F.sameColor(A, F.topColor(GameTooltip), EPIC, "GameTooltip epic top edge")
     R.showItem(mock, ItemRefTooltip, 4)
-    F.sameColor(A, F.borderColor(ItemRefTooltip), EPIC, "ItemRefTooltip epic border")
-    F.sameColor(A, F.borderColor(ShoppingTooltip1), ns.Modern.Theme().border, "an untouched tooltip keeps the theme border")
+    F.sameColor(A, F.topColor(ItemRefTooltip), EPIC, "ItemRefTooltip epic top edge")
+    F.sameColor(A, F.topColor(ShoppingTooltip1), ns.Modern.Theme().border, "an untouched tooltip keeps the theme edge")
 end, { beforeLoad = before })
 
-h.test("12.0 a non-item tooltip after an item returns to the theme border", function(t)
+h.test("12.0 a non-item tooltip after an item returns to the theme edge", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     fixture(ns)
     F.enable(ns)
     R.showItem(mock, GameTooltip, 4)
-    F.sameColor(A, F.borderColor(GameTooltip), EPIC, "epic first")
+    F.sameColor(A, F.topColor(GameTooltip), EPIC, "epic first")
     GameTooltip:Hide()
     GameTooltip._item = nil -- a unit or spell tooltip: GetItem returns nothing
     GameTooltip:Show()
-    F.sameColor(A, F.borderColor(GameTooltip), ns.Modern.Theme().border, "theme border again")
+    F.sameColor(A, F.topColor(GameTooltip), ns.Modern.Theme().border, "theme edge again")
 end, { beforeLoad = before })
 
 h.test("12.0 tooltip scripts are hooked, never replaced, and OnTooltipSetItem is never touched", function(t)
@@ -80,7 +81,7 @@ h.test("12.0 the item post call is registered once and ignores tooltips while th
     local regions = #GameTooltip._regions
     R.showItem(mock, GameTooltip, 4) -- Modernize is off
     A.eq(#GameTooltip._regions, regions, "no border or background is created while off")
-    A.falsy(F.borderColor(GameTooltip), "no border colour while off")
+    A.falsy(F.topColor(GameTooltip), "no top edge while off")
     F.enable(ns)
     ns.Modern.Restore()
     F.enable(ns)
@@ -89,10 +90,10 @@ h.test("12.0 the item post call is registered once and ignores tooltips while th
     A.eq(#R.itemPostCalls(mock), 1, "registered exactly once across apply, restore and area toggles")
     GameTooltip:Hide()
     R.showItem(mock, GameTooltip, 4)
-    A.falsy(F.borderColor(GameTooltip) and R.hasColor(GameTooltip, EPIC), "area off: the post call does not colour")
+    A.falsy(R.hasColor(GameTooltip, EPIC), "area off: the post call does not colour")
     for _, region in ipairs(GameTooltip._regions) do
-        if region._color and (region._w == 1 or region._h == 1) then
-            A.falsy(region._shown, "area off: no border line is shown")
+        if region._color and region._h == 2 then
+            A.falsy(region._shown, "area off: no edge line is shown")
         end
     end
     A.alpha(GameTooltip.NineSlice, 0.65, "area off: Blizzard's NineSlice is back")

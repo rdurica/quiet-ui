@@ -73,6 +73,13 @@ function M.borderColor(frame)
     end
 end
 
+-- A tooltip's accent edge: the shown 2 px line along its top.
+function M.topColor(frame)
+    for _, region in ipairs(frame._regions) do
+        if region._color and region._h == 2 and region._shown then return region._color end
+    end
+end
+
 function M.sameColor(A, actual, expected, label)
     A.ok(type(actual) == "table", (label or "border") .. " has a colour")
     for i = 1, #expected do A.near(actual[i], expected[i], 1e-6, (label or "border") .. " component " .. i) end

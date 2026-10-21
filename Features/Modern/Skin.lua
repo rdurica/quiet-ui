@@ -196,8 +196,8 @@ function Skin:Border(frame, color, anchor)
     Hideable(self, owner, "border:" .. tostring(anchor), edges)
 end
 
--- Themed fill behind a frame whose own art is held hidden.
-function Skin:Panel(frame)
+-- Themed fill (or `color`) behind a frame whose own art is held hidden.
+function Skin:Panel(frame, color)
     if not Ready("Panel", frame, "CreateTexture") then return end
     local theme = Modern.Theme()
     local fill = OwnRegion(self, frame, "panel", function()
@@ -205,7 +205,7 @@ function Skin:Panel(frame)
         texture:SetAllPoints(frame)
         return texture
     end)
-    fill:SetColorTexture(unpack(theme.bg))
+    fill:SetColorTexture(unpack(color or theme.bg))
     fill:Show()
     Hideable(self, frame, "panel", { fill })
 end
