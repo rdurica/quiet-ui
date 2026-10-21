@@ -1,4 +1,5 @@
--- UNIT_FACTION and UNIT_CLASSIFICATION_CHANGED fire for every unit; the unit frames only skin again for their own.
+-- UNIT_FACTION and UNIT_CLASSIFICATION_CHANGED fire for every unit; the unit frames only skin again for their own
+-- (party members included; raid frames follow Blizzard's own updates).
 local h = ...
 local U = h.lib("modern-units")
 
@@ -13,7 +14,7 @@ h.test("unit events for other units do no work, events for skinned units skin ag
     local applied = calls
     A.ok(applied > 0, "the target health border reads the classification")
     mock:fire("UNIT_CLASSIFICATION_CHANGED", "nameplate3")
-    mock:fire("UNIT_FACTION", "party2")
+    mock:fire("UNIT_FACTION", "raid7")
     A.eq(calls, applied, "other units cause no re-skin")
     mock:fire("UNIT_CLASSIFICATION_CHANGED", "target")
     A.eq(calls, applied + 1, "the target re-skins")

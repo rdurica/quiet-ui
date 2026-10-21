@@ -1,6 +1,7 @@
 local _, ns = ...
 
--- Unit frames (retail 12.0 structure, with the older flat names as fallbacks). Frame art is held,
+-- Unit frames (retail 12.0 structure, with the older flat names as fallbacks): player, pet, target, target of target,
+-- focus and the portrait party frames (PartyFrame.MemberFrameN); raid frames are Group's. Frame art is held,
 -- bars get the theme texture inside one dark box, and Blizzard's own bar updates are followed by a
 -- repaint of the colour. Hooks only act on bars that are tracked, so they are
 -- inert while the area is off. Health and power values are never read.
@@ -17,9 +18,12 @@ local FRAMES = {
 local ART_ROOTS = { "", "PlayerFrameContainer", "TargetFrameContainer",
     "PlayerFrameContent.PlayerFrameContentMain", "TargetFrameContent.TargetFrameContentMain" }
 local ART_NAMES = { "FrameTexture", "AlternatePowerFrameTexture", "VehicleFrameTexture", "FrameFlash", "Flash",
-    "BossPortraitFrameTexture", "ReputationColor", "Border", "EliteTexture", "PortraitFrame", "StatusTexture" }
+    "BossPortraitFrameTexture", "ReputationColor", "Border", "EliteTexture", "PortraitFrame", "StatusTexture",
+    -- PartyMemberFrameTemplate keeps its frame art as Texture and VehicleTexture.
+    "Texture", "VehicleTexture" }
+local PARTY = 4
 local ART_GLOBALS = { "Texture", "Flash" }
-local HEALTH_PATHS = { "healthbar", "HealthBar", "healthBar",
+local HEALTH_PATHS = { "healthbar", "HealthBar", "healthBar", "HealthBarContainer.HealthBar",
     "PlayerFrameContent.PlayerFrameContentMain.HealthBarsContainer.HealthBar",
     "TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar" }
 local POWER_PATHS = { "manabar", "ManaBar", "manaBar", "PowerBar", "powerBar",
@@ -70,7 +74,7 @@ end
 
 -- The name's class or reaction colour. Identity can be secret on 12.0: it is never a branch or a table
 -- key, and the name then keeps Blizzard's colour (nil).
-local function NameColour(unit)
+function Modern.UnitColour(unit)
     local r, g, b
     local player = type(UnitIsPlayer) == "function" and UnitIsPlayer(unit)
     if ns.IsSecret(player) then return end
@@ -208,7 +212,7 @@ local function Name(skin, label, unit)
         end)
     end
     local r, g, b
-    if ns.Settings.ModernClassColors() then r, g, b = NameColour(unit) end
+    if ns.Settings.ModernClassColors() then r, g, b = Modern.UnitColour(unit) end
     if r and g and b then label:SetTextColor(r, g, b) else label:SetTextColor(unpack(base[label])) end
 end
 
@@ -222,7 +226,7 @@ end
 
 local function Unit(skin, spec)
     local name, unit = spec[1], spec[2]
-    local frame = _G[name]
+    local frame = spec.frame or _G[name]
     if not ns.Usable(frame) then return end
     Art(skin, frame, name)
     local health, mana = Find(frame, HEALTH_PATHS, name .. "HealthBar"), Find(frame, POWER_PATHS, name .. "ManaBar")
@@ -243,16 +247,28 @@ local function Unit(skin, spec)
         name = label })
 end
 
+-- The 12.0 party frame pools its members under PartyFrame; Forever's classic globals are the fallback.
+local function Party(skin)
+    local party = _G.PartyFrame
+    for index = 1, PARTY do
+        local name = "PartyMemberFrame" .. index
+        local frame = ns.Usable(party) and party["MemberFrame" .. index] or _G[name]
+        if ns.Usable(frame) then Unit(skin, { name, "party" .. index, frame = frame }) end
+    end
+end
+
 local function Apply(skin)
     HookUpdate()
     for _, spec in ipairs(FRAMES) do Unit(skin, spec) end
+    Party(skin)
+    Modern.Group.Apply(skin)
 end
 
 -- UNIT_FACTION and UNIT_CLASSIFICATION_CHANGED fire for every unit (nameplates, party): only the skinned
 -- ones matter. A secret token cannot be told apart, so it skins to be safe.
 local function OnEvent(skin, _, unit)
     if type(unit) == "string" and not ns.IsSecret(unit) then
-        local tracked = false
+        local tracked = unit:sub(1, 5) == "party"
         for _, spec in ipairs(FRAMES) do tracked = tracked or spec[2] == unit end
         if not tracked then return end
     end
@@ -263,10 +279,11 @@ Modern.Register{
     key = "units", label = "Unit frames",
     -- Combat end and vehicle changes lay the bars out again (Blizzard re-anchors them for vehicles).
     events = { "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "UNIT_FACTION", "UNIT_CLASSIFICATION_CHANGED",
-        "PLAYER_REGEN_ENABLED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" },
+        "PLAYER_REGEN_ENABLED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "GROUP_ROSTER_UPDATE" },
     apply = Apply, onEvent = OnEvent,
     -- Untrack first: the journal's undo then restores texture and colour without the hooks answering.
     restore = function()
         for bar in pairs(tracked) do tracked[bar] = nil end
+        Modern.Group.Release()
     end,
 }
