@@ -43,7 +43,8 @@ local function Trade(skin, frame)
     end
 end
 
--- The settings panel: the window, its buttons and search box, and in the list only checkboxes and value sliders.
+-- The settings panel: the window, its buttons and search box, its scroll bars, and in the list only checkboxes and
+-- value sliders.
 local function Settings(skin, frame)
     for _, key in ipairs({ "CloseButton", "ApplyButton" }) do
         if ns.Usable(frame[key]) then Modern.Shapes.Field(skin, frame[key]) end

@@ -261,7 +261,8 @@ local function IsValueSlider(frame)
         and ns.Usable(rawget(frame, "Back")) and ns.Usable(rawget(frame, "Forward"))
 end
 
--- Checkboxes and value sliders under `frame`, every call: for lists whose pooled rows are refilled.
+-- Checkboxes, value sliders and minimal scroll bars under `frame`, every call: for lists whose pooled rows are
+-- refilled.
 function Modern.ListControls(skin, frame, depth)
     depth = depth or 0
     if depth > DEPTH or not ns.Usable(frame) or type(frame.GetChildren) ~= "function" then return end
@@ -271,6 +272,8 @@ function Modern.ListControls(skin, frame, depth)
                 Modern.Checkbox(skin, child)
             elseif IsValueSlider(child) then
                 Modern.ValueSlider(skin, child)
+            elseif ns.Usable(rawget(child, "Track")) and ns.Usable(rawget(child, "Back")) then
+                Modern.Character.ScrollBar(skin, child)
             else
                 Modern.ListControls(skin, child, depth + 1)
             end
