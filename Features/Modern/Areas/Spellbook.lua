@@ -82,7 +82,7 @@ end
 local function Book(skin, book)
     HoldKeys(skin, book, PAGES)
     Modern.TabSystemChrome(skin, book)
-    Modern.Field(skin, book.SearchBox)
+    Modern.Shapes.Field(skin, book.SearchBox)
 end
 
 local function Watch(frame)

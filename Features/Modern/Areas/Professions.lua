@@ -68,7 +68,7 @@ local function Crafting(skin, page)
     if ns.Usable(list) then
         Hold(skin, list.Background)
         Modern.Character.HoldArt(skin, list.BackgroundNineSlice)
-        Modern.Field(skin, list.SearchBox)
+        Modern.Shapes.Field(skin, list.SearchBox)
         Modern.Character.ScrollBar(skin, list.ScrollBar)
     end
     local form = page.SchematicForm
@@ -76,10 +76,10 @@ local function Crafting(skin, page)
         Modern.Character.HoldArt(skin, form)
         Modern.Character.HoldArt(skin, form.NineSlice)
     end
-    Modern.Field(skin, page.MinimizedSearchBox)
+    Modern.Shapes.Field(skin, page.MinimizedSearchBox)
     Bar(skin, page.RankBar)
-    Modern.Field(skin, page.CreateButton)
-    Modern.Field(skin, page.CreateAllButton)
+    Modern.Shapes.Field(skin, page.CreateButton)
+    Modern.Shapes.Field(skin, page.CreateAllButton)
     for _, key in ipairs(GEAR_SLOTS) do
         if ns.Usable(page[key]) then Modern.Bags.Item(skin, page[key]) end
     end

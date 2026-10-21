@@ -38,7 +38,7 @@ end
 -- A panel button: a flat field; the dividers Blizzard draws between the detail buttons go too.
 local function Button(skin, button)
     if not ns.Usable(button) then return end
-    Modern.Field(skin, button)
+    Modern.Shapes.Field(skin, button)
     if type(button.GetRegions) ~= "function" then return end
     for _, region in ipairs({ button:GetRegions() }) do
         local ok, layer = pcall(region.GetDrawLayer, region)
@@ -85,11 +85,11 @@ local function Quests(skin, quest)
     HoldKeys(skin, scroll, { "Background", "Edge" })
     Frame(skin, scroll)
     -- The search box is a dark field without a border; the quest count is bare text.
-    Modern.Field(skin, scroll.SearchBox, true)
+    Modern.Shapes.Field(skin, scroll.SearchBox, true)
     if ns.Usable(scroll.SearchBox) and type(scroll.SearchBox.CreateTexture) == "function" then
         skin:Panel(scroll.SearchBox, Modern.Theme().track)
     end
-    Modern.Field(skin, scroll.QuestLogCount or _G.QuestLogCount, true)
+    Modern.Shapes.Field(skin, scroll.QuestLogCount or _G.QuestLogCount, true)
     Modern.Character.ScrollBar(skin, scroll.ScrollBar)
 end
 

@@ -166,12 +166,23 @@ local function Card(skin, card)
     if name then Hold(skin, _G[name .. "NameFrame"]) end
 end
 
--- An inner panel: its chrome is held and a thin border keeps the sections apart; a nested window (a portrait
--- frame inside the window) gets the whole window treatment.
+-- A tooltip-like frame inside a window (FriendsTooltip) keeps Blizzard's backdrop: it floats over the content.
+local function IsTip(frame)
+    local name = NameOf(frame)
+    return name ~= nil and name:find("Tooltip", 1, true) ~= nil
+end
+
+-- An inner panel: its chrome is held and a thin border keeps the sections apart. A nested window (a portrait frame
+-- inside the window) gets the whole window treatment; a popout in a dialog border (the friends broadcast box)
+-- floats over the content, so it keeps a dark panel of its own.
 local function Panel(skin, frame, bare)
     if ns.Usable(frame.PortraitContainer) or ns.Usable(frame.TitleContainer) and ns.Usable(frame.CloseButton) then
         Modern.Window(skin, frame)
         Modern.Header(skin, frame)
+        return
+    end
+    if ns.Usable(rawget(frame, "Border")) and not IsTexture(frame.Border) and not ns.Usable(rawget(frame, "NineSlice")) then
+        Modern.Window(skin, frame)
         return
     end
     Modern.WindowChrome(skin, frame)
@@ -182,6 +193,7 @@ end
 function Shapes.One(skin, frame, opts)
     local bare = opts.bare and opts.bare[frame]
     if opts.shape and opts.shape(skin, frame) then return true end
+    if IsTip(frame) then return true end
     local kind = KindOf(frame)
     if IsTexture(rawget(frame, "LeftActive")) and IsTexture(rawget(frame, "Left")) then
         Modern.TabChrome(skin, frame)

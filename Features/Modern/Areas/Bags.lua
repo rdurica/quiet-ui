@@ -297,7 +297,7 @@ local function SkinBag(skin, bag)
         Watch(bag)
         local money = bag.MoneyFrame
         -- The money stays as bare text on the bag background.
-        if ns.Usable(money) then Modern.Field(skin, money.Border, true) end
+        if ns.Usable(money) then Modern.Shapes.Field(skin, money.Border, true) end
     end
     SkinItems(skin, bag)
 end
@@ -320,7 +320,7 @@ end
 function Bags.Apply(skin)
     for index = 1, MAX_BAGS do SkinBag(skin, _G["ContainerFrame" .. index]) end
     SkinBag(skin, _G.ContainerFrameCombinedBags)
-    Modern.Field(skin, _G.BagItemSearchBox)
+    Modern.Shapes.Field(skin, _G.BagItemSearchBox)
     -- In gamepad mode Blizzard docks its bag bar at the open bag's corner, over the sort button. It is held
     -- invisible and lets the mouse through; Blizzard re-parents the sort button, so its level cannot be raised.
     local bar = _G.GamepadBagBar

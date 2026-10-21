@@ -225,18 +225,6 @@ function Modern.SizeButtons(skin, frame)
     end
 end
 
--- Three-piece art (Left, Middle or Center, Right) of a search box, a money bar or a panel button is held. The
--- field becomes a dark fill with a thin border; a bare one keeps only its content.
-function Modern.Field(skin, frame, bare)
-    if not ns.Usable(frame) then return end
-    for _, key in ipairs({ "Left", "Middle", "Center", "Right" }) do
-        if ns.Usable(frame[key]) then skin:Hold(frame[key]) end
-    end
-    if bare then return end
-    skin:Panel(frame)
-    skin:Border(frame)
-end
-
 -- The title row of a top-level window becomes a header band a step above the panel, lit from the top, with an accent
 -- hairline under it. Nested panels have no title row, so they never get one.
 local HEADER = 24

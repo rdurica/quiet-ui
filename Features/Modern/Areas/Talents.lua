@@ -176,11 +176,11 @@ function Talents.Apply(skin, frame)
     for _, key in ipairs(DIVIDERS) do Divider(skin, talents, key) end
     local currency = talents.ClassCurrencyDisplay
     if ns.Usable(currency) and ns.Usable(currency.Border) then skin:Hold(currency.Border) end
-    Modern.Field(skin, talents.SearchBox)
+    Modern.Shapes.Field(skin, talents.SearchBox)
     Options(skin, talents.SearchOptionsDropdown)
-    for _, key in ipairs(BUTTONS) do Modern.Field(skin, talents[key]) end
+    for _, key in ipairs(BUTTONS) do Modern.Shapes.Field(skin, talents[key]) end
     local spec = talents.ActiveSpec
-    if ns.Usable(spec) then Modern.Field(skin, spec.ActivateButton) end
+    if ns.Usable(spec) then Modern.Shapes.Field(skin, spec.ActivateButton) end
     Modern.TabSystemChrome(skin, talents)
     Refresh(skin, talents)
     Watch(talents)
