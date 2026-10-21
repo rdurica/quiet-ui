@@ -123,7 +123,7 @@ local function Paint(bar, retexture)
     local info = tracked[bar]
     if not info or info.busy then return end
     info.busy = true
-    ns.Run("modern units", function()
+    ns.Profiler.Run("modern units", function()
         if retexture then bar:SetStatusBarTexture(info.texture) end
         local r, g, b
         if info.kind == "health" then r, g, b = unpack(HEALTH) else r, g, b = PowerColour(info.unit) end

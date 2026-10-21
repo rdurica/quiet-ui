@@ -52,7 +52,7 @@ end
 local function Watch(button)
     if hooked[button] then return end
     hooked[button] = true
-    local function Update() ns.Run("modern bar feedback", Refresh, button) end
+    local function Update() ns.Profiler.Run("modern bar feedback", Refresh, button) end
     local function Release()
         local info = tracked[button]
         if info then info.down = nil; Update() end

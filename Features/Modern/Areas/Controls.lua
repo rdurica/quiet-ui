@@ -32,17 +32,17 @@ local function Follow(button, methods, paint)
     hooked[button] = true
     for _, method in ipairs(methods) do
         if type(button[method]) == "function" then
-            pcall(hooksecurefunc, button, method, function() ns.Run("modern controls", paint, button) end)
+            pcall(hooksecurefunc, button, method, function() ns.Profiler.Run("modern controls", paint, button) end)
         end
     end
     if type(button.HookScript) ~= "function" then return end
     for script, over in pairs({ OnEnter = true, OnLeave = false }) do
         pcall(button.HookScript, button, script, function()
             hovered[button] = over
-            ns.Run("modern controls", paint, button)
+            ns.Profiler.Run("modern controls", paint, button)
         end)
     end
-    pcall(button.HookScript, button, "OnClick", function() ns.Run("modern controls", paint, button) end)
+    pcall(button.HookScript, button, "OnClick", function() ns.Profiler.Run("modern controls", paint, button) end)
 end
 
 local function PaintCheck(button)
@@ -271,7 +271,7 @@ function Modern.Expander(skin, target)
     PaintExpander(target)
     if hooked[target] then return end
     hooked[target] = true
-    local function Again() ns.Run("modern controls", PaintExpander, target) end
+    local function Again() ns.Profiler.Run("modern controls", PaintExpander, target) end
     for _, texture in ipairs(textures) do
         for _, method in ipairs({ "SetAtlas", "SetTexture", "Show", "Hide", "SetShown" }) do
             if type(texture[method]) == "function" then pcall(hooksecurefunc, texture, method, Again) end

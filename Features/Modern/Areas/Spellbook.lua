@@ -90,7 +90,7 @@ local function Watch(frame)
     hooked[frame] = true
     local function Again()
         local skin = styled[frame]
-        if skin then ns.Run("modern spellbook", Refresh, skin, frame) end
+        if skin then ns.Profiler.Run("modern spellbook", Refresh, skin, frame) end
     end
     local book = frame.SpellBookFrame
     if ns.Usable(book) and type(book.HookScript) == "function" then pcall(book.HookScript, book, "OnShow", Again) end

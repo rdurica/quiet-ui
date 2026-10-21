@@ -98,7 +98,7 @@ local function Watch(frame)
     hooked[frame] = true
     local function Again()
         local skin = styled[frame]
-        if skin then ns.Run("modern professions", Refresh, skin, frame) end
+        if skin then ns.Profiler.Run("modern professions", Refresh, skin, frame) end
     end
     for _, target in ipairs({ frame, frame.BookPage, frame.CraftingPage }) do
         if ns.Usable(target) and type(target.HookScript) == "function" then

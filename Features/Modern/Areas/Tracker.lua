@@ -43,7 +43,7 @@ local function Apply(skin)
     Scan(skin, tracker)
     if hooked or type(tracker.Update) ~= "function" then return end
     hooked = pcall(hooksecurefunc, tracker, "Update", function()
-        if styled then ns.Run("modern tracker", Scan, styled, tracker) end
+        if styled then ns.Profiler.Run("modern tracker", Scan, styled, tracker) end
     end)
 end
 

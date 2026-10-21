@@ -143,7 +143,7 @@ local function Watch(window)
     hooked[window] = true
     pcall(hooksecurefunc, box, "Update", function()
         local skin = styled[window]
-        if skin then ns.Run("modern meter", Rows, skin, window, 0) end
+        if skin then ns.Profiler.Run("modern meter", Rows, skin, window, 0) end
     end)
 end
 

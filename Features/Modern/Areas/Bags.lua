@@ -186,7 +186,7 @@ local function Follow(button)
                 if type(texture[method]) == "function" then
                     pcall(hooksecurefunc, texture, method, function()
                         local skin = styled[button]
-                        if skin then ns.Run("modern bags", Paint, skin, button) end
+                        if skin then ns.Profiler.Run("modern bags", Paint, skin, button) end
                     end)
                 end
             end
@@ -214,8 +214,8 @@ local function FollowIcon(button, icon)
             pcall(hooksecurefunc, icon, method, function()
                 local skin = styled[button]
                 if not skin then return end
-                ns.Run("modern bags", Empty, skin, icon)
-                ns.Run("modern bags", Paint, skin, button)
+                ns.Profiler.Run("modern bags", Empty, skin, icon)
+                ns.Profiler.Run("modern bags", Paint, skin, button)
             end)
         end
     end
@@ -276,7 +276,7 @@ local function Watch(bag)
     hooked[bag] = true
     local function Refresh()
         local skin = styled[bag]
-        if skin then ns.Run("modern bags", SkinItems, skin, bag) end
+        if skin then ns.Profiler.Run("modern bags", SkinItems, skin, bag) end
     end
     if type(bag.UpdateItems) == "function" then pcall(hooksecurefunc, bag, "UpdateItems", Refresh) end
     if type(bag.HookScript) == "function" then pcall(bag.HookScript, bag, "OnShow", Refresh) end

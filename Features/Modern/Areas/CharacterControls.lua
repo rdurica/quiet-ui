@@ -42,7 +42,7 @@ local function ModelButton(skin, button)
     if hooked[button] or type(button.HookScript) ~= "function" then return end
     hooked[button] = true
     for script, over in pairs({ OnEnter = true, OnLeave = false }) do
-        pcall(button.HookScript, button, script, function() ns.Run("modern character", Tint, button, over) end)
+        pcall(button.HookScript, button, script, function() ns.Profiler.Run("modern character", Tint, button, over) end)
     end
 end
 
@@ -77,7 +77,7 @@ local function PaneToggle(skin, frame, toggle)
     Point(toggle)
     if hooked[toggle] then return end
     hooked[toggle] = true
-    local function Again() ns.Run("modern character", Point, toggle) end
+    local function Again() ns.Profiler.Run("modern character", Point, toggle) end
     if type(toggle.HookScript) == "function" then pcall(toggle.HookScript, toggle, "OnClick", Again) end
     local host = frame.RightPaneHost
     if ns.Usable(host) and type(host.HookScript) == "function" then

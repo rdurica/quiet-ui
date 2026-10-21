@@ -17,7 +17,7 @@ end
 local function Again(fn)
     return function()
         local map = _G.WorldMapFrame
-        if styled and ns.Usable(map) then ns.Run("modern map", fn, styled, map) end
+        if styled and ns.Usable(map) then ns.Profiler.Run("modern map", fn, styled, map) end
     end
 end
 

@@ -82,7 +82,7 @@ local function Scan(skin)
 end
 
 local function Updated()
-    if active then ns.Run("modern auras", Scan, Modern.Skin("auras")) end
+    if active then ns.Profiler.Run("modern auras", Scan, Modern.Skin("auras")) end
 end
 
 local function Watch()

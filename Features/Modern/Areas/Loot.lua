@@ -56,7 +56,7 @@ local function Watch(frame)
     hooked[frame] = true
     local function Again()
         local skin = styled[frame]
-        if skin then ns.Run("modern loot", Cards, skin, frame) end
+        if skin then ns.Profiler.Run("modern loot", Cards, skin, frame) end
     end
     if type(frame.HookScript) == "function" then pcall(frame.HookScript, frame, "OnShow", Again) end
     local box = frame.ScrollBox

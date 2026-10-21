@@ -120,9 +120,9 @@ local function Hook(font)
     local html = IsHTML(font)
     pcall(hooksecurefunc, font, "SetTextColor", function(_, element)
         if html then
-            if type(element) == "string" then ns.Run("modern ink", Lighten, font, element) end
+            if type(element) == "string" then ns.Profiler.Run("modern ink", Lighten, font, element) end
         else
-            ns.Run("modern ink", Lighten, font)
+            ns.Profiler.Run("modern ink", Lighten, font)
         end
     end)
     if type(font.SetFontObject) == "function" then
@@ -130,7 +130,7 @@ local function Hook(font)
             if busy then return end
             -- Blizzard's new font object is what Undo puts back.
             if dressed[font] then dressed[font].object = object end
-            ns.Run("modern ink", LightenAll, font)
+            ns.Profiler.Run("modern ink", LightenAll, font)
         end)
     end
 end

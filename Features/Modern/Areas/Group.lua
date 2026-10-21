@@ -114,9 +114,9 @@ end
 local function Watch(skin)
     current = skin
     HookGlobal("DefaultCompactUnitFrameSetup", function(frame)
-        if current then ns.Run("modern group", Member, current, frame) end
+        if current then ns.Profiler.Run("modern group", Member, current, frame) end
     end)
-    HookGlobal("CompactUnitFrame_UpdateName", function(frame) ns.Run("modern group", Name, frame) end)
+    HookGlobal("CompactUnitFrame_UpdateName", function(frame) ns.Profiler.Run("modern group", Name, frame) end)
 end
 
 function Group.Apply(skin)

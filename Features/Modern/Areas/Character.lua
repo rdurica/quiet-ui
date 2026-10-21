@@ -203,7 +203,7 @@ local function SidebarTab(skin, tab)
         if type(marker[method]) == "function" then
             pcall(hooksecurefunc, marker, method, function()
                 local owner = styled[tab]
-                if owner then ns.Run("modern character", SidebarMark, owner, tab) end
+                if owner then ns.Profiler.Run("modern character", SidebarMark, owner, tab) end
             end)
         end
     end
@@ -221,7 +221,7 @@ local function Watch(frame)
     hooked[frame] = true
     local function Again()
         local skin = styled[frame]
-        if skin then ns.Run("modern character", Refresh, skin) end
+        if skin then ns.Profiler.Run("modern character", Refresh, skin) end
     end
     if type(frame.HookScript) == "function" then pcall(frame.HookScript, frame, "OnShow", Again) end
     local pane = _G.CharacterStatsPaneScrollBox
@@ -230,7 +230,7 @@ local function Watch(frame)
     if type(_G.PaperDollFrame_UpdateStats) == "function" then pcall(hooksecurefunc, "PaperDollFrame_UpdateStats", Again) end
     if type(_G.PaperDollItemSlotButton_Update) == "function" then
         pcall(hooksecurefunc, "PaperDollItemSlotButton_Update", function(slot)
-            ns.Run("modern character", Modern.Bags.Repaint, slot)
+            ns.Profiler.Run("modern character", Modern.Bags.Repaint, slot)
         end)
     end
     Character.WatchLists(Again)

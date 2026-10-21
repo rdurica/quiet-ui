@@ -47,7 +47,7 @@ local function Place(region)
     local points = laid[region]
     if not points or busy or Locked(region) then return end
     busy = true
-    ns.Run("modern unit layout", function()
+    ns.Profiler.Run("modern unit layout", function()
         region:ClearAllPoints()
         for _, p in ipairs(points) do region:SetPoint(unpack(p, 1, 5)) end
     end)

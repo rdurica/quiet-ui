@@ -114,7 +114,7 @@ function Modern.TabChrome(skin, tab)
             if ns.Usable(piece) and type(piece[method]) == "function" then
                 pcall(hooksecurefunc, piece, method, function()
                     local owner = tabs[tab]
-                    if owner then ns.Run("modern tab", TabBorder, owner, tab) end
+                    if owner then ns.Profiler.Run("modern tab", TabBorder, owner, tab) end
                 end)
             end
         end
@@ -176,7 +176,7 @@ function Modern.GlyphButton(skin, button, key, build, hover)
         pcall(button.HookScript, button, script, function()
             if not glyphs[button] then return end
             hovered[button] = on
-            ns.Run("modern glyph", PaintGlyph, button)
+            ns.Profiler.Run("modern glyph", PaintGlyph, button)
         end)
     end
 end

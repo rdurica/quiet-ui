@@ -81,9 +81,9 @@ end
 local function Restore(area)
     area.applied = false
     local skin = Modern.Skin(area.key)
-    if area.restore then ns.Run("modern " .. area.key, area.restore, skin) end
+    if area.restore then ns.Profiler.Run("modern " .. area.key, area.restore, skin) end
     -- Whatever the area did not undo itself goes back too.
-    ns.Run("modern " .. area.key, skin.Undo, skin)
+    ns.Profiler.Run("modern " .. area.key, skin.Undo, skin)
 end
 
 -- A changed theme, background or class colour skins the applied areas again.
@@ -105,7 +105,7 @@ function Modern.Apply()
         if want and not area.applied then
             area.skin = Modern.Skin(area.key)
             area.applied = true
-            ns.Run("modern " .. area.key, area.apply, area.skin)
+            ns.Profiler.Run("modern " .. area.key, area.apply, area.skin)
         elseif not want and area.applied then
             Restore(area)
         end
@@ -125,7 +125,7 @@ function Modern.AddonLoaded(name)
         if area.applied then
             for _, addon in ipairs(area.addons) do
                 if addon == name then
-                    ns.Run("modern " .. area.key, area.apply, area.skin)
+                    ns.Profiler.Run("modern " .. area.key, area.apply, area.skin)
                     break
                 end
             end

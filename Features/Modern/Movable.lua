@@ -139,9 +139,9 @@ function Modern.PlaceWindows(onlyPending)
         if not onlyPending or pending[frame] then
             if pending[frame] == "original" or entry.reset then
                 -- A hidden window gets Blizzard's point back too, so it does not show up displaced.
-                ns.Run("modern window " .. entry.key, RestoreOriginal, frame, entry)
+                ns.Profiler.Run("modern window " .. entry.key, RestoreOriginal, frame, entry)
             elseif entry.active and frame:IsShown() then
-                ns.Run("modern window " .. entry.key, Place, frame, entry)
+                ns.Profiler.Run("modern window " .. entry.key, Place, frame, entry)
             end
         end
     end

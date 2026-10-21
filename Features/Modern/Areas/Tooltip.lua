@@ -81,7 +81,7 @@ local function Paint(tip, data)
 end
 
 local function Safe(tip, data)
-    ns.Run("modern tooltip", Paint, tip, data)
+    ns.Profiler.Run("modern tooltip", Paint, tip, data)
 end
 
 -- The unit health bar is held at alpha 0; it hangs below the tooltip, so no gap is left.
@@ -106,7 +106,7 @@ local function Name(tip)
 end
 
 local function SafeName(tip)
-    ns.Run("modern tooltip name", Name, tip)
+    ns.Profiler.Run("modern tooltip name", Name, tip)
 end
 
 local function Backdrop(skin, tip)

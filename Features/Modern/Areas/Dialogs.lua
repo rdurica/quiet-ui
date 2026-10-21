@@ -70,6 +70,6 @@ end
 
 function Dialogs.Apply(skin)
     for _, def in ipairs(DIALOGS) do
-        ns.Run("modern dialogs", Modern.Shapes.Keep, skin, _G[def.name], "dialogs", Skin(def))
+        ns.Profiler.Run("modern dialogs", Modern.Shapes.Keep, skin, _G[def.name], "dialogs", Skin(def))
     end
 end

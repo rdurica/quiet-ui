@@ -61,7 +61,7 @@ local function SendSlot(skin, button)
     PaintSlot(button)
     if hooked[button] then return end
     hooked[button] = true
-    local function Again() ns.Run("modern mail", PaintSlot, button) end
+    local function Again() ns.Profiler.Run("modern mail", PaintSlot, button) end
     for _, method in ipairs({ "SetNormalTexture", "ClearNormalTexture" }) do
         if type(button[method]) == "function" then pcall(hooksecurefunc, button, method, Again) end
     end

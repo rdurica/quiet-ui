@@ -58,6 +58,6 @@ end
 
 function Social.Apply(skin)
     for _, name in ipairs(ORDER) do
-        ns.Run("modern social", Modern.Shapes.Keep, skin, _G[name], "social", Skin(WINDOWS[name]))
+        ns.Profiler.Run("modern social", Modern.Shapes.Keep, skin, _G[name], "social", Skin(WINDOWS[name]))
     end
 end

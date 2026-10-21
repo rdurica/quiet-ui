@@ -299,12 +299,12 @@ end
 function Shapes.Watch(root, key, again, list)
     if not ns.Usable(root) then return end
     local label = "modern " .. key
-    local function Run() ns.Run(label, again) end
+    local function Run() ns.Profiler.Run(label, again) end
     if not hooked[root] then
         hooked[root] = true
         if type(root.HookScript) == "function" then pcall(root.HookScript, root, "OnShow", Run) end
     end
-    WatchLists(root, list and function(box) ns.Run(label, list, box) end or Run, 0)
+    WatchLists(root, list and function(box) ns.Profiler.Run(label, list, box) end or Run, 0)
 end
 
 -- A window skinned by `fn(skin, frame)` now and again whenever it shows or a list under it updates, until its area

@@ -80,7 +80,7 @@ local function Node(skin, button)
     hooked[border] = true
     for _, method in ipairs({ "SetAtlas", "SetTexture" }) do
         if type(border[method]) == "function" then
-            pcall(hooksecurefunc, border, method, function() ns.Run("modern talents", Paint, button) end)
+            pcall(hooksecurefunc, border, method, function() ns.Profiler.Run("modern talents", Paint, button) end)
         end
     end
 end
@@ -158,7 +158,7 @@ local function Watch(talents)
     hooked[talents] = true
     local function Again()
         local skin = styled[talents]
-        if skin then ns.Run("modern talents", Refresh, skin, talents) end
+        if skin then ns.Profiler.Run("modern talents", Refresh, skin, talents) end
     end
     if type(talents.HookScript) == "function" then pcall(talents.HookScript, talents, "OnShow", Again) end
     for _, method in ipairs(LOAD_METHODS) do

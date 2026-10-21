@@ -73,7 +73,7 @@ local function Icons(skin)
     end
     if listening or type(lib.RegisterCallback) ~= "function" then return end
     listening = pcall(lib.RegisterCallback, listener, "LibDBIcon_IconCreated", function(_, button)
-        if active then ns.Run("modern minimap", Flat, active, button) end
+        if active then ns.Profiler.Run("modern minimap", Flat, active, button) end
     end)
 end
 
@@ -125,5 +125,5 @@ end
 
 -- QuietUI's setup button is created after boot, often after the area was applied.
 function Modern.MinimapButtonCreated(button)
-    if active then ns.Run("modern minimap", Flat, active, button) end
+    if active then ns.Profiler.Run("modern minimap", Flat, active, button) end
 end

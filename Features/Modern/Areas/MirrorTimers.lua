@@ -52,7 +52,7 @@ local function Timer(skin, timer)
     Paint(timer, timer.timer)
     if hooked[timer] or type(timer.Setup) ~= "function" then return end
     hooked[timer] = true
-    pcall(hooksecurefunc, timer, "Setup", function(self, kind) ns.Run("modern mirror timers", Paint, self, kind) end)
+    pcall(hooksecurefunc, timer, "Setup", function(self, kind) ns.Profiler.Run("modern mirror timers", Paint, self, kind) end)
 end
 
 function MirrorTimers.Apply(skin)

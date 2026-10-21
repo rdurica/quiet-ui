@@ -151,7 +151,7 @@ local function Docked(skin, cluster, map)
         pcall(hooksecurefunc, container, "SetPoint", function()
             if not dock or docking or dock.container ~= container then return end
             dock.points = Points(container)
-            ns.Run("modern minimap", Dock)
+            ns.Profiler.Run("modern minimap", Dock)
         end)
     end
     Dock()

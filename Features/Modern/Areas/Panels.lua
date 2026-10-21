@@ -92,10 +92,10 @@ local function Window(skin, def)
     local child = Again and def.refresh and frame[def.refresh[1]]
     if ns.Usable(child) and not hooked[child] and type(child[def.refresh[2]]) == "function" then
         hooked[child] = true
-        pcall(hooksecurefunc, child, def.refresh[2], function() ns.Run("modern panels", Again) end)
+        pcall(hooksecurefunc, child, def.refresh[2], function() ns.Profiler.Run("modern panels", Again) end)
     end
 end
 
 function Panels.Apply(skin)
-    for _, def in ipairs(WINDOWS) do ns.Run("modern panels", Window, skin, def) end
+    for _, def in ipairs(WINDOWS) do ns.Profiler.Run("modern panels", Window, skin, def) end
 end

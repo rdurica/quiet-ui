@@ -57,7 +57,7 @@ local function Hover(button)
     if hooked[button] or type(button.HookScript) ~= "function" then return end
     hooked[button] = true
     for script, over in pairs({ OnEnter = true, OnLeave = false }) do
-        pcall(button.HookScript, button, script, function() ns.Run("modern minimap", Paint, button, over) end)
+        pcall(button.HookScript, button, script, function() ns.Profiler.Run("modern minimap", Paint, button, over) end)
     end
 end
 

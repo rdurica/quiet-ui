@@ -55,7 +55,7 @@ local function Paint(bar, retexture)
     local info = tracked[bar]
     if not info or info.busy then return end
     info.busy = true
-    ns.Run("modern castbars", function()
+    ns.Profiler.Run("modern castbars", function()
         if retexture then bar:SetStatusBarTexture(info.texture) end
         local colour = Colour(bar, info.theme)
         if colour then bar:SetStatusBarColor(colour[1], colour[2], colour[3], 1) end
@@ -175,7 +175,7 @@ end
 -- Blizzard's SetLook puts the parts back where its look wants them.
 local function Relayout(bar)
     local skin = laid[bar]
-    if skin then ns.Run("modern castbars", Layout, skin, bar) end
+    if skin then ns.Profiler.Run("modern castbars", Layout, skin, bar) end
 end
 
 local function Bar(skin, bar)
