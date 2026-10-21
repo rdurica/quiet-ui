@@ -1,8 +1,8 @@
 local _, ns = ...
 
 -- Raid frames and raid-style party frames (CompactUnitFrameTemplate, Forever UI source): each member becomes a flat
--- square box with a thin black edge, a grey health fill over a dark track and a flat power line in Blizzard's power
--- colour; the name takes its class colour when Class colours is on. The group and party border art is held. Role,
+-- rectangle (its Edit Mode size, sharp corners) with a thin black edge, a grey health fill over a dark track and a
+-- flat power line in Blizzard's power colour; the name takes its class colour when Class colours is on. The group and party border art is held. Role,
 -- ready check, aura, dispel, aggro and selection marks stay Blizzard's. Members are created as the group grows, so
 -- every frame Blizzard sets up is skinned then; nameplates share the template and are never touched. Health and
 -- unit values are never read; the fill colour is a constant.
