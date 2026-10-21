@@ -257,8 +257,9 @@ function Setup.Note(parent, text)
     return Setup.Muted(Setup.Body(parent, text))
 end
 
-function Setup.ColumnLabel(parent, text)
-    local label = Setup.Muted(parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"))
+-- A column title on a section's strip; `section` owns it, so the strip does not cover it.
+function Setup.ColumnLabel(section, text)
+    local label = Setup.Muted(section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"))
     label:SetText(text)
     return label
 end

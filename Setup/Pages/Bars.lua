@@ -41,9 +41,9 @@ Setup.Pages.bars = function(widget, bars)
         widget.groupRows[#widget.groupRows + 1] = row
     end
     local first = widget.groupRows[1]
-    widget.enemyHeader = Setup.ColumnLabel(bars, "Enemy")
-    widget.friendHeader = Setup.ColumnLabel(bars, "Friend")
-    widget.groupColumn = Setup.ColumnLabel(bars, "Group")
+    widget.enemyHeader = Setup.ColumnLabel(widget.groupHeader, "Enemy")
+    widget.friendHeader = Setup.ColumnLabel(widget.groupHeader, "Friend")
+    widget.groupColumn = Setup.ColumnLabel(widget.groupHeader, "Group")
     -- The first row starts 30px under "Fade together", so these titles sit on its strip.
     widget.enemyHeader:SetPoint("TOP", first.hostile, "TOP", 0, 26)
     widget.friendHeader:SetPoint("TOP", first.friendly, "TOP", 0, 26)
