@@ -253,7 +253,7 @@ h.test("a preset saved with Modernize on brings the same modernize table on anot
     A.eq(ns.Settings.ModernArea("zz_a"), false)
 end)
 
-h.test("saving Modernize on reloads the UI once; saving it again or off does not", function(t)
+h.test("saving Modernize on or off reloads the UI once; saving it again unchanged does not", function(t)
     local A = t.assert
     local reloads = 0
     ReloadUI = function() reloads = reloads + 1 end
@@ -266,7 +266,9 @@ h.test("saving Modernize on reloads the UI once; saving it again or off does not
     A.eq(reloads, 1, "saving while it is already on does not")
     click(check(t, "Modernize"))
     click(ui.save)
-    A.eq(reloads, 1, "turning it off does not")
+    A.eq(reloads, 2, "turning it off reloads")
+    click(ui.save)
+    A.eq(reloads, 2, "saving while it is already off does not")
 end)
 
 h.test("saving Modernize on while QuietUI is off does not reload", function(t)

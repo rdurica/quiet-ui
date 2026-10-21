@@ -285,8 +285,8 @@ function Setup.Write()
     Setup.Paint()
     if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
     if ns.ApplyAll then ns.ApplyAll() end
-    -- Frames Blizzard built before Modernize keep some of its old look until a reload.
-    if not wasModern and ns.Settings.Modernize() and ns.DB().enabled and type(ReloadUI) == "function" then
+    -- Frames Blizzard built before the change keep some of the other look until a reload.
+    if wasModern ~= ns.Settings.Modernize() and ns.DB().enabled and type(ReloadUI) == "function" then
         ReloadUI()
     end
 end
