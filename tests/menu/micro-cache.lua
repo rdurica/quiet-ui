@@ -61,3 +61,37 @@ h.test("A micro button added before UpdateMicroButtons joins the cache and the f
         A.alpha(added, 1, "new micro button shows on hover with the menu")
     end)
 end)
+
+h.test("Hover passes read the micro corners at most every 0.1 s and skip a settled walk", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    withMicroGlobals(t, function(served)
+        ns.Menu.RefreshChrome()
+        for _, b in pairs(served) do b:SetMouseOver(true) end
+        ns.NextFadeTick()
+        ns.Menu.UpdateButton(0.016)
+        local first = served.CharacterMicroButton
+        local edges, faded = 0, 0
+        local left = first.GetLeft
+        first.GetLeft = function(self) edges = edges + 1; return left(self) end
+        local update = ns.UpdateFaded
+        ns.UpdateFaded = function(frame, ...)
+            if frame == first then faded = faded + 1 end
+            return update(frame, ...)
+        end
+        for _ = 1, 30 do
+            ns.NextFadeTick()
+            ns.Menu.UpdateButton(0.016)
+        end
+        A.eq(edges, 0, "the micro corners were read on every hover pass")
+        A.eq(faded, 0, "a settled micro menu walked its buttons on every pass")
+        mock.now = mock.now + 0.11
+        ns.NextFadeTick()
+        ns.Menu.UpdateButton(0.016)
+        A.ok(edges > 0 and faded > 0, "the periodic placement and walk stopped")
+        for _, b in pairs(served) do b:SetMouseOver(false) end
+        ns.NextFadeTick()
+        ns.Menu.UpdateButton(0.016)
+        A.ok(first:GetAlpha() < 1, "leaving the menu did not start the fade at once")
+        ns.UpdateFaded = update
+    end)
+end)
