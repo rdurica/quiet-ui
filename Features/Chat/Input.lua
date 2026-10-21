@@ -236,7 +236,9 @@ local function SyncEdit(edit)
         return
     end
     local focused = edit._quietFocus or (edit.HasFocus and edit:HasFocus())
-    edit._quietWant = focused and 1 or 0
+    local want = focused and 1 or 0
+    if edit._quietWant ~= want then Chat.Wake() end
+    edit._quietWant = want
     HoldEditMouse(edit, focused)
     PadEdit(edit)
     HideEditChrome(edit)

@@ -18,12 +18,74 @@ function Chat.PointerStill()
     return state.pointerStill
 end
 
+-- A still pointer with nothing easing runs a full pass every CALM_FOR seconds (the periodic hover
+-- and catcher reads). A dirty window, a due bubble, a tab starting to flash, a window shown or
+-- hidden, or an input box changing focus runs one at once.
+local CALM_FOR = 0.1
+
+-- The shown windows and tabs, kept by each full pass. Fields on Blizzard frames are slow to read
+-- on this client, so the calm check reads these few instead of every window.
+local live, liveTabs = {}, {}
+
+local function Easing(obj, want)
+    return obj ~= nil and (obj._quietSecret ~= nil or obj._quietAlpha ~= want)
+end
+
+-- The reason and list index a full pass is needed now, or nil.
+local function Pending(now)
+    for i = 1, #live do
+        local frame = live[i]
+        if frame._quietDirty then return "dirty", i end
+        local wake = frame._quietNext
+        if wake == 0 or (type(wake) == "number" and wake > 0 and now >= wake) then return "wake", i end
+    end
+    for i = 1, #liveTabs do
+        local tab = liveTabs[i]
+        if (tab.alerting and true or false) ~= (tab._quietAlerting or false) then return "tab", i end
+    end
+end
+
+-- After a full pass: pending, or an input box still easing.
+local function Busy(now)
+    local reason, index = Pending(now)
+    if reason then return reason, index end
+    for i = 1, Chat.ChatCount() do
+        local edit = Chat.Window(i, "EditBox")
+        local want = edit and edit._quietWant
+        if want ~= nil and (Easing(edit, want) or Easing(edit._quietHeader, want) or Easing(edit._quietPlate, want)) then
+            return "edit", i
+        end
+    end
+end
+
+-- A window was shown or hidden, or an input box changed focus: the next frame runs a full pass.
+function Chat.Wake()
+    Chat.state.calmUntil = nil
+end
+
 function Chat.Update(elapsed)
     if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
     local now = GetTime()
     local still = Chat.PointerStill()
+    local state = Chat.state
+    local lap = ns.Profiler.Clock()
+    if still and state.calmUntil and now < state.calmUntil then
+        local reason, index = Pending(now)
+        if not reason then
+            ns.Profiler.Lap("chat / calm", lap)
+            return
+        end
+        if lap then lap = ns.Profiler.Lap("chat / woken: " .. reason .. " " .. index, lap) end
+    elseif lap then
+        lap = ns.Profiler.Lap(not still and "chat / pointer moved" or state.calmUntil and "chat / periodic"
+            or "chat / not calm", lap)
+    end
+    ns.Wipe(live)
+    ns.Wipe(liveTabs)
     for i = 1, Chat.ChatCount() do
         Chat.EaseEdit(Chat.Window(i, "EditBox"), elapsed)
+        local tab = Chat.Window(i, "Tab")
+        if tab and ns.Usable(tab) and tab:IsShown() then liveTabs[#liveTabs + 1] = tab end
         local frame = Chat.Window(i)
         if frame and frame._quietBubbles then
             if not ns.Usable(frame) or not frame.IsShown or not frame:IsShown() then
@@ -34,6 +96,7 @@ function Chat.Update(elapsed)
                     frame._quietCatcherAt = nil
                 end
             else
+                live[#live + 1] = frame
                 if frame._quietShown == false then frame._quietDirty = true end
                 -- Anchors follow the chat automatically; only stacking needs a periodic refresh.
                 if frame._quietDirty or not frame._quietCatcherAt or now >= frame._quietCatcherAt then
@@ -56,7 +119,13 @@ function Chat.Update(elapsed)
             end
         end
     end
-    Chat.FadeTabs(elapsed)
+    local tabsEasing = Chat.FadeTabs(elapsed)
+    local reason, index = Busy(now)
+    state.calmUntil = not tabsEasing and not reason and now + CALM_FOR or nil
+    if lap then
+        ns.Profiler.Lap(tabsEasing and "chat / pass, tabs easing" or reason and ("chat / pass, stays: " .. reason
+            .. " " .. index) or "chat / pass", lap)
+    end
 end
 ns.Feature({
     name = "chat",
@@ -66,7 +135,7 @@ ns.Feature({
     end,
     restore = function() Chat.Restore() end,
     frame = function(elapsed)
-        if ns.Settings.ModernChat() then ns.Profiler.Run("bubbles", Chat.Update, elapsed) end
+        if ns.Settings.ModernChat() then Chat.Update(elapsed) end
     end,
     tick = function()
         if ns.Settings.ModernChat() then Chat.SyncVisibleEdits() end

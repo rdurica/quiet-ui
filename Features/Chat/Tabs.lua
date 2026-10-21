@@ -25,14 +25,14 @@ local function TabAlerting(tab)
     return glow and glow.IsShown and glow:IsShown() and true or false
 end
 
--- Mouse-over reads wait for a moved pointer, or 0.1 s, like the chat hover.
+-- Mouse-over reads wait for a moved pointer, or 0.1 s, like the chat hover. True while a tab still eases.
 local overAt
 
 local function FadeTabs(elapsed)
     local now = GetTime()
     local read = not Chat.state.pointerStill or not overAt or now >= overAt
     if read then overAt = now + 0.1 end
-    local hot = false
+    local hot, easing = false, false
     for i = 1, Chat.ChatCount() do
         local frame = Chat.Window(i)
         if frame and frame._quietHover then hot = true end
@@ -44,9 +44,13 @@ local function FadeTabs(elapsed)
         if tab and ns.Usable(tab) then
             ns.NoteChat(tab)
             if read then tab._quietOver = ns.MouseOver(tab) end
-            ns.EaseAlpha(tab, hot or tab._quietOver or TabAlerting(tab), elapsed)
+            tab._quietAlerting = tab.alerting and true or false
+            local show = hot or tab._quietOver or TabAlerting(tab)
+            ns.EaseAlpha(tab, show, elapsed)
+            if tab._quietAlpha ~= (show and 1 or 0) then easing = true end
         end
     end
+    return easing
 end
 Chat.FadeTabs = FadeTabs
 ------------------------------------------------------------------------------
