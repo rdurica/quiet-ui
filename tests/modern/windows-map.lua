@@ -67,15 +67,15 @@ h.test("Map flattens the breadcrumb, tracking buttons and title buttons and rest
     A.alpha(sizing.MaximizeButton.normal, 0, "maximize art is held")
     A.alpha(sizing.MinimizeButton.normal, 0, "minimize art is held")
     A.eq(hidden(bar.crumbArt), "", "navBar and breadcrumb art is held")
-    A.ok(R.dark(bar), "the breadcrumb is a dark field")
+    A.ok(not R.dark(bar), "the breadcrumb is bare text, no field")
     A.alpha(bar.homeButton.text, 1, "breadcrumb text stays")
     A.alpha(bar.homeButton.MenuArrowButton.art, 0.9, "the breadcrumb dropdown arrow stays")
     NavBar_AddButton(bar, { name = "Teldrassil" })
     A.eq(hidden(bar.crumbArt), "", "a breadcrumb added while browsing is flattened too")
     A.eq(hidden(pin.trackingArt), "", "the pin button loses its round border, background, shadow and highlight")
     A.alpha(pin.Icon, 0.9, "the pin icon stays")
-    A.ok(R.dark(pin), "the pin button is a dark square")
-    A.ok(R.dark(map.WorldMapTrackingOptionsButton), "the filter button is a dark square")
+    A.ok(not R.dark(pin), "the pin button is a bare icon")
+    A.ok(not R.dark(map.WorldMapTrackingOptionsButton), "the filter button is a bare icon")
     A.alpha(map.WorldMapTrackingOptionsButton.Icon, 0.9, "the filter icon stays")
     QuietUICharDB.modernize.map = false
     ns.Modern.Apply()
@@ -94,8 +94,21 @@ h.test("Map restyles the quest log and details, lightens their ink, follows pool
     local questPoint = W.point(quest)
     W.enable(ns, { windows = false })
     A.eq(hidden(quest.art), "", "parchment, gold frames, field, header, scroll bar and details art are held")
-    A.ok(R.dark(scroll.SearchBox), "the search box is a dark field")
-    A.ok(R.dark(QuestLogCount), "the quest count is a dark field")
+    local track = ns.Modern.Theme().track
+    local function filled(frame)
+        for _, region in ipairs(frame._regions) do
+            if region._shown ~= false and region._color and region._color[1] == track[1] then return true end
+        end
+        return false
+    end
+    local function bordered(frame)
+        for _, region in ipairs(frame._regions) do
+            if region._shown ~= false and region._color and (region._h == 1 or region._w == 1) then return true end
+        end
+        return false
+    end
+    A.ok(filled(scroll.SearchBox) and not bordered(scroll.SearchBox), "the search box is a dark field without a border")
+    A.ok(not R.dark(QuestLogCount) and not bordered(QuestLogCount), "the quest count is bare text")
     A.ok(R.dark(quest.QuestsFrame.DetailsFrame.AbandonButton), "detail buttons are flat fields")
     A.ok(light(quest.description), "quest detail ink becomes light")
     local r, g, b = quest.heading:GetTextColor()

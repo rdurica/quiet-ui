@@ -1,9 +1,9 @@
 local _, ns = ...
 
 -- The world map's top bar and corner buttons, shaped after a frame dump of the Forever 12.0 client. The zone
--- breadcrumb (navBar) becomes a dark field whose buttons are bare text split by thin rules; their dropdown arrows
--- stay. The tracking filter and pin buttons become small dark squares that keep their icons. Breadcrumb buttons are created as the player browses,
--- so the bar is scanned again for every new button.
+-- breadcrumb (navBar) becomes bare text on the window, split by quiet thin rules; their dropdown arrows stay. The
+-- tracking filter and pin buttons become bare icons. Breadcrumb buttons are created as the player browses, so the bar
+-- is scanned again for every new button.
 
 local Modern = ns.Modern
 local MapBar = {}
@@ -32,7 +32,7 @@ local function Rule(skin, button)
         return texture
     end)
     if not rule then return end
-    rule:SetColorTexture(unpack(Modern.Theme().border))
+    rule:SetColorTexture(unpack(Modern.Theme().wellEdge))
     rule:Show()
 end
 
@@ -42,8 +42,6 @@ function MapBar.Breadcrumbs(skin, map)
     if not ns.Usable(bar) then return end
     Modern.Character.HoldArt(skin, bar)
     Modern.Character.HoldArt(skin, bar.overlay)
-    skin:Panel(bar)
-    skin:Border(bar)
     for _, button in ipairs(Children(bar)) do
         if Is(button, "Button") then
             Modern.Character.HoldArt(skin, button)
@@ -52,14 +50,9 @@ function MapBar.Breadcrumbs(skin, map)
     end
 end
 
--- The filter keeps its arrow icon; the pin keeps its icon and active ring but loses its round border,
+-- The filter keeps its arrow icon as it is; the pin keeps its icon and active ring but loses its round border,
 -- background, corner shadow and round highlight.
 local function Tracking(skin, map)
-    local filter = map.WorldMapTrackingOptionsButton
-    if ns.Usable(filter) then
-        skin:Panel(filter)
-        skin:Border(filter)
-    end
     local pin = map.WorldMapTrackingPinButton
     if not ns.Usable(pin) or type(pin.GetRegions) ~= "function" then return end
     Hold(skin, pin.Border)
@@ -67,8 +60,6 @@ local function Tracking(skin, map)
         local ok, layer = pcall(region.GetDrawLayer, region)
         if ok and (layer == "BACKGROUND" or layer == "HIGHLIGHT") then Hold(skin, region) end
     end
-    skin:Panel(pin)
-    skin:Border(pin)
 end
 
 function MapBar.Apply(skin, map)

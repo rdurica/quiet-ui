@@ -83,8 +83,12 @@ local function Quests(skin, quest)
     if not ns.Usable(scroll) then return end
     HoldKeys(skin, scroll, { "Background", "Edge" })
     Frame(skin, scroll)
-    Modern.Field(skin, scroll.SearchBox)
-    Modern.Field(skin, scroll.QuestLogCount or _G.QuestLogCount)
+    -- The search box is a dark field without a border; the quest count is bare text.
+    Modern.Field(skin, scroll.SearchBox, true)
+    if ns.Usable(scroll.SearchBox) and type(scroll.SearchBox.CreateTexture) == "function" then
+        skin:Panel(scroll.SearchBox, Modern.Theme().track)
+    end
+    Modern.Field(skin, scroll.QuestLogCount or _G.QuestLogCount, true)
     Modern.Character.ScrollBar(skin, scroll.ScrollBar)
 end
 
