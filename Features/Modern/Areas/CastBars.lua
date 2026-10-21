@@ -106,18 +106,11 @@ local function Hide(skin, region)
     end
 end
 
-local function Pack(...)
-    return { n = select("#", ...), ... }
-end
-
 -- Puts a region on new points; the first call per apply remembers Blizzard's.
 local function Anchor(skin, region, ...)
-    local saved = {}
-    for i = 1, region:GetNumPoints() do saved[i] = Pack(region:GetPoint(i)) end
-    skin:Remember(region, "cast points", function()
-        region:ClearAllPoints()
-        for _, p in ipairs(saved) do region:SetPoint(unpack(p, 1, p.n)) end
-    end)
+    local saved = Modern.Points(region)
+    if not saved then return end
+    skin:Remember(region, "cast points", function() Modern.SetPoints(region, saved) end)
     region:ClearAllPoints()
     region:SetPoint(...)
 end

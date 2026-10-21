@@ -33,10 +33,6 @@ local function Numbers(...)
     return true
 end
 
-local function Pack(...)
-    return { n = select("#", ...), ... }
-end
-
 -- Bars are plain StatusBars; the client may still protect one, which then waits for combat to end.
 local function Locked(region)
     if type(InCombatLockdown) ~= "function" or not InCombatLockdown() then return false end
@@ -64,12 +60,11 @@ end
 -- Holds the given points on the region; the first call this cycle remembers Blizzard's points.
 local function Anchor(skin, region, ...)
     if Locked(region) then return end
-    local saved = {}
-    for i = 1, region:GetNumPoints() do saved[i] = Pack(region:GetPoint(i)) end
+    local saved = Modern.Points(region)
+    if not saved then return end
     skin:Remember(region, "points", function()
         laid[region] = nil
-        region:ClearAllPoints()
-        for _, p in ipairs(saved) do region:SetPoint(unpack(p, 1, p.n)) end
+        Modern.SetPoints(region, saved)
     end)
     laid[region] = { ... }
     Hook(region)
@@ -99,8 +94,8 @@ local function Ring(skin, level, own)
     if not ns.Usable(parent) or type(parent.GetRegions) ~= "function" then return end
     for _, region in ipairs({ parent:GetRegions() }) do
         if region ~= level and region ~= own and IsTexture(region) and type(region.GetPoint) == "function" then
-            for i = 1, region:GetNumPoints() do
-                if select(2, region:GetPoint(i)) == level then
+            for _, point in ipairs(Modern.Points(region) or {}) do
+                if point[2] == level then
                     skin:Hold(region)
                     break
                 end

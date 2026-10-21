@@ -16,6 +16,26 @@ local function Pack(...)
     return { n = select("#", ...), ... }
 end
 
+-- A region's points, or nil when the client does not give them back (no count, or a point without its name).
+function Modern.Points(region)
+    if type(region.GetNumPoints) ~= "function" or type(region.GetPoint) ~= "function"
+        or type(region.ClearAllPoints) ~= "function" then return end
+    local ok, count = pcall(region.GetNumPoints, region)
+    if not ok or type(count) ~= "number" or ns.IsSecret(count) then return end
+    local points = {}
+    for i = 1, count do
+        local point = Pack(region:GetPoint(i))
+        if type(point[1]) ~= "string" or ns.IsSecret(point[1]) then return end
+        points[i] = point
+    end
+    return points
+end
+
+function Modern.SetPoints(region, points)
+    region:ClearAllPoints()
+    for _, p in ipairs(points) do region:SetPoint(unpack(p, 1, p.n)) end
+end
+
 -- A missing frame is skipped silently; a missing method is reported once per helper kind.
 local function Ready(kind, obj, ...)
     if obj == nil or not ns.Usable(obj) then return false end
@@ -80,14 +100,13 @@ function Skin:Set(obj, method, ...)
     if type(method) ~= "string" then return end
     if not Ready("Set", obj, method) then return end
     if method == "SetPoint" then
-        if First(self, obj, method) and type(obj.GetNumPoints) == "function" and type(obj.GetPoint) == "function"
-            and type(obj.ClearAllPoints) == "function" then
-            local points = {}
-            for i = 1, obj:GetNumPoints() do points[i] = Pack(obj:GetPoint(i)) end
-            Push(self, function()
-                obj:ClearAllPoints()
-                for _, p in ipairs(points) do obj:SetPoint(unpack(p, 1, p.n)) end
-            end)
+        local seen = self.seen[obj]
+        if not (seen and seen[method]) then
+            -- Points the client does not give back could not be restored, so the object stays put.
+            local points = Modern.Points(obj)
+            if not points then return end
+            First(self, obj, method)
+            Push(self, function() Modern.SetPoints(obj, points) end)
         end
         obj:SetPoint(...)
         return

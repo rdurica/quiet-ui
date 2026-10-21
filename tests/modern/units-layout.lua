@@ -298,3 +298,21 @@ h.test("a player target or focus shows its class icon before the level; an NPC s
     A.ok(not U.classIcon(frames[3]), "icon hidden on restore")
     CLASS_ICON_TCOORDS = nil
 end)
+
+h.test("a text whose points the client does not give back stays put, and a new background reports nothing", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local p = U.parts(U.frames()[1])
+    local text, left = p.health.TextString, p.health.LeftText
+    local before = U.points(text)
+    function text:GetNumPoints() return nil end
+    local getPoint = left.GetPoint
+    function left:GetPoint(i) if i == 2 then return end return getPoint(self, i) end
+    left:SetPoint("RIGHT", p.health, "RIGHT", 0, 0)
+    enable(ns)
+    QuietUICharDB.modernize.opacity = 90
+    ns.Modern.Apply()
+    ns.Modern.Restore()
+    A.eq(#mock.printed, 0, "nothing reported")
+    text.GetNumPoints = nil
+    A.deep(U.points(text), before, "the unreadable text was never moved")
+end)
