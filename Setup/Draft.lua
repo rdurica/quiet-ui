@@ -268,6 +268,7 @@ local function DraftSettings()
 end
 
 function Setup.Write()
+    local wasModern = ns.Settings.Modernize()
     local settings, err = DraftSettings()
     if not settings then ns.Print(err); return end
     if S.presetName then
@@ -284,6 +285,10 @@ function Setup.Write()
     Setup.Paint()
     if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
     if ns.ApplyAll then ns.ApplyAll() end
+    -- Frames Blizzard built before Modernize keep some of its old look until a reload.
+    if not wasModern and ns.Settings.Modernize() and ns.DB().enabled and type(ReloadUI) == "function" then
+        ReloadUI()
+    end
 end
 
 local NOTICE_SIZES = { "smaller", "default", "larger" }

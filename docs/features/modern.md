@@ -37,7 +37,7 @@ Area colours outside the theme: health bar near-black `#242629`, mana `#3373E6`,
 ## Settings
 
 - Modernize is off unless checked (`modernize.enabled`). It is shared through presets; Reset default turns it off.
-- While checked, the tab shows Theme, Background, Class colours and one checkbox per area; unchecked, they are hidden and keep their values. Nothing is stored until Save.
+- While checked, the tab shows Theme, Background, Class colours and one checkbox per area; unchecked, they are hidden and keep their values. Nothing is stored until Save. Saving Modernize on while QuietUI is on reloads the UI once, so frames Blizzard built earlier take the full look; saving it again or turning it off does not.
 - Theme: one theme today, Dark (`modernize.theme`; missing or unknown means Dark).
 - Background: panel background alpha 50, 75 or 90 % (`modernize.opacity`; anything else means 75).
 - Class colours: on unless unchecked (`modernize.classColors`).
