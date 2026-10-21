@@ -50,6 +50,12 @@ h.test("bars skin icons, all button art and text while preserving size and alpha
         A.ok(I.border(button), button:GetName() .. " has a one-pixel border")
         A.ok(I.outlined(button.HotKey), button:GetName() .. " hotkey outlined")
         A.ok(I.outlined(button.Count), button:GetName() .. " count outlined")
+        local well, socket = ns.Modern.Theme().well, false
+        for _, region in ipairs(button._regions) do
+            local g = region._shown ~= false and region._gradient
+            if g and g[3][1] == well[1] and g[2][1] < well[1] then socket = true end
+        end
+        A.ok(socket, button:GetName() .. " sits in the bag socket fill, darker towards the bottom")
     end
     for _, button in ipairs({ standard, pet, stance, gamepad }) do
         A.eq(button:GetWidth(), before[button][1], button:GetName() .. " width")

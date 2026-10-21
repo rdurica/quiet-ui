@@ -1,8 +1,10 @@
 local _, ns = ...
 
--- Reputation and Skills panes of the Forever character window: a pooled ScrollBox of collapsible headers
+-- Reputation, Skills, Currency and Statistics panes of the Forever character window: a pooled ScrollBox of collapsible headers
 -- (common-button-list art with a StateIcon) and rows whose Content holds a bar, plus a detail pane with one bar.
--- Headers become a title with a thin rule, bars a dark field with a thin border; the coloured fill stays.
+-- Headers become section strips with a light title, bars a borderless dark track as tall as their fill; the coloured
+-- fill stays.
+-- Currency and statistics rows have no bar and keep their icon, texts and hover art.
 
 local Modern = ns.Modern
 local Character = Modern.Character
@@ -10,6 +12,8 @@ local Character = Modern.Character
 local LISTS = {
     { frame = "ReputationFrame", bar = "ReputationBar", detail = "ReputationDetailFrame", detailBar = "StandingBar" },
     { frame = "SkillsFrame", bar = "SkillsBar", detail = "SkillDetailFrame", detailBar = "RankBar" },
+    { frame = "TokenFrame" },
+    { frame = "StatisticsFrame" },
 }
 
 local function FillOf(bar)
@@ -19,22 +23,43 @@ local function FillOf(bar)
     return ok and fill or nil
 end
 
+-- Blizzard's fill is about half as tall as the bar frame; the track takes the fill's height, centred like it.
+local TRACK = 15
+
+local function TrackHeight(fill)
+    local height = ns.Usable(fill) and type(fill.GetHeight) == "function" and fill:GetHeight()
+    if type(height) == "number" and not ns.IsSecret(height) and height > 0 then return height end
+    return TRACK
+end
+
 local function Bar(skin, bar)
-    if not ns.Usable(bar) then return end
-    Character.HoldArt(skin, bar, FillOf(bar))
-    skin:Panel(bar)
-    skin:Border(bar)
+    if not ns.Usable(bar) or type(bar.CreateTexture) ~= "function" then return end
+    local fill = FillOf(bar)
+    Character.HoldArt(skin, bar, fill)
+    local track = skin:Own(bar, "track", function()
+        local texture = bar:CreateTexture(nil, "BACKGROUND", nil, -8)
+        texture:SetPoint("LEFT", bar, "LEFT", 0, 0)
+        texture:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
+        return texture
+    end)
+    track:SetHeight(TrackHeight(fill))
+    track:SetColorTexture(unpack(Modern.Theme().track))
+    track:Show()
 end
 
 local function Row(skin, row, list)
     if not ns.Usable(row) then return end
     if row.StateIcon then
         Character.HoldArt(skin, row, row.StateIcon)
-        Character.Rule(skin, row)
+        Modern.Strip(skin, row, Character.STRIP)
+        if ns.Usable(row.Name) and type(row.Name.GetTextColor) == "function" then
+            local text = Modern.Theme().text
+            skin:Set(row.Name, "SetTextColor", text[1], text[2], text[3], 1)
+        end
         return
     end
     local content = row.Content
-    if ns.Usable(content) then Bar(skin, content[list.bar]) end
+    if list.bar and ns.Usable(content) then Bar(skin, content[list.bar]) end
 end
 
 local function List(skin, list)
@@ -49,7 +74,7 @@ local function List(skin, list)
         for _, row in ipairs(Character.Children(box.ScrollTarget)) do Row(skin, row, list) end
     end
     Character.ScrollBar(skin, frame.ScrollBar)
-    local detail = frame[list.detail]
+    local detail = list.detail and frame[list.detail]
     if ns.Usable(detail) then
         if ns.Usable(detail.Divider) then skin:Hold(detail.Divider) end
         Bar(skin, detail[list.detailBar])

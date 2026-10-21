@@ -9,6 +9,10 @@ local Character = {}
 Modern.Character = Character
 
 local SIDEBAR_TABS = 3
+-- Section rows are taller than their title; their strip hugs the title. Shared with the list panes.
+Character.STRIP = 22
+-- A mode tab takes an equipment slot's size; this one when the slot cannot be measured.
+local SLOT_SIZE = 37
 local SIDEBAR_SELECTED = "UI-Character-Info-StatTab-Selected"
 
 local styled = setmetatable({}, { __mode = "k" })  -- watched frame -> journal while applied
@@ -31,7 +35,8 @@ end
 -- Every texture of the frame except `keep`.
 function Character.HoldArt(skin, frame, keep)
     for _, region in ipairs(Regions(frame)) do
-        if IsTexture(region) and region ~= keep then skin:Hold(region) end
+        -- A pooled frame is held again on every update; the skin's own strip or rule must stay.
+        if IsTexture(region) and region ~= keep and not skin:Owns(frame, region) then skin:Hold(region) end
     end
 end
 
@@ -73,6 +78,29 @@ function Character.Slots(skin)
         Modern.Bags.Item(skin, slot, true)
         Character.HoldArt(skin, slot.BorderFrame)
     end
+end
+
+local function SlotSize()
+    local slot = _G.CharacterHeadSlot
+    if ns.Usable(slot) and type(slot.GetSize) == "function" then
+        local width = slot:GetSize()
+        if type(width) == "number" and not ns.IsSecret(width) and width > 0 then return width end
+    end
+    return SLOT_SIZE
+end
+
+-- A vertical mode tab shrinks to an equipment slot's size; its icon, cropped square, fills it inside the border.
+local function ModeTab(skin, tab)
+    Modern.TabChrome(skin, tab)
+    local size = SlotSize()
+    skin:Set(tab, "SetSize", size, size)
+    local icon = tab.Icon
+    if not ns.Usable(icon) or type(icon.ClearAllPoints) ~= "function" then return end
+    skin:Icon(icon)
+    skin:Set(icon, "SetPoint", "TOPLEFT", tab, "TOPLEFT", 1, -1)
+    icon:ClearAllPoints()
+    icon:SetPoint("TOPLEFT", tab, "TOPLEFT", 1, -1)
+    icon:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -1, 1)
 end
 
 -- Zoom, rotate and reset: the grey square art becomes a flat button, the icon stays.
@@ -124,11 +152,11 @@ function Character.Rule(skin, line)
     end
 end
 
--- A category title loses its banner and gets the rule; a stat row loses its stripe.
+-- A category title loses its banner and becomes a section strip; a stat row loses its stripe.
 local function StatLine(skin, line)
     if not ns.Usable(line) then return end
     if IsTexture(line.Background) then skin:Hold(line.Background) end
-    if line.Title then Character.Rule(skin, line) end
+    if line.Title then Modern.Strip(skin, line, Character.STRIP) end
 end
 
 local function StatLines(skin, pane)
@@ -149,7 +177,8 @@ local function StatsPane(skin)
     Character.ScrollBar(skin, pane.ScrollBar)
 end
 
--- The stats sidebar tabs: frame art held, icon kept; the selected one shows Blizzard's selected art.
+-- The stats sidebar tabs: frame art held, a bare icon without fill or border; the selected one, shown by Blizzard's
+-- selected art, gets a 2 px accent line under it.
 local function SidebarSelected(tab)
     for _, region in ipairs(Regions(tab)) do
         if IsTexture(region) and AtlasOf(region) == SIDEBAR_SELECTED then
@@ -158,16 +187,23 @@ local function SidebarSelected(tab)
     end
 end
 
-local function SidebarBorder(skin, tab)
-    local theme = Modern.Theme()
-    skin:Border(tab, SidebarSelected(tab) and theme.accent or theme.border)
+local function SidebarMark(skin, tab)
+    local mark = skin:Own(tab, "sidebar mark", function()
+        local texture = tab:CreateTexture(nil, "OVERLAY", nil, 7)
+        texture:SetHeight(2)
+        texture:SetPoint("TOPLEFT", tab, "BOTTOMLEFT", 0, -2)
+        texture:SetPoint("TOPRIGHT", tab, "BOTTOMRIGHT", 0, -2)
+        return texture
+    end)
+    if not mark then return end
+    mark:SetColorTexture(unpack(Modern.Theme().accent))
+    mark:SetShown(SidebarSelected(tab) and true or false)
 end
 
 local function SidebarTab(skin, tab)
     if not ns.Usable(tab) then return end
     Character.HoldArt(skin, tab, tab.Icon)
-    skin:Panel(tab)
-    SidebarBorder(skin, tab)
+    SidebarMark(skin, tab)
     styled[tab] = skin
     skin:Remember(tab, "modern sidebar tab", function() styled[tab] = nil end)
     if hooked[tab] then return end
@@ -178,7 +214,7 @@ local function SidebarTab(skin, tab)
         if type(marker[method]) == "function" then
             pcall(hooksecurefunc, marker, method, function()
                 local owner = styled[tab]
-                if owner then ns.Run("modern character", SidebarBorder, owner, tab) end
+                if owner then ns.Run("modern character", SidebarMark, owner, tab) end
             end)
         end
     end
@@ -218,7 +254,7 @@ function Character.Apply(skin, frame)
     Panes(skin, frame)
     ModelControls(skin)
     for _, tab in ipairs(Character.Children(frame.ModeTabs)) do
-        if ns.Usable(tab) and tab.SelectedTexture then Modern.TabChrome(skin, tab) end
+        if ns.Usable(tab) and tab.SelectedTexture then ModeTab(skin, tab) end
     end
     for index = 1, SIDEBAR_TABS do SidebarTab(skin, _G["PaperDollSidebarTab" .. index]) end
     Refresh(skin)

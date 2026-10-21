@@ -76,6 +76,7 @@ local function character()
     local items = CreateFrame("Frame", "PaperDollItemsFrame", paperdoll)
     PaperDollItemsFrame = items
     local slot = CreateFrame("ItemButton", "CharacterHeadSlot", items)
+    slot:SetSize(36, 36)
     slot.icon = slot:CreateTexture(nil, "BORDER")
     slot.icon:SetTexture("Interface\\Icons\\Helm")
     slot.icon:SetTexCoord(0, 1, 0, 1)
@@ -140,6 +141,14 @@ local function accent(ns, frame)
     return B.same(B.border(frame), ns.Modern.Theme().accent)
 end
 
+-- The selected sidebar tab: a shown 2 px accent line, and no border around the tab.
+local function marked(ns, tab)
+    for _, region in ipairs(tab._regions) do
+        if region._shown and region._h == 2 and B.same(region._color, ns.Modern.Theme().accent) then return true end
+    end
+    return false
+end
+
 h.test("Windows replaces the character window art with flat chrome, keeps content and restores it exactly", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     W.area(ns, "windows")
@@ -157,11 +166,30 @@ h.test("Windows replaces the character window art with flat chrome, keeps conten
     A.ok(not R.invisible(c.scene.backdrop, c.frame), "model scene backdrop is content and stays")
     A.ok(not R.invisible(c.level, c.frame), "level text stays")
     A.ok(not R.invisible(c.category.Title, c.frame), "stat category title stays")
+    local theme = ns.Modern.Theme()
+    local strip, edge = false, false
+    for _, region in ipairs(c.category._regions) do
+        if region._shown ~= false and region._color then
+            strip = strip or (region._color[1] == theme.strip[1] and region._h == 22)
+            edge = edge or (region._w == 2 and region._color[1] == theme.accent[1])
+        end
+    end
+    A.ok(strip and edge, "a stat category is a 22 px section strip with an accent edge")
     A.ok(not R.invisible(c.row.Label, c.frame), "stat label stays")
+    for _, tab in ipairs(c.modes) do
+        A.deep({ tab:GetSize() }, { 36, 36 }, tab:GetName() .. " takes the equipment slot's measured size")
+        A.eq(tab.Icon:GetNumPoints(), 2, tab:GetName() .. " icon fills the tab")
+        A.ok(L.zoomed(tab.Icon), tab:GetName() .. " icon is cropped square")
+    end
     A.ok(accent(ns, c.modes[1]), "selected mode tab gets the accent border")
     A.ok(not accent(ns, c.modes[2]), "other mode tab keeps the theme border")
-    A.ok(accent(ns, c.sidebar[1]), "selected sidebar tab gets the accent border")
-    A.ok(not accent(ns, c.sidebar[2]), "other sidebar tab keeps the theme border")
+    A.ok(marked(ns, c.sidebar[1]), "selected sidebar tab gets the accent line")
+    A.ok(not marked(ns, c.sidebar[2]), "other sidebar tab has no line")
+    for _, tab in ipairs(c.sidebar) do
+        for _, region in ipairs(tab._regions) do
+            A.falsy(region._shown and region._color and (region._h == 1 or region._w == 1), "sidebar tabs have no border")
+        end
+    end
     A.ok(not R.invisible(c.sidebar[1].Icon, c.frame), "sidebar tab icon stays")
     A.eq(#mock.printed, 0, "nothing reported")
     ns.Modern.Restore()
@@ -178,7 +206,7 @@ h.test("Windows moves the accent border with Blizzard's tab selection and skins 
     A.ok(not accent(ns, c.modes[1]) and accent(ns, c.modes[2]), "mode tab accent follows SelectedTexture")
     c.sidebar[1].marker:Hide()
     c.sidebar[2].marker:Show()
-    A.ok(not accent(ns, c.sidebar[1]) and accent(ns, c.sidebar[2]), "sidebar accent follows the selected art")
+    A.ok(not marked(ns, c.sidebar[1]) and marked(ns, c.sidebar[2]), "sidebar accent line follows the selected art")
     local list = {}
     local late = statLine(c.pane.ScrollBox.ScrollTarget, list)
     c.pane.ScrollBox:Update()

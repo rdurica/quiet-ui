@@ -40,7 +40,10 @@ local function Button(skin, button)
         end
         if ns.Usable(art) then skin:Hold(art) end
     end
-    skin:Panel(button)
+    -- The socket of an empty bag slot, so an empty action slot reads as a slot rather than a hole onto the world.
+    local well = Modern.Theme().well
+    local fill = skin:Panel(button, well)
+    if fill then Modern.Lit(fill, { well[1] * 0.55, well[2] * 0.55, well[3] * 0.55, well[4] }, well[1] * 0.45) end
     skin:Border(button)
     Modern.BarFeedback(skin, button, icon)
     skin:Outline(button.HotKey)

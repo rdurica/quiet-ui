@@ -11,7 +11,7 @@ h.test("default theme is dark with background alpha 0.75", function(t)
     local A = t.assert
     QuietUICharDB = {}
     local theme = t.ns.Modern.Theme()
-    A.near(theme.bg[1], 0.05); A.near(theme.bg[2], 0.05); A.near(theme.bg[3], 0.05)
+    A.near(theme.bg[1], 0.075); A.near(theme.bg[2], 0.08); A.near(theme.bg[3], 0.09)
     A.near(theme.bg[4], 0.75)
     A.type(theme.border, "table"); A.type(theme.accent, "table")
     A.eq(theme.border[4], 1, "border is opaque so the world cannot tint it")

@@ -221,18 +221,50 @@ function Modern.Field(skin, frame, bare)
     skin:Border(frame)
 end
 
--- The title row of a top-level window becomes a header band a step above the panel, lit from the top, with a rule
--- under it. Nested panels have no title row, so they never get one.
+-- The title row of a top-level window becomes a header band a step above the panel, lit from the top, with an accent
+-- hairline under it. Nested panels have no title row, so they never get one.
 local HEADER = 24
 
--- A header band's fill: theme `strip`, lit towards the top; flat where gradients are missing.
-function Modern.Band(texture)
-    local strip = Modern.Theme().strip
-    local lit = { strip[1] + 0.06, strip[2] + 0.06, strip[3] + 0.06, strip[4] }
+local function Gradient(texture, orientation, from, to)
+    return type(texture.SetGradient) == "function" and type(CreateColor) == "function"
+        and pcall(texture.SetGradient, texture, orientation, CreateColor(unpack(from)), CreateColor(unpack(to)))
+end
+
+-- `color` at the bottom, `lift` lighter at the top; flat where gradients are missing.
+function Modern.Lit(texture, color, lift)
+    local lit = { color[1] + lift, color[2] + lift, color[3] + lift, color[4] }
     texture:SetColorTexture(1, 1, 1, 1)
-    local gradient = type(texture.SetGradient) == "function" and type(CreateColor) == "function"
-        and pcall(texture.SetGradient, texture, "VERTICAL", CreateColor(unpack(strip)), CreateColor(unpack(lit)))
-    if not gradient then texture:SetColorTexture(unpack(strip)) end
+    if not Gradient(texture, "VERTICAL", color, lit) then texture:SetColorTexture(unpack(color)) end
+end
+
+-- A header band's fill: theme `strip`, lit towards the top.
+function Modern.Band(texture)
+    Modern.Lit(texture, Modern.Theme().strip, 0.06)
+end
+
+-- A section header: a solid strip a step lighter than the panel, with a 2 px accent edge on the left. With `height`
+-- the strip is that tall, centred on the header, for headers Blizzard makes much taller than their title.
+function Modern.Strip(skin, header, height)
+    if not ns.Usable(header) or type(header.CreateTexture) ~= "function" then return end
+    local parts = skin:Own(header, "strip", function()
+        local fill = header:CreateTexture(nil, "BACKGROUND", nil, -8)
+        if height then
+            fill:SetPoint("LEFT", header, "LEFT", 0, 0)
+            fill:SetPoint("RIGHT", header, "RIGHT", 0, 0)
+            fill:SetHeight(height)
+        else
+            fill:SetAllPoints(header)
+        end
+        local edge = header:CreateTexture(nil, "BORDER")
+        edge:SetWidth(2)
+        edge:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, 0)
+        edge:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", 0, 0)
+        return { fill, edge }
+    end)
+    local theme = Modern.Theme()
+    parts[1]:SetColorTexture(unpack(theme.strip))
+    parts[2]:SetColorTexture(unpack(theme.accent))
+    for _, part in ipairs(parts) do part:Show() end
 end
 
 function Modern.Header(skin, frame)
@@ -250,17 +282,27 @@ function Modern.Header(skin, frame)
         return { fill, line }
     end))
     Modern.Band(band)
-    rule:SetColorTexture(unpack(theme.border))
+    -- The accent hairline under the title is the one gold mark every QuietUI window carries.
+    rule:SetColorTexture(theme.accent[1], theme.accent[2], theme.accent[3], 0.6)
     band:Show()
     rule:Show()
 end
 
--- A window: dark fill and border, Blizzard chrome held, optionally a title drag handle (above `over`).
+-- A window: dark fill lit towards the top and a quiet outline, Blizzard chrome held, optionally a title drag
+-- handle (above `over`).
 function Modern.Window(skin, frame, key, over)
     if not ns.Usable(frame) then return end
-    skin:Panel(frame)
-    skin:Border(frame)
+    local theme = Modern.Theme()
+    local fill = skin:Panel(frame)
+    if fill then Modern.Lit(fill, theme.bg, 0.03) end
+    skin:Border(frame, theme.outline)
     Modern.WindowChrome(skin, frame)
+    -- A window's own insets sink a step below the panel. Not the map's: its BorderFrame inset lies over the canvas.
+    for _, inset in ipairs({ frame.Inset or false, frame.InsetRight or false }) do
+        if inset and not IsTexture(inset) and ns.Usable(inset) and type(inset.CreateTexture) == "function" then
+            skin:Panel(inset, theme.sunk)
+        end
+    end
     Modern.TabSystemChrome(skin, frame)
     Modern.CloseButton(skin, frame)
     Modern.SizeButtons(skin, frame)

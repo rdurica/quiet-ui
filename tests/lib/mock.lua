@@ -214,6 +214,10 @@ function Frame:IsPlaying() return self._playing == true end
 function Frame:SetTexture(v) self._texture = v end
 function Frame:GetTexture() return self._texture end
 function Frame:SetColorTexture(...) self._color = { ... } end
+-- Colours of a gradient as { r, g, b, a } lists, the bottom or left end first.
+function Frame:SetGradient(orientation, from, to)
+    self._gradient = { orientation, { from:GetRGBA() }, { to:GetRGBA() } }
+end
 -- On a texture or font string the vertex alpha is its alpha, set past any SetAlpha hook.
 function Frame:SetVertexColor(...)
     self._vertex = { ... }

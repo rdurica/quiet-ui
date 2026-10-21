@@ -35,24 +35,6 @@ local function Frame(skin, page)
     if ns.Usable(page) then HoldKeys(skin, page.BorderFrame, FRAME_ART) end
 end
 
--- A zone header becomes a solid strip a step lighter than the panel, with a 2 px accent edge on the left.
-local function Strip(skin, header)
-    if type(header.CreateTexture) ~= "function" then return end
-    local parts = skin:Own(header, "strip", function()
-        local fill = header:CreateTexture(nil, "BACKGROUND", nil, -8)
-        fill:SetAllPoints(header)
-        local edge = header:CreateTexture(nil, "BORDER")
-        edge:SetWidth(2)
-        edge:SetPoint("TOPLEFT", header, "TOPLEFT", 0, 0)
-        edge:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 0, 0)
-        return { fill, edge }
-    end)
-    local theme = Modern.Theme()
-    parts[1]:SetColorTexture(unpack(theme.strip))
-    parts[2]:SetColorTexture(unpack(theme.accent))
-    for _, part in ipairs(parts) do part:Show() end
-end
-
 -- A panel button: a flat field; the dividers Blizzard draws between the detail buttons go too.
 local function Button(skin, button)
     if not ns.Usable(button) then return end
@@ -72,7 +54,7 @@ function QuestLog.List(skin, quest)
     for _, child in ipairs(Children(contents)) do
         if ns.Usable(child.CollapseButton) and child.ButtonText then
             Modern.Character.HoldArt(skin, child)
-            Strip(skin, child)
+            Modern.Strip(skin, child)
         end
     end
     HoldKeys(skin, contents.StoryHeader, { "Background", "HighlightTexture", "Divider" })

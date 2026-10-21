@@ -147,6 +147,18 @@ function Skin:Own(frame, key, create)
     return region
 end
 
+-- True when `region` is one this journal created on `frame` (Own, Panel or Border).
+function Skin:Owns(frame, region)
+    for _, own in pairs(self.regions[frame] or {}) do
+        if own == region then return true end
+        -- A list of regions, not a region itself.
+        if type(own) == "table" and own.GetObjectType == nil then
+            for _, item in ipairs(own) do if item == region then return true end end
+        end
+    end
+    return false
+end
+
 local function Hideable(self, frame, name, regions)
     if First(self, frame, name) then
         Push(self, function()
@@ -196,7 +208,7 @@ function Skin:Border(frame, color, anchor)
     Hideable(self, owner, "border:" .. tostring(anchor), edges)
 end
 
--- Themed fill (or `color`) behind a frame whose own art is held hidden.
+-- Themed fill (or `color`) behind a frame whose own art is held hidden; returns the fill.
 function Skin:Panel(frame, color)
     if not Ready("Panel", frame, "CreateTexture") then return end
     local theme = Modern.Theme()
@@ -208,6 +220,7 @@ function Skin:Panel(frame, color)
     fill:SetColorTexture(unpack(color or theme.bg))
     fill:Show()
     Hideable(self, frame, "panel", { fill })
+    return fill
 end
 
 -- Flat button: the Blizzard art is held hidden, a themed fill and border replace it.

@@ -70,12 +70,13 @@ function W.point(frame)
 end
 
 function W.isDark(frame)
-    if frame._backdropColor and frame._backdropColor[1] == 0.05 then return true end
+    if frame._backdropColor and frame._backdropColor[1] == 0.075 then return true end
     for _, region in ipairs(frame._regions) do
-        if region._color and region._color[1] == 0.05 then return true end
+        if region._color and region._color[1] == 0.075 then return true end
+        if region._gradient and region._gradient[2][1] == 0.075 then return true end
     end
     for _, child in ipairs(frame._children) do
-        if child._color and child._color[1] == 0.05 then return true end
+        if child._color and child._color[1] == 0.075 then return true end
     end
     return false
 end

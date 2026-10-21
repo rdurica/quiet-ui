@@ -296,10 +296,11 @@ function R.visibleChrome(frame, stop)
     return table.concat(names, ",")
 end
 
--- True when any region at or under frame is the theme's dark fill.
+-- True when any region at or under frame is the theme's dark fill, flat or as the bottom of a lit gradient.
 function R.dark(frame)
     for _, region in ipairs(frame._regions) do
-        if region._color and region._color[1] == 0.05 then return true end
+        if region._color and region._color[1] == 0.075 then return true end
+        if region._gradient and region._gradient[2][1] == 0.075 then return true end
     end
     for _, child in ipairs(frame._children) do
         if R.dark(child) then return true end

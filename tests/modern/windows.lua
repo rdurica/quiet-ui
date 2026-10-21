@@ -110,6 +110,37 @@ h.test("Top-level windows get a header band with a rule under the title row; nes
     end
 end)
 
+h.test("Top-level windows are lit graphite with a quiet outline, a gold hairline and a sunken inset", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local f = fixture()
+    f.character.Inset = CreateFrame("Frame", nil, f.character)
+    local theme = ns.Modern.Theme()
+    local function regions(frame, test)
+        local found = {}
+        for _, region in ipairs(frame._regions) do
+            if region._shown ~= false and test(region) then found[#found + 1] = region end
+        end
+        return found
+    end
+    local function gradients(frame, orientation)
+        return regions(frame, function(r) return r._gradient and r._gradient[1] == orientation end)
+    end
+    W.enable(ns)
+    A.ok(#regions(f.character, function(r)
+        return r._gradient and r._gradient[2][1] == theme.bg[1] and r._gradient[3][1] > theme.bg[1]
+    end) == 1, "the panel is graphite lit towards the top")
+    A.ok(#regions(f.character, function(r) return r._h == 1 and r._color and r._color[1] == theme.accent[1] end) == 1,
+        "a gold hairline sits under the title band")
+    A.eq(#regions(f.character, function(r) return r._color and r._color[1] == theme.outline[1] end), 4,
+        "the window has a quiet outline")
+    A.eq(#gradients(f.character, "HORIZONTAL"), 0, "no shadow around the window")
+    A.eq(#regions(f.character.Inset, function(r) return r._color and r._color[4] == theme.sunk[4] end), 1,
+        "the inset sinks below the panel")
+    ns.Modern.Restore()
+    A.eq(#regions(f.character.Inset, function(r) return r._color ~= nil end), 0, "Restore lifts the inset")
+end)
+
 h.test("A window's maximize / minimize buttons take flat glyphs like the map's and restore their art", function(t)
     local A, ns = t.assert, t.ns
     W.area(ns, "windows")

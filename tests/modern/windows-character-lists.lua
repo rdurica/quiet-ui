@@ -1,4 +1,4 @@
--- Reputation and Skills panes of the Forever 12.0 character window, shaped after a frame dump of the client:
+-- Reputation, Skills and Currency panes of the Forever 12.0 character window, shaped after a frame dump of the client:
 -- ReputationFrame / SkillsFrame hold a ScrollBox whose ScrollTarget has pooled header buttons (unnamed
 -- common-button-list-collapseExpand art and a StateIcon) and rows with Content.ReputationBar / Content.SkillsBar
 -- (unnamed common-stat-bar-BG frame art and a Fill). Keyless ScrollBox children carry long divider lines, and the
@@ -22,6 +22,7 @@ local function bar(parent, list, key, name)
     status:SetSize(180, 18)
     art(status, list, name .. "BarBG", "BACKGROUND")
     status.Fill = art(status, nil, name .. "BarFill", "BORDER")
+    status.Fill:SetSize(90, 15)
     status.Text = status:CreateFontString(nil, "OVERLAY")
     status.Text:SetText("36 / 75")
     return status
@@ -35,6 +36,7 @@ local function header(target, list, name)
     button.StateIcon = art(button, nil, "Minus", "BORDER")
     button.Name = button:CreateFontString(nil, "OVERLAY")
     button.Name:SetText(name)
+    button.Name:SetTextColor(1, 0.82, 0, 1)
     return button
 end
 
@@ -101,7 +103,14 @@ h.test("Windows flattens Reputation and Skills headers and bars, keeps fills and
         local name = p.frame:GetName()
         local bars = { p.row.Content.ReputationBar or p.row.Content.SkillsBar, p.detailBar }
         for _, status in ipairs(bars) do
-            A.ok(W.isDark(status), name .. " bar becomes a dark field")
+            local well, track = ns.Modern.Theme().track, false
+            for _, region in ipairs(status._regions) do
+                if region._shown and region._color then
+                    track = track or (region._color[1] == well[1] and region._h == 15)
+                    A.falsy(region._h == 1 or region._w == 1, name .. " bar has no border")
+                end
+            end
+            A.ok(track, name .. " bar sits on a dark track as tall as its fill")
             A.ok(not R.invisible(status.Fill, c.frame), name .. " bar fill stays")
             A.ok(not R.invisible(status.Text, c.frame), name .. " bar text stays")
         end
@@ -122,5 +131,59 @@ h.test("Windows skins pooled Reputation rows acquired after apply on the next li
     local late = row(c.rep.frame.ScrollBox.ScrollTarget, list, "ReputationBar", "Late")
     c.rep.frame.ScrollBox:Update()
     A.ok(R.invisible(list[1], c.frame), "the new row's bar frame art is hidden")
-    A.ok(W.isDark(late.Content.ReputationBar), "the new row's bar becomes a dark field")
+    local well, track = ns.Modern.Theme().track, false
+    for _, region in ipairs(late.Content.ReputationBar._regions) do
+        track = track or (region._shown and region._color and region._color[1] == well[1]) or false
+    end
+    A.ok(track, "the new row's bar gets the dark track")
+end)
+
+-- TokenFrame (Currency) and StatisticsFrame: the same pooled headers; rows hold texts (and a currency icon) in Content,
+-- with no bar.
+h.test("Windows turns Reputation, Currency and Statistics headers into section strips, keeps their rows, and restores them", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = character()
+    local list = {}
+    local token = CreateFrame("Frame", "TokenFrame", c.frame)
+    TokenFrame = token
+    token.ScrollBox = CreateFrame("Frame", nil, token)
+    token.ScrollBox.ScrollTarget = CreateFrame("Frame", nil, token.ScrollBox)
+    local head = header(token.ScrollBox.ScrollTarget, list, "PvP")
+    local currency = CreateFrame("Button", nil, token.ScrollBox.ScrollTarget)
+    currency.Content = CreateFrame("Frame", nil, currency)
+    currency.Content.CurrencyIcon = currency.Content:CreateTexture(nil, "BORDER")
+    currency.Content.CurrencyIcon:SetTexture("Interface\\Icons\\Honor")
+    local stats = CreateFrame("Frame", "StatisticsFrame", c.frame)
+    StatisticsFrame = stats
+    stats.ScrollBox = CreateFrame("Frame", nil, stats)
+    stats.ScrollBox.ScrollTarget = CreateFrame("Frame", nil, stats.ScrollBox)
+    function stats.ScrollBox:Update() end
+    local statHead = header(stats.ScrollBox.ScrollTarget, list, "Combat")
+    local before = L.snapshot(R.all(c.frame))
+    local strip = ns.Modern.Theme().strip
+    local function striped(button)
+        for _, region in ipairs(button._regions) do
+            if region._shown ~= false and (region._alpha or 1) > 0 and region._color and region._color[1] == strip[1]
+                and region._h == 22 then
+                return true
+            end
+        end
+        return false
+    end
+    W.enable(ns)
+    A.ok(striped(head), "a currency header is a section strip")
+    A.ok(striped(c.rep.header), "a reputation header is a section strip")
+    A.ok(striped(statHead), "a statistics header is a section strip")
+    stats.ScrollBox:Update()
+    A.ok(striped(statHead), "the strip survives the list skinning the pooled header again")
+    A.ok(R.invisible(list[1], c.frame), "the currency header banner is held")
+    A.ok(not R.invisible(head.StateIcon, c.frame), "the collapse icon stays")
+    local text = ns.Modern.Theme().text
+    A.deep({ head.Name:GetTextColor() }, { text[1], text[2], text[3], 1 }, "the header title is light")
+    A.ok(not R.invisible(currency.Content.CurrencyIcon, c.frame), "the currency icon stays")
+    ns.Modern.Restore()
+    A.ok(not striped(head), "Restore removes the strip")
+    A.deep({ head.Name:GetTextColor() }, { 1, 0.82, 0, 1 }, "Restore puts back the gold title")
+    A.deep(L.diff(before), {}, "Currency restores exactly")
 end)

@@ -101,7 +101,7 @@ h.test("Windows never makes or panels QuestMapFrame inside WorldMapFrame", funct
     A.ok(R.dark(map), "the map around the quest log has the dark panel")
     A.eq(L.handle(quest), nil, "no drag handle on the embedded quest log")
     for _, region in ipairs(quest._regions) do
-        A.falsy(region._color and region._color[1] == 0.05, "no panel on the embedded quest log itself")
+        A.falsy(region._color and region._color[1] == 0.075, "no panel on the embedded quest log itself")
     end
     A.deep(W.point(quest), questPoint, "its point is untouched")
     A.ok(L.handle(map), "the map itself is movable")
