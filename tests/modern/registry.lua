@@ -287,6 +287,12 @@ local function Fixture(t, key)
         WorldMapFrame = map
         return function(A) A.ok(W.isDark(map), "map fixture was skinned") end
     end
+    if key == "tracker" then
+        local tracker = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent)
+        tracker.Header = CreateFrame("Frame", nil, tracker)
+        local banner = W.texture(tracker.Header, "TrackerHeader", 0.9)
+        return function(A) A.alpha(banner, 0, "tracker fixture was skinned") end
+    end
     if key == "status" then
         UnitXP = function() return 0.25 end
         UnitXPMax = function() return 1 end
