@@ -140,3 +140,18 @@ h.test("units never read secret health or power values and skip missing or forbi
     A.eq(U.parts(frames[1]).art[1]:GetAlpha(), 1, "restore releases held frame art")
     A.eq(#mock.printed, 0, "restore prints nothing")
 end)
+
+h.test("units keep the health value text on while applied and put the player's setting back on restore", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    U.frames()
+    mock.cvars.statusText = "0"
+    enable(ns)
+    A.eq(mock.cvars.statusText, "1", "status text on while applied")
+    ns.Modern.Restore()
+    A.eq(mock.cvars.statusText, "0", "status text restored")
+    mock.cvars.statusText = "1"
+    local writes = #mock.cvarLog
+    enable(ns)
+    ns.Modern.Restore()
+    A.eq(#mock.cvarLog, writes, "a player who already shows it is left alone")
+end)

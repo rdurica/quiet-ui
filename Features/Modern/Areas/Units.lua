@@ -260,8 +260,21 @@ local function Party(skin)
     end
 end
 
+-- Blizzard shows the health value only on hover by default; on the near-black fill it is the only
+-- sign of health, so it stays on while the area is applied.
+local STATUS_TEXT = {} -- the journal key for the CVar
+local function StatusText(skin)
+    if type(C_CVar) ~= "table" or type(C_CVar.GetCVar) ~= "function" or type(C_CVar.SetCVar) ~= "function" then return end
+    local ok, old = pcall(C_CVar.GetCVar, "statusText")
+    if not ok or old == nil or ns.IsSecret(old) or tostring(old) == "1" then return end
+    if not skin:Remember(STATUS_TEXT, "statusText", function() pcall(C_CVar.SetCVar, "statusText", old) end) then return end
+    local set, err = pcall(C_CVar.SetCVar, "statusText", "1")
+    if not set then ns.Report("modern units", err) end
+end
+
 local function Apply(skin)
     HookUpdate()
+    StatusText(skin)
     for _, spec in ipairs(FRAMES) do Unit(skin, spec) end
     Party(skin)
     Modern.Group.Apply(skin)
