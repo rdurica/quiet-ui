@@ -194,6 +194,9 @@ end
 
 function U.parts(frame) return parts[frame._frame or frame] end
 
+-- A frame of TargetFrame's shape under another name (BossTargetFrameTemplate).
+function U.target(name, unit) return target(name, unit) end
+
 -- Public fixture surface for the generic registry contract. The registry reads player.HealthBar and
 -- calls U.hidden / U.statusTexture; a shim exposes that one key without adding it to the real frame.
 function U.fixture()

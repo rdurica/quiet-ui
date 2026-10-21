@@ -94,7 +94,7 @@ h.test("Windows keeps a tooltip inside a window and gives a dialog popout its ow
     W.area(ns, "windows")
     local c = P.new()
     local frame = P.window(c, "FriendsFrame")
-    local tip = CreateFrame("Frame", "FriendsTooltip", frame)
+    local tip = CreateFrame("Frame", "FriendsFrameNoteTooltip", frame)
     tip.NineSlice = CreateFrame("Frame", nil, tip)
     tip.NineSlice.Center = P.texture(c, tip.NineSlice, "keep", "Tooltip-Center", "BACKGROUND")
     local popout = CreateFrame("Frame", nil, frame)

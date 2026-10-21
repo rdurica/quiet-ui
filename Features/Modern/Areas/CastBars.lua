@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- Cast bars of the player, pet, target and focus (retail CastingBarMixin parts, with the classic
+-- Cast bars of the player, pet, target and focus (and, through MirrorTimers, the breath and fatigue bars) (retail CastingBarMixin parts, with the classic
 -- `<name>Icon` style globals as fallbacks). The frame art is held, the bar is taller with the theme
 -- panel, border and flat fill, and the spell name and cast time sit inside it. Blizzard keeps the
 -- player's spell icon hidden but still sets its texture, so an own square icon left of the bar
@@ -199,7 +199,10 @@ end
 Modern.Register{
     key = "castbars",
     label = "Cast bars",
+    addons = { "Blizzard_MirrorTimer" },
     apply = function(skin)
         for _, name in ipairs(FRAMES) do Bar(skin, _G[name]) end
+        Modern.MirrorTimers.Apply(skin)
     end,
+    restore = function() Modern.MirrorTimers.Release() end,
 }

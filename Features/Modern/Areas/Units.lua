@@ -12,6 +12,9 @@ local Modern = ns.Modern
 local FRAMES = {
     { "PlayerFrame", "player", false, true }, { "PetFrame", "pet" }, { "TargetFrame", "target", true },
     { "TargetFrameToT", "targettarget" }, { "FocusFrame", "focus", true },
+    -- BossTargetFrameTemplate is the target frame's.
+    { "Boss1TargetFrame", "boss1", true }, { "Boss2TargetFrame", "boss2", true }, { "Boss3TargetFrame", "boss3", true },
+    { "Boss4TargetFrame", "boss4", true }, { "Boss5TargetFrame", "boss5", true },
 }
 
 -- Places a part can live, relative to the unit frame.

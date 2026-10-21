@@ -1,7 +1,7 @@
 local _, ns = ...
 
 -- Small dialogs of the Forever UI source: the game menu, static popups, the ready check, the stack split, the colour
--- picker and the group loot rolls. They take the dark panel and the shared shapes (a dialog title moves into the
+-- picker, the raid manager panel and the group loot rolls. They take the dark panel and the shared shapes (a dialog title moves into the
 -- header band); popups and loot rolls have no title, so they get no band. Popup text, alert icons, progress bars,
 -- roll buttons, item icons and the timer fill stay Blizzard's. Game menu buttons and popup contents are rebuilt
 -- when they show, so each is walked again then.
@@ -50,6 +50,7 @@ local DIALOGS = {
     { name = "ColorPickerFrame", kind = "dialog" },
     { name = "ReadyCheckListenerFrame", kind = "window" },
     { name = "StackSplitFrame", kind = "panel", extra = Split },
+    { name = "CompactRaidFrameManager", kind = "panel" },
 }
 for index = 1, POPUPS do DIALOGS[#DIALOGS + 1] = { name = "StaticPopup" .. index, kind = "panel" } end
 for index = 1, ROLLS do DIALOGS[#DIALOGS + 1] = { name = "GroupLootFrame" .. index, kind = "panel", extra = Roll } end

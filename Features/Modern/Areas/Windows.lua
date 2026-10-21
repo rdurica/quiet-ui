@@ -59,7 +59,8 @@ Modern.Register{
         "Blizzard_Professions", "Blizzard_AuctionHouseUI", "Blizzard_MailFrame", "Blizzard_FriendsFrame",
         "Blizzard_RaidFrame", "Blizzard_Communities", "Blizzard_GroupFinder_VanillaStyle", "Blizzard_TrainerUI",
         "Blizzard_MacroUI", "Blizzard_InspectUI", "Blizzard_FlightMap", "Blizzard_StableUI", "Blizzard_AddOnList",
-        "Blizzard_TimeManager", "Blizzard_LegacySystem", "Blizzard_GameMenu", "Blizzard_ColorPickerFrame" },
+        "Blizzard_TimeManager", "Blizzard_LegacySystem", "Blizzard_GameMenu", "Blizzard_ColorPickerFrame",
+        "Blizzard_CompactRaidFrames" },
     events = { "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "ITEM_TEXT_READY",
         "LOOT_OPENED", "BAG_UPDATE_DELAYED", "BAG_NEW_ITEMS_UPDATED", "PLAYER_EQUIPMENT_CHANGED" },
     onEvent = function(skin, event)

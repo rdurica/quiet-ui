@@ -10,7 +10,9 @@ local _, ns = ...
 
 local Modern = ns.Modern
 
-local TIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2" }
+-- The queue status panel (the LFG eye's hover panel) and the friends tooltip are tooltip backdrops too.
+local TIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "QueueStatusFrame",
+    "FriendsTooltip" }
 local EDGE, GLOW, GLOW_ALPHA = 2, 64, 0.15
 local skinned = setmetatable({}, { __mode = "k" })    -- tip -> { skin, nine } while the area is applied
 local hooked = setmetatable({}, { __mode = "k" })
