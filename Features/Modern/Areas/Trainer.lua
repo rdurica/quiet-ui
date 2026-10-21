@@ -61,5 +61,5 @@ local function Skin(skin, frame)
 end
 
 function Trainer.Apply(skin, frame)
-    Modern.Shapes.Keep(skin, frame, "trainer", Skin)
+    Modern.Shapes.Keep(skin, frame, "trainer", Skin, OPTIONS)
 end

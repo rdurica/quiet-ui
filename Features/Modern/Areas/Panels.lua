@@ -88,7 +88,7 @@ end
 
 local function Window(skin, def)
     local frame = _G[def.name]
-    local Again = Modern.Shapes.Keep(skin, frame, "panels", Skin(def))
+    local Again = Modern.Shapes.Keep(skin, frame, "panels", Skin(def), { shape = def.shape })
     local child = Again and def.refresh and frame[def.refresh[1]]
     if ns.Usable(child) and not hooked[child] and type(child[def.refresh[2]]) == "function" then
         hooked[child] = true

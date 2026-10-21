@@ -9,8 +9,9 @@ local _, ns = ...
 --
 --   Shapes.Walk(skin, frame, opts)  opts: bare = { [frame] = true } (art held, no fill or border),
 --                                         shape(skin, frame) -> true when the area handled the frame itself
---   Shapes.Watch(root, key, again)  again() runs on root's OnShow and on every list update under it
---   Shapes.Keep(skin, frame, key, fn) fn(skin, frame) now and on every show or list update while applied
+--   Shapes.Watch(root, key, again, list)  again() on root's OnShow, list(box) on every list update under it
+--   Shapes.Keep(skin, frame, key, fn, opts)  fn(skin, frame) now and on every show, a walk of a list when it
+--                                           updates, while applied
 
 local Modern = ns.Modern
 local Shapes = {}
@@ -283,38 +284,43 @@ function Shapes.Walk(skin, frame, opts, depth)
     for _, child in ipairs(Children(frame)) do Shapes.Walk(skin, child, opts, depth + 1) end
 end
 
-local function WatchLists(frame, again, depth)
+local function WatchLists(frame, list, depth)
     if not ns.Usable(frame) or depth > MAX_DEPTH then return end
     local box = rawget(frame, "ScrollBox")
     if ns.Usable(box) and not hooked[box] and type(box.Update) == "function" then
         hooked[box] = true
-        pcall(hooksecurefunc, box, "Update", again)
+        pcall(hooksecurefunc, box, "Update", function() list(box) end)
     end
-    for _, child in ipairs(Children(frame)) do WatchLists(child, again, depth + 1) end
+    for _, child in ipairs(Children(frame)) do WatchLists(child, list, depth + 1) end
 end
 
--- Hooks are set once per session per frame; `again` must do nothing while its area is off.
-function Shapes.Watch(root, key, again)
+-- Hooks are set once per session per frame; `again` and `list` must do nothing while their area is off. A list
+-- updates on every scroll, so it is walked alone (`list(box)`, the whole window again when `list` is omitted).
+function Shapes.Watch(root, key, again, list)
     if not ns.Usable(root) then return end
-    local function Run() ns.Run("modern " .. key, again) end
+    local label = "modern " .. key
+    local function Run() ns.Run(label, again) end
     if not hooked[root] then
         hooked[root] = true
         if type(root.HookScript) == "function" then pcall(root.HookScript, root, "OnShow", Run) end
     end
-    WatchLists(root, Run, 0)
+    WatchLists(root, list and function(box) ns.Run(label, list, box) end or Run, 0)
 end
 
 -- A window skinned by `fn(skin, frame)` now and again whenever it shows or a list under it updates, until its area
 -- is restored. Returns the function that skins it again, for an area's own refill hooks.
-function Shapes.Keep(skin, frame, key, fn)
+function Shapes.Keep(skin, frame, key, fn, opts)
     if not ns.Usable(frame) then return end
-    kept[frame] = { skin = skin, fn = fn }
+    kept[frame] = { skin = skin, fn = fn, opts = opts }
     skin:Remember(frame, "modern kept", function() kept[frame] = nil end)
     fn(skin, frame)
     local function Again()
         local entry = kept[frame]
         if entry then entry.fn(entry.skin, frame) end
     end
-    Shapes.Watch(frame, key, Again)
+    Shapes.Watch(frame, key, Again, function(box)
+        local entry = kept[frame]
+        if entry then Shapes.Walk(entry.skin, box, entry.opts) end
+    end)
     return Again
 end

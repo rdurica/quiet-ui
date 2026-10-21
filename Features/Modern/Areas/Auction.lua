@@ -16,7 +16,6 @@ local SQUARE = { "FavoritesSearchButton", "RefreshButton" }
 -- The ornate frame of an item header (an unnamed texture).
 local HEADER_ATLAS = "auctionhouse-itemheaderframe"
 
-local styled = setmetatable({}, { __mode = "k" })  -- AuctionHouseFrame -> journal while applied
 local bare = setmetatable({}, { __mode = "k" })    -- column header buttons and the money inset: art held, no field
 
 local function IsTexture(obj)
@@ -63,21 +62,14 @@ end
 
 local OPTIONS = { bare = bare, shape = Particular }
 
-local function Walk(frame)
-    local skin = styled[frame]
-    if skin then Modern.Shapes.Walk(skin, frame, OPTIONS) end
-end
-
 function Auction.Apply(skin, frame)
     if not ns.Usable(frame) then return end
-    styled[frame] = skin
-    skin:Remember(frame, "modern auction", function() styled[frame] = nil end)
     Modern.Window(skin, frame)
     Modern.Header(skin, frame)
     -- The money stays bare text, like the bags' money bar.
     if ns.Usable(frame.MoneyFrameInset) then bare[frame.MoneyFrameInset] = true end
     if ns.Usable(frame.MoneyFrameBorder) then Modern.Character.HoldArt(skin, frame.MoneyFrameBorder) end
-    Walk(frame)
-    -- Rows, category buttons and column headers are pooled: the window is walked again when a list updates.
-    Modern.Shapes.Watch(frame, "auction", function() Walk(frame) end)
+    -- Rows, category buttons and column headers are pooled: a list is walked again when it updates.
+    Modern.Shapes.Keep(skin, frame, "auction", function(owner, window) Modern.Shapes.Walk(owner, window, OPTIONS) end,
+        OPTIONS)
 end
