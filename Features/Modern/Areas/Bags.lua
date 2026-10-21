@@ -1,7 +1,7 @@
 local _, ns = ...
 
 -- Bag windows (ContainerFrameN and ContainerFrameCombinedBags): dark chrome with a header band, square slots like the
--- action bars and a flat border in the item's quality colour from common up (the accent for quest
+-- action bars and a flat border in the item's quality colour from uncommon up (the accent for quest
 -- items). The combined bag has a title drag handle; separate bags keep Blizzard
 -- stacking, so they get none.
 
@@ -50,8 +50,8 @@ local function Shown(texture)
     return ns.Usable(texture) and type(texture.IsShown) == "function" and texture:IsShown() and true or false
 end
 
--- Poor (grey) items keep the theme border; common (white) and up are framed, uncommon and up also glow.
-local MIN_QUALITY = 1
+-- Poor (grey) and common (white) items keep the theme border; uncommon and up are framed and glow.
+local MIN_QUALITY = 2
 
 local function Call(func, ...)
     if type(func) ~= "function" then return nil end
@@ -108,7 +108,7 @@ local function SlotColor(button)
     local border = button.IconBorder
     local quality = ItemQuality(button)
     if Shown(button.IconQuestTexture) then return Modern.Theme().accent, true end
-    if quality then return QualityColor(quality), quality > MIN_QUALITY end
+    if quality then return QualityColor(quality), quality >= MIN_QUALITY end
     if Shown(border) and type(border.GetVertexColor) == "function" then
         local r, g, b, a = border:GetVertexColor()
         if type(r) == "number" and not ns.IsSecret(r) then return { r, g, b, a or 1 }, true end

@@ -231,7 +231,7 @@ h.test("An empty slot's wing atlas on the icon is held invisible and an item pla
     B.fill(item, "Interface\\Icons\\ContainerFrame1Item2"); B.empty(slot)
 end)
 
-h.test("Bags colour the border from the item's own quality, common and up; poor items keep the theme border", function(t)
+h.test("Bags colour the border from the item's own quality, uncommon and up; poor and common items keep the theme border", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local bag = setup(ns)
     local WHITE, GREEN, GREY = { 1, 1, 1 }, { 0.12, 1, 0 }, { 0.62, 0.62, 0.62 }
@@ -255,7 +255,7 @@ h.test("Bags colour the border from the item's own quality, common and up; poor 
     W.enable(ns)
     local theme = ns.Modern.Theme().border
     A.ok(B.same(B.border(green), GREEN), "an uncommon item is framed green without IconBorder")
-    A.ok(B.same(B.border(common), WHITE), "a common item is framed white")
+    A.ok(B.same(B.border(common), theme), "a common item keeps the theme border, not white")
     A.ok(B.same(B.border(poor), theme), "a poor item keeps the theme border")
     A.ok(B.same(B.border(empty), theme), "an empty slot keeps the theme border")
     quality[4] = 2
