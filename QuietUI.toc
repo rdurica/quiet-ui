@@ -79,6 +79,7 @@ Features\Modern\Areas\Units.lua
 Features\Modern\Areas\CastBars.lua
 Features\Modern\Areas\WindowChrome.lua
 Features\Modern\Areas\Controls.lua
+Features\Modern\Areas\Shapes.lua
 Features\Modern\Areas\Bags.lua
 Features\Modern\Areas\Character.lua
 Features\Modern\Areas\CharacterLists.lua
@@ -90,6 +91,11 @@ Features\Modern\Areas\Auction.lua
 Features\Modern\Areas\Merchant.lua
 Features\Modern\Areas\Loot.lua
 Features\Modern\Areas\Npc.lua
+Features\Modern\Areas\Mail.lua
+Features\Modern\Areas\Social.lua
+Features\Modern\Areas\Trainer.lua
+Features\Modern\Areas\Panels.lua
+Features\Modern\Areas\Dialogs.lua
 Features\Modern\Areas\Windows.lua
 Features\Modern\Areas\MapBar.lua
 Features\Modern\Areas\QuestLog.lua

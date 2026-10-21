@@ -1,7 +1,7 @@
 local _, ns = ...
 
--- Character, spellbook / talents, professions, auction house, merchant, loot, quest log, bags and the NPC quest,
--- gossip and item text windows. Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
+-- Character, spellbook / talents, professions, auction house, merchant, loot, quest log, bags, the NPC quest,
+-- gossip and item text windows, mail, the social windows, the trainer, the plainer panels and small dialogs. Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
 -- QuestMapFrame lives inside WorldMapFrame and is never made movable or panelled.
 local Modern = ns.Modern
 
@@ -44,6 +44,11 @@ local function Apply(skin)
     Modern.Loot.Apply(skin, _G.LootFrame)
     Modern.Bags.Apply(skin)
     Modern.Npc.Apply(skin)
+    Modern.Mail.Apply(skin)
+    Modern.Social.Apply(skin)
+    Modern.Trainer.Apply(skin, _G.ClassTrainerFrame)
+    Modern.Panels.Apply(skin)
+    Modern.Dialogs.Apply(skin)
 end
 
 Modern.Register{
@@ -51,7 +56,10 @@ Modern.Register{
     label = "Windows",
     apply = Apply,
     addons = { "Blizzard_TalentUI", "Blizzard_PlayerSpells", "Blizzard_SpellBookUI", "Blizzard_QuestUI",
-        "Blizzard_Professions", "Blizzard_AuctionHouseUI" },
+        "Blizzard_Professions", "Blizzard_AuctionHouseUI", "Blizzard_MailFrame", "Blizzard_FriendsFrame",
+        "Blizzard_RaidFrame", "Blizzard_Communities", "Blizzard_GroupFinder_VanillaStyle", "Blizzard_TrainerUI",
+        "Blizzard_MacroUI", "Blizzard_InspectUI", "Blizzard_FlightMap", "Blizzard_StableUI", "Blizzard_AddOnList",
+        "Blizzard_TimeManager", "Blizzard_LegacySystem", "Blizzard_GameMenu", "Blizzard_ColorPickerFrame" },
     events = { "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "ITEM_TEXT_READY",
         "LOOT_OPENED", "BAG_UPDATE_DELAYED", "BAG_NEW_ITEMS_UPDATED", "PLAYER_EQUIPMENT_CHANGED" },
     onEvent = function(skin, event)

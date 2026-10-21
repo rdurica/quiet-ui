@@ -9,14 +9,22 @@ local _, ns = ...
 local Modern = ns.Modern
 
 local TEXTURE_KEYS = { "chrome", "Bg", "Background", "Border", "Portrait", "portrait", "PortraitFrame", "TitleBg",
-    "TopTileStreaks", "InsetBorderTop", "BtnCornerLeft", "BtnCornerRight", "ButtonBottomBorder" }
+    "TopTileStreaks", "InsetBorderTop", "BtnCornerLeft", "BtnCornerRight", "ButtonBottomBorder",
+    -- BasicFrameTemplate(WithInset): the taxi window. Its InsetBg is the taxi map and stays.
+    "TopLeftCorner", "TopRightCorner", "TopBorder", "BotLeftCorner", "BotRightCorner", "BottomBorder", "LeftBorder",
+    "RightBorder", "InsetBorderTopLeft", "InsetBorderTopRight", "InsetBorderBottomLeft",
+    "InsetBorderBottomRight", "InsetBorderBottom", "InsetBorderLeft", "InsetBorderRight" }
+-- DialogHeaderTemplate (game menu, colour picker, raid info) and the two halves behind a static popup.
+local HEADER_KEYS = { "LeftBG", "RightBG", "CenterBG" }
+local POPUP_KEYS = { "Top", "Bottom" }
 local NINE_KEYS = { "art", "Center", "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "TopLeftCorner",
     "TopRightCorner", "BottomLeftCorner", "BottomRightCorner" }
 -- Panel tabs (PanelTabButtonTemplate), the character window's side tabs (common-sidetab art) and the
 -- spellbook's icon tabs (spellbook-Tab-Frame art).
 local TAB_KEYS = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive", "LeftDisabled",
     "MiddleDisabled", "RightDisabled", "Background", "SelectedTexture", "TabGlow", "HighlightTexture",
-    "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow" }
+    "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow", "LeftHighlight", "MiddleHighlight",
+    "RightHighlight" }
 -- The art Blizzard shows on the selected tab, first match wins.
 local SELECTED_KEYS = { "SquareBackgroundActive", "LeftActive", "SelectedTexture" }
 
@@ -63,6 +71,13 @@ function Modern.WindowChrome(skin, frame)
     HoldKeys(skin, frame, TEXTURE_KEYS)
     if not IsTexture(frame.Bg) then HoldKeys(skin, frame.Bg, FLAT_KEYS) end
     Slice(skin, frame.NineSlice)
+    -- DialogBorderTemplate: a nine-piece border frame with its own Bg.
+    if ns.Usable(frame.Border) and not IsTexture(frame.Border) then
+        Slice(skin, frame.Border)
+        HoldKeys(skin, frame.Border, { "Bg" })
+    end
+    HoldKeys(skin, frame.Header, HEADER_KEYS)
+    if ns.Usable(frame.BG) and not IsTexture(frame.BG) then HoldKeys(skin, frame.BG, POPUP_KEYS) end
     Inset(skin, frame.Inset)
     Inset(skin, frame.InsetRight)    -- the character window's stats pane
     local container = frame.PortraitContainer
@@ -88,6 +103,7 @@ function Modern.TabChrome(skin, tab)
     HoldKeys(skin, tab, TAB_KEYS)
     skin:Panel(tab)
     TabBorder(skin, tab)
+    Modern.Shapes.Hover(skin, tab)
     tabs[tab] = skin
     skin:Remember(tab, "modern tab", function() tabs[tab] = nil end)
     if hooked[tab] then return end
@@ -286,6 +302,25 @@ function Modern.Header(skin, frame)
     rule:SetColorTexture(theme.accent[1], theme.accent[2], theme.accent[3], 0.6)
     band:Show()
     rule:Show()
+end
+
+-- DialogHeaderTemplate floats its title over the top edge; the title moves down into the header band.
+local function DialogTitle(skin, frame)
+    local header = ns.Usable(frame) and frame.Header
+    local title = ns.Usable(header) and (header.Text or header.TitleText)
+    if not ns.Usable(title) or type(title.ClearAllPoints) ~= "function" then return end
+    -- The journal remembers Blizzard's points on the first call; the title is then anchored afresh.
+    skin:Set(title, "SetPoint", "TOP", frame, "TOP", 0, -6)
+    title:ClearAllPoints()
+    title:SetPoint("TOP", frame, "TOP", 0, -6)
+end
+
+-- A dialog window (DialogBorderTemplate, DialogHeaderTemplate): the dark window with its title in the header band.
+function Modern.Dialog(skin, frame)
+    if not ns.Usable(frame) then return end
+    Modern.Window(skin, frame)
+    Modern.Header(skin, frame)
+    DialogTitle(skin, frame)
 end
 
 -- A window: dark fill lit towards the top and a quiet outline, Blizzard chrome held, optionally a title drag

@@ -86,10 +86,25 @@ function Modern.Checkbox(skin, button)
     Follow(button, { "SetChecked", "Enable", "Disable", "SetEnabled" }, PaintCheck)
 end
 
--- A CheckButton with a label; icon toggles (the character sidebar tabs) are CheckButtons without one.
-local function IsCheckbox(frame)
+local function ArtName(button, getter)
+    if type(button[getter]) ~= "function" then return nil end
+    local ok, texture = pcall(button[getter], button)
+    if not ok or not ns.Usable(texture) then return nil end
+    for _, read in ipairs({ "GetAtlas", "GetTexture" }) do
+        if type(texture[read]) == "function" then
+            local okName, name = pcall(texture[read], texture)
+            if okName and type(name) == "string" then return name:lower() end
+        end
+    end
+end
+
+-- A CheckButton with a label, or one wearing Blizzard's checkbox art (the group finder's role and activity boxes);
+-- icon toggles (the character sidebar tabs, side tabs) are CheckButtons with neither.
+function Modern.IsCheckbox(frame)
     if type(frame.GetObjectType) ~= "function" or frame:GetObjectType() ~= "CheckButton" then return false end
-    return (frame.Text or frame.text or frame.Label) ~= nil
+    if (frame.Text or frame.text or frame.Label) ~= nil then return true end
+    local name = ArtName(frame, "GetNormalTexture")
+    return name ~= nil and name:find("checkbox", 1, true) ~= nil
 end
 
 -- Every checkbox under a window, scanned once per apply.
@@ -99,7 +114,7 @@ function Modern.Checkboxes(skin, frame, depth)
     if depth == 0 and not skin:Remember(frame, "modern checkbox scan", function() end) then return end
     for _, child in ipairs({ frame:GetChildren() }) do
         if ns.Usable(child) then
-            if IsCheckbox(child) then Modern.Checkbox(skin, child) end
+            if Modern.IsCheckbox(child) then Modern.Checkbox(skin, child) end
             Modern.Checkboxes(skin, child, depth + 1)
         end
     end
@@ -123,9 +138,18 @@ local function PaintArrow(button)
     end
 end
 
+local ARROW_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
+
 local function Arrow(skin, button, up)
     if not ns.Usable(button) or type(button.CreateTexture) ~= "function" then return end
     if ns.Usable(button.Texture) and type(button.Texture.SetAlpha) == "function" then skin:Hold(button.Texture) end
+    -- The old slider bar's arrows carry their art as button textures.
+    for _, getter in ipairs(ARROW_ART) do
+        if type(button[getter]) == "function" then
+            local ok, texture = pcall(button[getter], button)
+            if ok and ns.Usable(texture) and type(texture.SetAlpha) == "function" then skin:Hold(texture) end
+        end
+    end
     arrows[button] = { skin = skin, up = up }
     skin:Remember(button, "modern scroll arrow", function()
         arrows[button] = nil
@@ -140,6 +164,28 @@ function Modern.ScrollArrows(skin, bar)
     if not ns.Usable(bar) then return end
     Arrow(skin, bar.Back, true)
     Arrow(skin, bar.Forward, false)
+end
+
+-- UIPanelScrollBarTemplate (a Slider): the up and down buttons become the same chevrons, the knob a flat bar in the
+-- border colour that follows it.
+function Modern.SliderBar(skin, bar)
+    if not ns.Usable(bar) then return end
+    Arrow(skin, bar.ScrollUpButton, true)
+    Arrow(skin, bar.ScrollDownButton, false)
+    local knob = bar.ThumbTexture
+    if not ns.Usable(knob) and type(bar.GetThumbTexture) == "function" then knob = bar:GetThumbTexture() end
+    if not ns.Usable(knob) or type(knob.SetAlpha) ~= "function" or type(bar.CreateTexture) ~= "function" then return end
+    skin:Hold(knob)
+    local fill = skin:Own(bar, "knob", function()
+        local texture = bar:CreateTexture(nil, "OVERLAY")
+        texture:SetPoint("TOPLEFT", knob, "TOPLEFT", 5, -2)
+        texture:SetPoint("BOTTOMRIGHT", knob, "BOTTOMRIGHT", -5, 2)
+        return texture
+    end)
+    if fill then
+        fill:SetColorTexture(unpack(Modern.Theme().border))
+        fill:Show()
+    end
 end
 
 -- Expanded (minus) or collapsed (plus) from an atlas or file name; nil when the name says neither.
