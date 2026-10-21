@@ -25,11 +25,6 @@ function ns.Settings.ModernOpacity()
     return OPACITY[Stored().opacity] or 0.75
 end
 
--- Missing means on. Only an explicit false turns class colours off.
-function ns.Settings.ModernClassColors()
-    return Stored().classColors ~= false
-end
-
 -- Missing means on while the XP and reputation area is on. Only an explicit false turns it off.
 function ns.Settings.ModernXPGain()
     return ns.Settings.ModernArea("status") and Stored().xpGain ~= false

@@ -1,5 +1,5 @@
 -- Modern unit frames: a grey health fill, power type colours after Blizzard updates, and names in their class
--- or reaction colour while class colours are on.
+-- or reaction colour.
 local h = ...
 local U = h.lib("modern-units")
 
@@ -37,7 +37,7 @@ h.test("every health fill is the quiet grey, also after Blizzard recolours or re
     A.deep({ U.rgb(health) }, GREY, "grey after Blizzard retextures")
 end)
 
-h.test("class colours on: a player target's name takes its class colour, an NPC's its reaction colour", function(t)
+h.test("a player target's name takes its class colour, an NPC's its reaction colour", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local frames = setup(t)
     local name = frames[3].Name
@@ -51,9 +51,7 @@ h.test("class colours on: a player target's name takes its class colour, an NPC'
     A.alpha(frames[1].Name, 0, "the player's own name stays held")
     QuietUICharDB.modernize.classColors = false
     ns.Modern.Apply()
-    A.deep(rgb(name), { 1, 0.82, 0 }, "class colours off: Blizzard's colour")
-    QuietUICharDB.modernize.classColors = nil
-    ns.Modern.Apply()
+    A.deep(rgb(name), { 0.8, 0.1, 0.1 }, "a stored classColors false from before is ignored")
     ns.Modern.Restore()
     A.deep(rgb(name), { 1, 0.82, 0 }, "restore: Blizzard's colour")
 end)

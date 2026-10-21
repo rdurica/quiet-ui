@@ -22,13 +22,12 @@ local function RangeKindText(kind)
     return "Unfriendly"
 end
 
--- Theme, Background, Class colours and the areas show only while Modernize is checked.
+-- Theme, Background and the areas show only while Modernize is checked.
 function Setup.PaintModern(frame)
     Setup.PaintBox(frame.modernize.box, draft.modernize)
     local name = draft.modernTheme or "dark"
     frame.modernTheme.value:SetText(name:sub(1, 1):upper() .. name:sub(2))
     frame.modernOpacity.value:SetText(draft.modernOpacity .. "%")
-    Setup.PaintBox(frame.modernColors.box, draft.modernClassColors)
     for _, row in ipairs(frame.modernAreas) do
         Setup.PaintBox(row.button.box, draft.modernAreas[row.key] ~= false)
     end

@@ -202,8 +202,7 @@ local function RarityColour(unit)
     return color
 end
 
--- With class colours on, the name takes its class or reaction colour; otherwise, or for a secret identity,
--- Blizzard's colour, read once per apply cycle.
+-- The name takes its class or reaction colour; for a secret identity Blizzard's colour, read once per apply cycle.
 local base = setmetatable({}, { __mode = "k" })
 local function Name(skin, label, unit)
     if not ns.Usable(label) or type(label.SetTextColor) ~= "function" or type(label.GetTextColor) ~= "function" then return end
@@ -214,8 +213,7 @@ local function Name(skin, label, unit)
             base[label] = nil
         end)
     end
-    local r, g, b
-    if ns.Settings.ModernClassColors() then r, g, b = Modern.UnitColour(unit) end
+    local r, g, b = Modern.UnitColour(unit)
     if r and g and b then label:SetTextColor(r, g, b) else label:SetTextColor(unpack(base[label])) end
 end
 

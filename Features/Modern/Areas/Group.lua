@@ -2,7 +2,7 @@ local _, ns = ...
 
 -- Raid frames and raid-style party frames (CompactUnitFrameTemplate, Forever UI source): each member becomes a flat
 -- rectangle (its Edit Mode size, sharp corners) with a thin black edge, a grey health fill over a dark track and a
--- flat power line in Blizzard's power colour; the name takes its class colour when Class colours is on. The group and party border art is held. Role,
+-- flat power line in Blizzard's power colour; the name takes its class colour. The group and party border art is held. Role,
 -- ready check, aura, dispel, aggro and selection marks stay Blizzard's. Members are created as the group grows, so
 -- every frame Blizzard sets up is skinned then; nameplates share the template and are never touched. Health and
 -- unit values are never read; the fill colour is a constant.
@@ -65,12 +65,12 @@ local function Flat(skin, bar)
     bar:SetStatusBarTexture(Modern.Theme().bar)
 end
 
--- With Class colours on the name takes its class or reaction colour; Blizzard's last colour is what comes back.
+-- The name takes its class or reaction colour; Blizzard's last colour is what comes back.
 local function Name(frame)
     local label = tracked[frame] and frame.name
     if not ns.Usable(label) or type(label.SetVertexColor) ~= "function" or busy then return end
     local unit = frame.displayedUnit or frame.unit
-    if type(unit) ~= "string" or ns.IsSecret(unit) or not ns.Settings.ModernClassColors() then return end
+    if type(unit) ~= "string" or ns.IsSecret(unit) then return end
     local r, g, b = Modern.UnitColour(unit)
     if not r then return end
     if type(label.GetVertexColor) == "function" then names[label] = { label:GetVertexColor() } end

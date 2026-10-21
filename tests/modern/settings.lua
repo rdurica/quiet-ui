@@ -36,16 +36,6 @@ h.test("ModernOpacity is 0.5, 0.75 or 0.9", function(t)
     QuietUICharDB = { modernize = { opacity = 33 } }; A.near(ns.Settings.ModernOpacity(), 0.75)
 end)
 
-h.test("ModernClassColors defaults to on, off only for an explicit false", function(t)
-    local A, ns = t.assert, t.ns
-    QuietUICharDB = {}
-    A.eq(ns.Settings.ModernClassColors(), true)
-    QuietUICharDB = { modernize = { classColors = false } }
-    A.eq(ns.Settings.ModernClassColors(), false)
-    QuietUICharDB = { modernize = { classColors = true } }
-    A.eq(ns.Settings.ModernClassColors(), true)
-end)
-
 h.test("ModernTheme defaults to dark", function(t)
     QuietUICharDB = {}
     t.assert.eq(t.ns.Settings.ModernTheme(), "dark")
@@ -54,7 +44,7 @@ end)
 h.test("modernize is a preset key: a preset saved on one character applies on another", function(t)
     local A, ns = t.assert, t.ns
     QuietUIDB = {}
-    local modernize = { enabled = true, theme = "dark", opacity = 90, classColors = false, bars = false }
+    local modernize = { enabled = true, theme = "dark", opacity = 90, bars = false }
     QuietUICharDB = { modernize = modernize }
     local id = ns.Settings.SavePreset(nil, "Modern", { layoutName = "Raid", layoutType = 1 }, QuietUICharDB)
     A.deep(ns.Settings.Presets()[id].settings.modernize, modernize, "stored in the preset")

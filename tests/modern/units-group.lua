@@ -98,7 +98,7 @@ h.test("Unit frames skins a raid frame Blizzard sets up after the area was appli
     A.eq(late.background._alpha, 0, "its backdrop is held")
 end)
 
-h.test("Unit frames keeps Blizzard's name colours on raid frames when Class colours is off", function(t)
+h.test("Unit frames ignores a classColors false stored before the option was removed", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     U.installColours(mock)
     UnitIsPlayer = function() return true end
@@ -106,7 +106,7 @@ h.test("Unit frames keeps Blizzard's name colours on raid frames when Class colo
     local _, first = party()
     QuietUICharDB = { modernize = { enabled = true, classColors = false } }
     ns.Modern.Apply()
-    A.eq(first.name._vertex[1], 1, "the name keeps Blizzard's colour")
+    A.ok(first.name._vertex[1] ~= 1, "the name takes its class colour")
     A.eq(health(first)[1], FILL, "the fill is grey either way")
 end)
 

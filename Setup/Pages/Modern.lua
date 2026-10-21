@@ -14,7 +14,7 @@ end
 Setup.Pages.modern = function(widget, modern)
     local left = Setup.Column(modern, 0, Setup.COLUMN_W)
     widget.modernHeader = left:Add(Setup.Section(modern, "Modern",
-        "Modernize gives Blizzard's windows and frames a quiet dark look. Theme and Background set the colours, Class colours tints with your class, and each area can be turned off on its own. Turning Modernize off restores the original look."), 30)
+        "Modernize gives Blizzard's windows and frames a quiet dark look. Theme and Background set the colours, names show their class colour, and each area can be turned off on its own. Turning Modernize off restores the original look."), 30)
     widget.modernize = left:Add(Setup.Choice(modern, "Modernize", Toggle("modernize")))
     widget.modernTheme = left:Add(Setup.Stepper(modern, "Theme", function(sign)
         Setup.NudgeModernTheme(sign)
@@ -22,7 +22,6 @@ Setup.Pages.modern = function(widget, modern)
     widget.modernOpacity = left:Add(Setup.Stepper(modern, "Background", function(sign)
         Setup.NudgeModernOpacity(sign)
     end))
-    widget.modernColors = left:Add(Setup.Choice(modern, "Class colours", Toggle("modernClassColors")))
     left:Gap(6)
     widget.modernResetPositions = left:Add(Setup.Button(modern, "Reset positions", function()
         ns.Modern.ResetPositions()
@@ -32,7 +31,7 @@ Setup.Pages.modern = function(widget, modern)
 
     local right = Setup.Column(modern, Setup.RIGHT_X, Setup.COLUMN_W)
     widget.modernAreaHeader = right:Add(Setup.Section(modern, "Areas"), 30)
-    widget.modernOptions = { widget.modernTheme, widget.modernOpacity, widget.modernColors, widget.modernAreaHeader,
+    widget.modernOptions = { widget.modernTheme, widget.modernOpacity, widget.modernAreaHeader,
         widget.modernXPHeader, widget.modernResetPositions }
     widget.modernAreas = {}
     -- Registration order. The XP area heads its own section on the left.
