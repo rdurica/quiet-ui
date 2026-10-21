@@ -23,8 +23,6 @@ local WIDTH, SIDEBAR, PAD, FOOTER, TAB_H = 940, 184, 28, 60, 34
 local CONTENT_X = SIDEBAR + PAD
 local PAGE_Y = -(Setup.HEADER + 20)
 local BUTTON_Y = 17
--- The sidebar sits a step above the window, the selected tab a step above the sidebar.
-local SIDE_FILL = { 0.08, 0.08, 0.08, 1 }
 
 local function MaxPage()
     local max = 0
@@ -37,21 +35,16 @@ end
 local function TabButton(parent, text, onClick)
     local button = CreateFrame("Button", nil, parent)
     button:SetSize(SIDEBAR - 16, TAB_H)
-    button.fill = Setup.Fill(button, Setup.Colors().strip)
-    button.mark = button:CreateTexture(nil, "ARTWORK")
-    button.mark:SetPoint("TOPLEFT", 0, 0)
-    button.mark:SetPoint("BOTTOMLEFT", 0, 0)
-    button.mark:SetWidth(2)
-    button.mark:SetColorTexture(unpack(Setup.Colors().accent))
+    Setup.Strip(button)
     button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     button.label:SetPoint("LEFT", 14, 0)
     button.label:SetText(text)
-    Setup.Hover(button, 0.08)
+    Setup.Hover(button)
     button:SetScript("OnClick", onClick)
     return button
 end
 
--- The selected tab is lit with an accent mark; the others are plain grey text.
+-- The selected tab is a strip with an accent mark; the others are plain grey text.
 function Setup.PaintTabs(frame)
     for _, tab in ipairs(frame.tabs) do
         if tab.id == frame.page then
@@ -206,12 +199,13 @@ local function CreateSetup()
     Movable(widget)
     EnsureEscape(widget)
 
+    -- The sidebar sinks a step below the panel, like the insets of a Modernize window.
     local side = widget:CreateTexture(nil, "BACKGROUND", nil, -6)
-    side:SetPoint("TOPLEFT", 1, -Setup.HEADER)
+    side:SetPoint("TOPLEFT", 1, -(Setup.HEADER + 1))
     side:SetPoint("BOTTOMLEFT", 1, 1)
     side:SetWidth(SIDEBAR - 1)
-    side:SetColorTexture(unpack(SIDE_FILL))
-    Setup.Rule(widget, { "TOPLEFT", SIDEBAR, -Setup.HEADER }, { "BOTTOMLEFT", SIDEBAR, 1 })
+    side:SetColorTexture(unpack(Setup.Colors().sunk))
+    Setup.Rule(widget, { "TOPLEFT", SIDEBAR, -(Setup.HEADER + 1) }, { "BOTTOMLEFT", SIDEBAR, 1 })
     Setup.Rule(widget, { "BOTTOMLEFT", SIDEBAR, FOOTER }, { "BOTTOMRIGHT", -1, FOOTER })
 
     widget.tabs = {}

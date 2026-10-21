@@ -1,17 +1,23 @@
 local _, ns = ...
 
--- The setup look: Modernize's dark theme on the addon's own frames, whether Modernize is on or not.
+-- The setup look: the same chrome Modernize draws on Blizzard's windows, whether Modernize is on or not.
 -- Edges and fills are textures, so they draw without BackdropTemplate too.
 
 local Setup = ns.Setup
 
-Setup.HEADER = 30
--- Control fill: a step above the window, like an empty bag slot.
-local CONTROL = { 0.1, 0.1, 0.1, 1 }
+-- Modernize's window header height.
+Setup.HEADER = 24
+-- Modernize's hover: a faint white wash inside the edge.
+local HOVER = { 1, 1, 1, 0.07 }
 local MUTED = { 0.65, 0.65, 0.65 }
 
 function Setup.Colors()
     return ns.Modern.Theme()
+end
+
+-- A theme colour at full opacity: the setup keeps its fills opaque whatever the Background setting.
+function Setup.Solid(color)
+    return { color[1], color[2], color[3], 1 }
 end
 
 function Setup.Fill(frame, color, layer, sublevel)
@@ -44,17 +50,18 @@ function Setup.EdgeColor(frame, color)
     for _, line in ipairs(frame._quietEdge or {}) do line:SetColorTexture(unpack(color)) end
 end
 
-function Setup.Hover(frame, alpha)
+function Setup.Hover(frame)
     local highlight = frame:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    local accent = Setup.Colors().accent
-    highlight:SetColorTexture(accent[1], accent[2], accent[3], alpha or 0.12)
+    highlight:SetPoint("TOPLEFT", 1, -1)
+    highlight:SetPoint("BOTTOMRIGHT", -1, 1)
+    highlight:SetColorTexture(unpack(HOVER))
     return highlight
 end
 
--- A button or field: dark fill, thin grey edge, light label; dimmed while disabled.
-function Setup.Control(button)
-    Setup.Fill(button, CONTROL)
+-- A button (panel fill) or a field and checkbox (`fill` = the theme track): thin grey edge, light label; dimmed while
+-- disabled.
+function Setup.Control(button, fill)
+    Setup.Fill(button, Setup.Solid(fill or Setup.Colors().bg))
     Setup.Edge(button)
     if button.label and button.label.SetTextColor then button.label:SetTextColor(unpack(Setup.Colors().text)) end
     if type(button.HookScript) == "function" then
@@ -85,10 +92,12 @@ function Setup.CloseCross(parent, onClick)
     return button
 end
 
--- A window of the setup look: opaque fill, thin edge, a header band with the title and an optional close cross.
+-- A window like Modernize's: opaque fill lit towards the top, quiet outline, a header band with the accent hairline,
+-- the title and an optional close cross.
 function Setup.Window(frame, title, onClose)
-    ns.DialogBackground(frame)
-    Setup.Edge(frame)
+    local theme = Setup.Colors()
+    ns.Modern.Lit(Setup.Fill(frame, Setup.Solid(theme.bg), "BACKGROUND", -8), Setup.Solid(theme.bg), 0.03)
+    Setup.Edge(frame, theme.outline)
     local band = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
     band:SetPoint("TOPLEFT", 1, -1)
     band:SetPoint("TOPRIGHT", -1, -1)
@@ -98,11 +107,21 @@ function Setup.Window(frame, title, onClose)
     rule:SetPoint("TOPLEFT", band, "BOTTOMLEFT", 0, 0)
     rule:SetPoint("TOPRIGHT", band, "BOTTOMRIGHT", 0, 0)
     rule:SetHeight(1)
-    rule:SetColorTexture(unpack(Setup.Colors().border))
+    rule:SetColorTexture(theme.accent[1], theme.accent[2], theme.accent[3], 0.6)
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     frame.title:SetPoint("TOP", 0, -(Setup.HEADER - 12) / 2)
     frame.title:SetText(title)
     if onClose then frame.close = Setup.CloseCross(frame, onClose) end
+end
+
+-- A strip a step above the panel with a 2 px accent edge on the left: Modernize's section header and selected row.
+function Setup.Strip(frame)
+    frame.fill = Setup.Fill(frame, Setup.Colors().strip)
+    frame.mark = frame:CreateTexture(nil, "ARTWORK")
+    frame.mark:SetPoint("TOPLEFT", 0, 0)
+    frame.mark:SetPoint("BOTTOMLEFT", 0, 0)
+    frame.mark:SetWidth(2)
+    frame.mark:SetColorTexture(unpack(Setup.Colors().accent))
 end
 
 -- A 1 px line from `from` to `to` (both { point, x, y }).

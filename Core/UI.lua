@@ -35,16 +35,6 @@ function ns.Backdropped(kind, name, parent, template)
     return CreateFrame(kind, name, parent)
 end
 
--- Dialog chrome shared by the Setup window and the Layout prompt.
-
--- A separate texture keeps every dialog opaque even without BackdropTemplate.
-function ns.DialogBackground(widget)
-    local fill = widget:CreateTexture(nil, "BACKGROUND", nil, -8)
-    fill:SetAllPoints(widget)
-    fill:SetColorTexture(0.05, 0.05, 0.05, 1)
-    return fill
-end
-
 -- Read foreign frames only; their scroll children can out-level the root dialog.
 local function DialogRead(widget, method)
     local ok, value = pcall(function()

@@ -6,7 +6,6 @@ local BASELINE = {
     "ApplyAll",
     "Copy",
     "DB",
-    "DialogBackground",
     "EaseAlpha",
     "EnsureAlphaHook",
     "FocusChanged",

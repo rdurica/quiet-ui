@@ -8,9 +8,9 @@ Setup.Pages.visible = function(widget, visible)
         "Always visible keeps an element on screen. Only on hover overrides its automatic triggers; Glance and Edit Mode still reveal it. With both unchecked, its usual rules apply. Party and raid frames use their own exploration fade rules.")
     widget.always:SetPoint("TOPLEFT", visible, "TOPLEFT", 0, 0)
     local alwaysHeader = Setup.ColumnLabel(visible, "Always visible")
-    alwaysHeader:SetPoint("TOP", visible, "TOPLEFT", Setup.ALWAYS_X, -2)
+    alwaysHeader:SetPoint("TOP", visible, "TOPLEFT", Setup.ALWAYS_X, -6)
     local hoverHeader = Setup.ColumnLabel(visible, "Only on hover")
-    hoverHeader:SetPoint("TOP", visible, "TOPLEFT", Setup.HOVER_X, -2)
+    hoverHeader:SetPoint("TOP", visible, "TOPLEFT", Setup.HOVER_X, -6)
     widget.rows = {}
     local y = -30
     for index, info in ipairs(Setup.ROWS) do

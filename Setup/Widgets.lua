@@ -47,17 +47,23 @@ function Setup.Selector(parent, text, onClick)
     return button
 end
 
--- A square box with an accent fill when checked. The row around it takes the click.
+-- Modernize's checkbox: a dark square with an accent mark when checked. The row around it takes the click and turns
+-- the box edge accent under the mouse.
 function Setup.CheckMark(parent)
     local box = CreateFrame("CheckButton", nil, parent)
     box:SetSize(16, 16)
     box:EnableMouse(false)
-    Setup.Control(box)
+    Setup.Control(box, Setup.Colors().track)
     box.check = box:CreateTexture(nil, "ARTWORK")
     box.check:SetPoint("TOPLEFT", 4, -4)
     box.check:SetPoint("BOTTOMRIGHT", -4, 4)
     box.check:SetColorTexture(unpack(Setup.Colors().accent))
     box.check:Hide()
+    parent:HookScript("OnEnter", function(self)
+        local enabled = type(self.IsEnabled) ~= "function" or self:IsEnabled()
+        if enabled then Setup.EdgeColor(box, Setup.Colors().accent) end
+    end)
+    parent:HookScript("OnLeave", function() Setup.EdgeColor(box, Setup.Colors().border) end)
     return box
 end
 
@@ -71,7 +77,6 @@ function Setup.Choice(parent, text, onClick)
     button.label:SetPoint("RIGHT", 0, 0)
     button.label:SetJustifyH("LEFT")
     button.label:SetText(text)
-    Setup.Hover(button, 0.08)
     button:SetScript("OnClick", onClick)
     return button
 end
@@ -88,14 +93,29 @@ function Setup.Mini(parent, text, onClick)
     return button
 end
 
+-- Modernize's scroll arrow: a bare accent chevron, light under the mouse.
+function Setup.Arrow(parent, up, onClick)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(24, 24)
+    local angle = up and 45 or -45
+    local lines = { ns.Modern.GlyphLine(button, 6, 2, -2, 0, angle), ns.Modern.GlyphLine(button, 6, 2, 2, 0, -angle) }
+    local function Paint(color)
+        for _, line in ipairs(lines) do line:SetColorTexture(unpack(color)) end
+    end
+    Paint(Setup.Colors().accent)
+    button:SetScript("OnEnter", function() Paint(Setup.Colors().text) end)
+    button:SetScript("OnLeave", function() Paint(Setup.Colors().accent) end)
+    button:SetScript("OnClick", onClick)
+    return button
+end
+
 function Setup.TargetBox(parent, onClick)
     local button = CreateFrame("Button", nil, parent)
     button:SetSize(44, 24)
     button.box = Setup.CheckMark(button)
     button.box:SetPoint("CENTER")
-    Setup.Hover(button, 0.08)
     button:SetScript("OnClick", onClick)
-    button:SetScript("OnEnter", function(self)
+    button:HookScript("OnEnter", function(self)
         if self.mode and GameTooltip then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText("Controlled by Group " .. self.group .. ": "
@@ -103,7 +123,7 @@ function Setup.TargetBox(parent, onClick)
             GameTooltip:Show()
         end
     end)
-    button:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    button:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     if button.SetMotionScriptsWhileDisabled then button:SetMotionScriptsWhileDisabled(true) end
     return button
 end
@@ -134,7 +154,7 @@ function Setup.Field(parent, width, letters)
     box:SetMaxLetters(letters)
     box:SetTextInsets(8, 8, 0, 0)
     box:SetJustifyH("LEFT")
-    Setup.Control(box)
+    Setup.Control(box, Setup.Colors().track)
     box:SetScript("OnEditFocusGained", function(self) Setup.EdgeColor(self, Setup.Colors().accent) end)
     box:SetScript("OnEditFocusLost", function(self) Setup.EdgeColor(self, Setup.Colors().border) end)
     box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -208,19 +228,17 @@ function Setup.Help(parent, label, title, text)
     return button
 end
 
--- An accent title over a thin rule that spans the row.
+-- Modernize's section header: an accent title on a strip that spans the row. Column titles may sit on it.
+Setup.SECTION = 22
+
 function Setup.Section(parent, text, help)
     local row = CreateFrame("Frame", nil, parent)
-    row:SetSize(Setup.CONTENT_W, 24)
+    row:SetSize(Setup.CONTENT_W, Setup.SECTION)
+    Setup.Strip(row)
     row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    row.label:SetPoint("TOPLEFT", 0, 0)
+    row.label:SetPoint("LEFT", 10, 0)
     row.label:SetText(text)
     row.label:SetTextColor(unpack(Setup.Colors().accent))
-    row.rule = row:CreateTexture(nil, "BORDER")
-    row.rule:SetPoint("TOPLEFT", 0, -19)
-    row.rule:SetPoint("TOPRIGHT", 0, -19)
-    row.rule:SetHeight(1)
-    row.rule:SetColorTexture(unpack(Setup.Colors().border))
     if help then row.help = Setup.Help(row, row.label, text, help) end
     return row
 end
@@ -252,8 +270,8 @@ function Setup.SelectMenu(owner, key, anchor, entries)
         menu = CreateFrame("Frame", nil, owner)
         menu:SetFrameStrata("DIALOG")
         menu:SetFrameLevel(owner:GetFrameLevel() + 60)
-        ns.DialogBackground(menu)
-        Setup.Edge(menu)
+        Setup.Fill(menu, Setup.Solid(Setup.Colors().bg), "BACKGROUND", -8)
+        Setup.Edge(menu, Setup.Colors().outline)
         menu:EnableMouse(true)
         menu.items = {}
         owner[key] = menu
@@ -289,31 +307,22 @@ function Setup.SelectMenu(owner, key, anchor, entries)
             item.label:SetPoint("LEFT", 18, 0)
             item.label:SetPoint("RIGHT", -8, 0)
             item.label:SetJustifyH("LEFT")
-            item.selected = item:CreateTexture(nil, "BACKGROUND")
-            item.selected:SetAllPoints()
-            item.selected:SetColorTexture(0.95, 0.75, 0.25, 0.12)
-            item.mark = item:CreateTexture(nil, "ARTWORK")
-            item.mark:SetSize(2, 14)
-            item.mark:SetPoint("LEFT", 6, 0)
-            item.mark:SetColorTexture(0.95, 0.75, 0.25, 1)
-            local hover = item:CreateTexture(nil, "HIGHLIGHT")
-            hover:SetAllPoints()
-            hover:SetColorTexture(0.95, 0.75, 0.25, 0.16)
+            -- The chosen entry is a strip, like the selected tab.
+            Setup.Strip(item)
+            Setup.Hover(item)
             menu.items[index] = item
         end
         item:SetSize(width - 12, 26)
         item:ClearAllPoints()
         item:SetPoint("TOPLEFT", 0, -(index - 1) * 28)
         Setup.ButtonText(item, entry.name)
+        local theme = Setup.Colors()
         if entry.selected then
-            item.selected:Show()
-            item.mark:Show()
-            item.label:SetTextColor(0.95, 0.75, 0.25)
+            item.fill:Show(); item.mark:Show()
         else
-            item.selected:Hide()
-            item.mark:Hide()
-            item.label:SetTextColor(0.9, 0.9, 0.9)
+            item.fill:Hide(); item.mark:Hide()
         end
+        item.label:SetTextColor(unpack(entry.selected and theme.accent or theme.text))
         item:SetScript("OnClick", function() menu:Hide(); entry.select() end)
         item:Show()
     end

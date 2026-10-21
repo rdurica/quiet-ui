@@ -188,7 +188,8 @@ end
 
 local function opaque(frame)
     for _, texture in ipairs(frame.textures) do
-        if texture.shown and same(texture.color, 0.05, 0.05, 0.05, 1)
+        local color = texture.color
+        if texture.shown and color and color[4] == 1 and color[1] <= 0.15 and color[2] <= 0.15 and color[3] <= 0.15
             and texture.alpha == 1 and (texture.allPoints or #texture.points >= 2)
             and (texture.layer == 'BACKGROUND' or texture.layer == 'BORDER') then return texture end
     end
