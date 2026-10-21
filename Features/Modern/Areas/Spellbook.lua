@@ -1,10 +1,10 @@
 local _, ns = ...
 
--- The spellbook page of the Forever 12.0 PlayerSpellsFrame and the talents footer. The book pages, category
+-- The spellbook page of the Forever 12.0 PlayerSpellsFrame (the talents page is Talents). The book pages, category
 -- banners and the ornate spell icon frames are held; spells get the square slot of the bags (dark fill, thin
 -- border, square icon), category titles a thin rule, search boxes and panel buttons a flat field. The dark ink
 -- of names and titles, made for the parchment page, becomes light text of the same hue. Spell icons,
--- names, the paging arrows and the talent tree itself stay. Spell items are pooled per page, so they are
+-- names and the paging arrows stay. Spell items are pooled per page, so they are
 -- skinned again when the book shows or turns a page.
 
 local Modern = ns.Modern
@@ -14,7 +14,6 @@ Modern.Spellbook = Spellbook
 local PAGES = { "BookBGHalved", "BookBGLeft", "BookBGRight", "BookCornerFlipbook" }
 local ICON_ART = { "Border", "BorderSheen", "BorderShadow", "TrainableShadow", "TrainableBackplate" }
 local PAGE_METHODS = { "DisplayViewsForCurrentPage", "SetCurrentPage", "UpdatePages" }
-local TALENT_BUTTONS = { "ApplyButton", "InspectCopyButton" }
 
 local TEXT_KEYS = { "Name", "SubName", "RequiredLevel" }
 
@@ -86,15 +85,6 @@ local function Book(skin, book)
     Modern.Field(skin, book.SearchBox)
 end
 
--- The talents footer: search box and the red panel buttons become flat fields; the tree is content.
-local function Talents(skin, talents)
-    Modern.Field(skin, talents.SearchBox)
-    for _, key in ipairs(TALENT_BUTTONS) do Modern.Field(skin, talents[key]) end
-    local spec = talents.ActiveSpec
-    if ns.Usable(spec) then Modern.Field(skin, spec.ActivateButton) end
-    Modern.TabSystemChrome(skin, talents)
-end
-
 local function Watch(frame)
     if hooked[frame] then return end
     hooked[frame] = true
@@ -116,7 +106,6 @@ function Spellbook.Apply(skin, frame)
     styled[frame] = skin
     skin:Remember(frame, "modern spellbook", function() styled[frame] = nil end)
     if ns.Usable(frame.SpellBookFrame) then Book(skin, frame.SpellBookFrame) end
-    if ns.Usable(frame.TalentsFrame) then Talents(skin, frame.TalentsFrame) end
     Refresh(skin, frame)
     Watch(frame)
 end
