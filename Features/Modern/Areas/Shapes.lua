@@ -11,7 +11,8 @@ local _, ns = ...
 --                                         shape(skin, frame) -> true when the area handled the frame itself
 --   Shapes.Watch(root, key, again, list)  again() on root's OnShow, list(box) on every list update under it
 --   Shapes.Keep(skin, frame, key, fn, opts)  fn(skin, frame) now and on every show, a walk of a list when it
---                                           updates, while applied
+--                                           updates (opts.list(skin, box) instead, none with
+--                                           opts.walk = false), while applied
 
 local Modern = ns.Modern
 local Shapes = {}
@@ -320,7 +321,12 @@ function Shapes.Keep(skin, frame, key, fn, opts)
     end
     Shapes.Watch(frame, key, Again, function(box)
         local entry = kept[frame]
-        if entry then Shapes.Walk(entry.skin, box, entry.opts) end
+        local opts = entry and entry.opts or {}
+        if opts.list then
+            opts.list(entry.skin, box)
+        elseif entry and opts.walk ~= false then
+            Shapes.Walk(entry.skin, box, opts)
+        end
     end)
     return Again
 end

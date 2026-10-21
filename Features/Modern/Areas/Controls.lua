@@ -18,7 +18,8 @@ local SIGN = 10
 
 local checks = setmetatable({}, { __mode = "k" })  -- checkbox -> journal while applied
 local expanders = setmetatable({}, { __mode = "k" }) -- icon or button -> { skin, owner, expanded } while applied
-local arrows = setmetatable({}, { __mode = "k" })  -- arrow button -> { skin, up } while applied
+local arrows = setmetatable({}, { __mode = "k" })  -- arrow button -> { skin, dir } while applied
+local sliders = setmetatable({}, { __mode = "k" }) -- value slider -> journal while applied
 local hovered = setmetatable({}, { __mode = "k" })
 local hooked = setmetatable({}, { __mode = "k" })
 
@@ -120,9 +121,13 @@ function Modern.Checkboxes(skin, frame, depth)
     end
 end
 
--- Two strokes meeting at the tip, pointing up or down.
-local function ChevronParts(button, up)
-    local angle = up and 45 or -45
+-- Two strokes meeting at the tip, pointing `dir` (up, down, left, right).
+local function ChevronParts(button, dir)
+    if dir == "left" or dir == "right" then
+        local angle = dir == "left" and 45 or -45
+        return { Modern.GlyphLine(button, STROKE, 2, 0, 2, angle), Modern.GlyphLine(button, STROKE, 2, 0, -2, -angle) }
+    end
+    local angle = dir == "up" and 45 or -45
     return { Modern.GlyphLine(button, STROKE, 2, -2, 0, angle), Modern.GlyphLine(button, STROKE, 2, 2, 0, -angle) }
 end
 
@@ -130,7 +135,7 @@ local function PaintArrow(button)
     local state = arrows[button]
     if not state then return end
     local theme = Modern.Theme()
-    local parts = state.skin:Own(button, "scroll arrow", function() return ChevronParts(button, state.up) end)
+    local parts = state.skin:Own(button, "scroll arrow", function() return ChevronParts(button, state.dir) end)
     local color = not Enabled(button) and theme.wellEdge or hovered[button] and theme.text or theme.accent
     for _, line in ipairs(parts) do
         line:SetColorTexture(unpack(color))
@@ -140,7 +145,7 @@ end
 
 local ARROW_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 
-local function Arrow(skin, button, up)
+local function Arrow(skin, button, dir)
     if not ns.Usable(button) or type(button.CreateTexture) ~= "function" then return end
     if ns.Usable(button.Texture) and type(button.Texture.SetAlpha) == "function" then skin:Hold(button.Texture) end
     -- The old slider bar's arrows carry their art as button textures.
@@ -150,7 +155,7 @@ local function Arrow(skin, button, up)
             if ok and ns.Usable(texture) and type(texture.SetAlpha) == "function" then skin:Hold(texture) end
         end
     end
-    arrows[button] = { skin = skin, up = up }
+    arrows[button] = { skin = skin, dir = dir }
     skin:Remember(button, "modern scroll arrow", function()
         arrows[button] = nil
         hovered[button] = nil
@@ -162,16 +167,16 @@ end
 -- The Back (up) and Forward (down) arrows of a minimal scroll bar.
 function Modern.ScrollArrows(skin, bar)
     if not ns.Usable(bar) then return end
-    Arrow(skin, bar.Back, true)
-    Arrow(skin, bar.Forward, false)
+    Arrow(skin, bar.Back, "up")
+    Arrow(skin, bar.Forward, "down")
 end
 
 -- UIPanelScrollBarTemplate (a Slider): the up and down buttons become the same chevrons, the knob a flat bar in the
 -- border colour that follows it.
 function Modern.SliderBar(skin, bar)
     if not ns.Usable(bar) then return end
-    Arrow(skin, bar.ScrollUpButton, true)
-    Arrow(skin, bar.ScrollDownButton, false)
+    Arrow(skin, bar.ScrollUpButton, "up")
+    Arrow(skin, bar.ScrollDownButton, "down")
     local knob = bar.ThumbTexture
     if not ns.Usable(knob) and type(bar.GetThumbTexture) == "function" then knob = bar:GetThumbTexture() end
     if not ns.Usable(knob) or type(knob.SetAlpha) ~= "function" or type(bar.CreateTexture) ~= "function" then return end
@@ -185,6 +190,91 @@ function Modern.SliderBar(skin, bar)
     if fill then
         fill:SetColorTexture(unpack(Modern.Theme().border))
         fill:Show()
+    end
+end
+
+local TRACK, KNOB_W, KNOB_H = 4, 6, 14
+
+local function Held(skin, frame)
+    if type(frame.GetRegions) ~= "function" then return end
+    for _, region in ipairs({ frame:GetRegions() }) do
+        if ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
+            and not skin:Owns(frame, region) then
+            skin:Hold(region)
+        end
+    end
+end
+
+local function PaintSlider(slider)
+    local skin = sliders[slider]
+    if not skin then return end
+    local theme = Modern.Theme()
+    local track, fill, knob = unpack(skin:Own(slider, "value slider", function() end))
+    local on = Enabled(slider)
+    track:SetColorTexture(unpack(theme.track))
+    fill:SetColorTexture(unpack(on and theme.accent or theme.wellEdge))
+    fill:SetAlpha(0.5)
+    knob:SetColorTexture(unpack(not on and theme.wellEdge or hovered[slider] and theme.text or theme.accent))
+    for _, part in ipairs({ track, fill, knob }) do part:Show() end
+end
+
+-- MinimalSliderWithSteppersTemplate (the settings list): the bar becomes a thin dark track filled in accent up to
+-- a flat knob, the Back and Forward steppers bare left and right chevrons. The value text stays.
+function Modern.ValueSlider(skin, frame)
+    local slider = ns.Usable(frame) and frame.Slider
+    if not ns.Usable(slider) or type(slider.CreateTexture) ~= "function" then return end
+    local thumb = slider.Thumb
+    if not ns.Usable(thumb) and type(slider.GetThumbTexture) == "function" then thumb = slider:GetThumbTexture() end
+    if not ns.Usable(thumb) then return end
+    Held(skin, slider)
+    for _, key in ipairs({ "Back", "Forward" }) do
+        if ns.Usable(frame[key]) then Held(skin, frame[key]) end
+    end
+    skin:Own(slider, "value slider", function()
+        local track = slider:CreateTexture(nil, "ARTWORK", nil, 1)
+        track:SetHeight(TRACK)
+        track:SetPoint("LEFT", slider, "LEFT", 0, 0)
+        track:SetPoint("RIGHT", slider, "RIGHT", 0, 0)
+        local fill = slider:CreateTexture(nil, "ARTWORK", nil, 2)
+        fill:SetHeight(TRACK)
+        fill:SetPoint("LEFT", track, "LEFT", 0, 0)
+        fill:SetPoint("RIGHT", thumb, "CENTER", 0, 0)
+        local knob = slider:CreateTexture(nil, "OVERLAY", nil, 7)
+        knob:SetSize(KNOB_W, KNOB_H)
+        knob:SetPoint("CENTER", thumb, "CENTER", 0, 0)
+        return { track, fill, knob }
+    end)
+    sliders[slider] = skin
+    skin:Remember(slider, "modern value slider", function()
+        sliders[slider] = nil
+        hovered[slider] = nil
+    end)
+    PaintSlider(slider)
+    Follow(slider, { "Enable", "Disable", "SetEnabled" }, PaintSlider)
+    Arrow(skin, frame.Back, "left")
+    Arrow(skin, frame.Forward, "right")
+end
+
+local function IsValueSlider(frame)
+    local slider = rawget(frame, "Slider")
+    return ns.Usable(slider) and type(slider.GetObjectType) == "function" and slider:GetObjectType() == "Slider"
+        and ns.Usable(rawget(frame, "Back")) and ns.Usable(rawget(frame, "Forward"))
+end
+
+-- Checkboxes and value sliders under `frame`, every call: for lists whose pooled rows are refilled.
+function Modern.ListControls(skin, frame, depth)
+    depth = depth or 0
+    if depth > DEPTH or not ns.Usable(frame) or type(frame.GetChildren) ~= "function" then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if ns.Usable(child) then
+            if Modern.IsCheckbox(child) then
+                Modern.Checkbox(skin, child)
+            elseif IsValueSlider(child) then
+                Modern.ValueSlider(skin, child)
+            else
+                Modern.ListControls(skin, child, depth + 1)
+            end
+        end
     end
 end
 

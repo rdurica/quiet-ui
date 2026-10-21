@@ -128,6 +128,24 @@ for _, helper in ipairs({ "Border", "Panel" }) do
     end)
 end
 
+h.test("Border lines are at least one physical pixel in a scaled-down window", function(t)
+    local A, mock = t.assert, t.mock
+    local skin = t.ns.Modern.Skin("zz_a")
+    local _, frame = tex()
+    -- At a 0.8 scale one physical pixel is 1.25 units.
+    PixelUtil = { GetNearestPixelSize = function(size, scale, minimum) return 1.25 end }
+    local before = #mock.frames
+    skin:Border(frame)
+    PixelUtil = nil
+    local own = created(mock, before)
+    A.eq(#own, 4, "four edges")
+    for _, line in ipairs(own) do
+        A.eq(math.min(line._w or 99, line._h or 99), 1.25, "each edge is one physical pixel thick")
+        A.eq(line._snap, false, "each edge is off the pixel grid, so a fractional position cannot drop it")
+        A.eq(line._snapBias, 0, "and has no texel snapping bias")
+    end
+end)
+
 h.test("Button flattens a button and Undo restores its textures", function(t)
     local A, mock = t.assert, t.mock
     local skin = t.ns.Modern.Skin("zz_a")

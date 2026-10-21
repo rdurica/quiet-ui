@@ -182,7 +182,12 @@ function Modern.GlyphButton(skin, button, key, build, hover)
 end
 
 -- PortraitFrameTemplate / ButtonFrameTemplate name it CloseButton, ScrollingFlatPanelTemplate ClosePanelButton; the world map keeps it on BorderFrame only,
--- so a missing candidate must not end the search.
+-- so a missing candidate must not end the search. A labelled one is a text button (the settings panel's Close).
+local function Labelled(button)
+    local text = type(button.GetText) == "function" and button:GetText()
+    return type(text) == "string" and text ~= ""
+end
+
 local function FindClose(frame)
     local name = type(frame.GetName) == "function" and frame:GetName()
     local border = ns.Usable(frame.BorderFrame) and frame.BorderFrame or nil
@@ -190,7 +195,9 @@ local function FindClose(frame)
         type(name) == "string" and _G[name .. "CloseButton"] or false }
     for index = 1, #candidates do
         local close = candidates[index]
-        if close and ns.Usable(close) and type(close.CreateTexture) == "function" then return close end
+        if close and ns.Usable(close) and type(close.CreateTexture) == "function" and not Labelled(close) then
+            return close
+        end
     end
 end
 

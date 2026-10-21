@@ -3,9 +3,10 @@ local _, ns = ...
 -- The plainer windows of the Forever UI source, one entry each: the dark window and header band, the shared shapes
 -- for their controls, and the loose art each one adds (named textures in `art`, atlas or file names in `needles`).
 -- `ink` lightens parchment text, `walk = false` keeps the shapes out of a window whose content is not Blizzard's
--- shared templates (the flight map canvas, the settings list), `map` puts the chrome on BorderFrame, `refresh` names
--- a child and the method that refills its pooled slots (the bank page). Item buttons,
--- models, maps, emblems, icons and texts stay. A window is walked again when it shows or a list updates.
+-- shared templates (the flight map canvas, the settings list), `list(skin, box)` skins a refilled list instead,
+-- `map` puts the chrome on BorderFrame, `refresh` names a child and the method that refills its pooled slots (the
+-- bank page). Item buttons, models, maps, emblems, icons and texts stay. A window is walked again when it shows or
+-- a list updates.
 
 local Modern = ns.Modern
 local Panels = {}
@@ -42,12 +43,13 @@ local function Trade(skin, frame)
     end
 end
 
--- The settings panel's list is Blizzard's own widgets: only the window, its buttons and the search box.
+-- The settings panel: the window, its buttons and search box, and in the list only checkboxes and value sliders.
 local function Settings(skin, frame)
     for _, key in ipairs({ "CloseButton", "ApplyButton" }) do
         if ns.Usable(frame[key]) then Modern.Shapes.Field(skin, frame[key]) end
     end
     if ns.Usable(frame.SearchBox) then Modern.Shapes.Field(skin, frame.SearchBox) end
+    Modern.ListControls(skin, frame)
 end
 
 local WINDOWS = {
@@ -68,7 +70,8 @@ local WINDOWS = {
     { name = "AddonList" },
     { name = "TimeManagerFrame", art = { "TimeManagerGlobe" } },
     { name = "LegacySystemFrame" },
-    { name = "SettingsPanel", needles = { "options_innerframe" }, walk = false, extra = Settings },
+    { name = "SettingsPanel", needles = { "options_innerframe" }, walk = false, extra = Settings,
+        list = function(skin, box) Modern.ListControls(skin, box) end },
 }
 
 local hooked = setmetatable({}, { __mode = "k" })
@@ -88,7 +91,8 @@ end
 
 local function Window(skin, def)
     local frame = _G[def.name]
-    local Again = Modern.Shapes.Keep(skin, frame, "panels", Skin(def), { shape = def.shape })
+    local Again = Modern.Shapes.Keep(skin, frame, "panels", Skin(def),
+        { shape = def.shape, walk = def.walk, list = def.list })
     local child = Again and def.refresh and frame[def.refresh[1]]
     if ns.Usable(child) and not hooked[child] and type(child[def.refresh[2]]) == "function" then
         hooked[child] = true

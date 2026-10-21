@@ -105,3 +105,90 @@ h.test("Windows keeps a tooltip inside a window and gives a dialog popout its ow
     A.eq(P.visibleArt(c, R, frame), "", "the popout's dialog border is held")
     A.ok(W.isDark(popout), "the popout floats on a dark panel of its own")
 end)
+
+-- SettingsPanel: CloseButton is the text button at the bottom, ClosePanelButton the cross in the corner.
+h.test("Windows puts the cross on the settings panel's corner button and leaves its list to Blizzard", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = P.new()
+    local frame = P.window(c, "SettingsPanel")
+    frame.ClosePanelButton = frame.CloseButton
+    frame.CloseButton = P.panelButton(c, frame, "Close")
+    frame.CloseButton:SetText("Close")
+    local box = P.scrollBox(frame)
+    W.enable(ns)
+    local function crosses(button)
+        local count = 0
+        for _, region in ipairs(button._regions) do
+            if region._layer == "OVERLAY" and region._color and region:GetWidth() == 12 and region._shown ~= false then
+                count = count + 1
+            end
+        end
+        return count
+    end
+    A.eq(crosses(frame.ClosePanelButton), 2, "the corner button gets the cross")
+    A.eq(crosses(frame.CloseButton), 0, "the Close text button gets no cross")
+    local late = P.new()
+    local slider = P.panelButton(late, CreateFrame("Frame", nil, box.ScrollTarget), "")
+    box:Update()
+    A.ok(P.visibleArt(late, R, frame) ~= "", "a control in the settings list keeps Blizzard's art")
+    A.falsy(W.isDark(slider), "and gets no dark field")
+end)
+
+-- MinimalSliderWithSteppersTemplate: Slider (Left / Middle / Right, Thumb) between the Back and Forward steppers.
+local function valueSlider(c, parent)
+    local frame = CreateFrame("Frame", nil, parent)
+    frame.Slider = CreateFrame("Slider", nil, frame)
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do
+        frame.Slider[key] = P.texture(c, frame.Slider, "art", "Minimal_SliderBar_" .. key, "BACKGROUND", { atlas = true })
+    end
+    local thumb = P.texture(c, frame.Slider, "art", "Minimal_SliderBar_Button", "OVERLAY", { atlas = true })
+    function frame.Slider:GetThumbTexture() return thumb end
+    for _, key in ipairs({ "Back", "Forward" }) do
+        frame[key] = CreateFrame("Button", nil, frame)
+        frame[key].Background = P.texture(c, frame[key], "art", "Minimal_SliderBar_Button_" .. key, "BACKGROUND",
+            { atlas = true })
+    end
+    frame.RightText = P.text(c, frame, "100%")
+    return frame
+end
+
+local function shownColors(frame, skip)
+    local list = {}
+    for _, region in ipairs(frame._regions) do
+        if region._color and region._shown ~= false and not skip[region] then list[#list + 1] = region end
+    end
+    return list
+end
+
+h.test("Windows gives checkboxes and value sliders in the settings list the flat look and restores them", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = P.new()
+    local frame = P.window(c, "SettingsPanel")
+    local box = P.scrollBox(frame)
+    W.enable(ns)
+    local late = P.new()
+    local row = CreateFrame("Frame", nil, box.ScrollTarget)
+    local check = P.checkbox(late, row)
+    local value = valueSlider(late, row)
+    local before = L.snapshot(late.art)
+    box:Update()
+    A.eq(P.visibleArt(late, R, frame), "", "checkbox, bar, thumb and stepper art is held")
+    A.eq(P.hiddenKeep(late, R, frame), "", "the value text stays")
+    A.ok(#check._regions > 3, "the checkbox has its own square")
+    local theme = ns.Modern.Theme()
+    local own = shownColors(value.Slider, {})
+    A.eq(#own, 3, "the slider has a track, a fill and a knob")
+    local knob = own[3]
+    A.deep(knob._color, theme.accent, "the knob is accent")
+    A.eq(#shownColors(value.Back, {}), 2, "Back is a chevron of two strokes")
+    A.eq(#shownColors(value.Forward, {}), 2, "Forward is a chevron of two strokes")
+    value.Slider:Disable()
+    A.deep(knob._color, theme.wellEdge, "a disabled slider greys out")
+    box:Update()
+    A.eq(#shownColors(value.Slider, {}), 3, "a second list update draws nothing twice")
+    ns.Modern.Restore()
+    A.deep(L.diff(before), {}, "restore returns Blizzard's art")
+    A.eq(#shownColors(value.Slider, {}), 0, "own slider regions are hidden on restore")
+end)

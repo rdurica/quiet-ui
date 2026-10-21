@@ -178,6 +178,18 @@ local function BorderOwner(frame)
     return frame
 end
 
+-- One physical pixel at the line's scale, off the pixel grid: a 1-unit line at a fractional position (a 25.99-unit
+-- settings checkbox) or in a scaled-down window can otherwise snap to nothing.
+local function Hairline(line)
+    local size = 1
+    if type(PixelUtil) == "table" and type(PixelUtil.GetNearestPixelSize) == "function"
+        and type(line.GetEffectiveScale) == "function" then
+        local ok, scaled = pcall(PixelUtil.GetNearestPixelSize, 1, line:GetEffectiveScale(), 1)
+        if ok and type(scaled) == "number" and scaled > 0 then size = scaled end
+    end
+    return size
+end
+
 -- The border follows the edges of `anchor` (default: the frame itself).
 function Skin:Border(frame, color, anchor)
     anchor = anchor or frame
@@ -188,6 +200,8 @@ function Skin:Border(frame, color, anchor)
         local list = {}
         for _, edge in ipairs(EDGES) do
             local line = owner:CreateTexture(nil, "OVERLAY", nil, 7)
+            if type(line.SetSnapToPixelGrid) == "function" then pcall(line.SetSnapToPixelGrid, line, false) end
+            if type(line.SetTexelSnappingBias) == "function" then pcall(line.SetTexelSnappingBias, line, 0) end
             if edge == "TOP" or edge == "BOTTOM" then
                 line:SetHeight(1)
                 line:SetPoint(edge .. "LEFT", anchor, edge .. "LEFT", 0, 0)
@@ -201,7 +215,9 @@ function Skin:Border(frame, color, anchor)
         end
         return list
     end)
-    for _, line in ipairs(edges) do
+    for index, line in ipairs(edges) do
+        local edge = EDGES[index]
+        if edge == "TOP" or edge == "BOTTOM" then line:SetHeight(Hairline(line)) else line:SetWidth(Hairline(line)) end
         line:SetColorTexture(unpack(color or theme.border))
         line:Show()
     end

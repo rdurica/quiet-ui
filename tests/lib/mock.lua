@@ -132,6 +132,8 @@ function Frame:GetWidth() return self._w end
 function Frame:GetHeight() return self._h end
 function Frame:SetWidth(v) self._w = v end
 function Frame:SetHeight(v) self._h = v end
+function Frame:SetSnapToPixelGrid(v) self._snap = v end
+function Frame:SetTexelSnappingBias(v) self._snapBias = v end
 function Frame:SetSize(w, h) self._w, self._h = w, h end
 function Frame:GetSize() return self._w, self._h end
 function Frame:GetScale() return self._scale end
