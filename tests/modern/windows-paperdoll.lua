@@ -95,7 +95,14 @@ local function character()
     scene.ControlFrame.zoomInButton = zoom
     zoom.Icon = zoom:CreateTexture(nil, "OVERLAY")
     zoom.Icon:SetTexture("Interface\\Common\\ZoomIn")
+    zoom.Icon:SetVertexColor(1, 1, 1, 1)
+    zoom.Icon:SetDesaturated(false)
     zoom.NormalTexture = art(zoom, list, "SquareButton")
+    zoom.PushedTexture = art(zoom, list, "SquareButtonDown")
+    local toggle = CreateFrame("Button", "CharacterFrameRightPaneToggleButton", frame)
+    frame.RightPaneToggleButton = toggle
+    local arrow = art(toggle, list, "PaneArrow")
+    function toggle:GetNormalTexture() return arrow end
 
     local pane = CreateFrame("Frame", "CharacterStatsPaneScrollBox", frame)
     CharacterStatsPaneScrollBox = pane
@@ -121,7 +128,7 @@ local function character()
     local sideOne = sidebarTab(sidebar, list, "PaperDollSidebarTab1", true)
     local sideTwo = sidebarTab(sidebar, list, "PaperDollSidebarTab2", false)
     return {
-        frame = frame, art = list, level = level, slot = slot, scene = scene, zoom = zoom, pane = pane,
+        frame = frame, art = list, level = level, slot = slot, scene = scene, zoom = zoom, toggle = toggle, pane = pane,
         category = category, row = row, thumb = bar.Track.Thumb, modes = { modeOne, modeTwo },
         sidebar = { sideOne, sideTwo },
     }
@@ -161,8 +168,36 @@ h.test("Windows replaces the character window art with flat chrome, keeps conten
     end
     A.ok(L.zoomed(c.slot.icon), "equipment icon is square-cropped")
     A.ok(B.border(c.slot) ~= nil, "equipment slot gets a flat border")
-    A.ok(W.isDark(c.zoom), "model control button becomes a dark flat button")
+    A.ok(not W.isDark(c.zoom), "model control button has no box")
     A.ok(not R.invisible(c.zoom.Icon, c.frame), "model control icon stays")
+    local theme = ns.Modern.Theme()
+    A.ok(c.zoom.Icon:IsDesaturated(), "model control icon is desaturated")
+    A.deep({ c.zoom.Icon:GetVertexColor() }, theme.glyph, "model control icon is glyph grey")
+    c.zoom:GetScript("OnEnter")(c.zoom)
+    A.deep({ c.zoom.Icon:GetVertexColor() }, theme.text, "model control icon is light under the mouse")
+    c.zoom:GetScript("OnLeave")(c.zoom)
+    A.deep({ c.zoom.Icon:GetVertexColor() }, theme.glyph, "and grey again after")
+    -- The upper stroke's rotation: rising to the right (45°) points the chevron left.
+    local function chevron()
+        local strokes = {}
+        for _, region in ipairs(c.toggle._regions) do
+            if region._shown ~= false and region._color and region._color[1] == theme.glyph[1] then
+                strokes[#strokes + 1] = region
+            end
+        end
+        local upper = strokes[1]
+        for _, stroke in ipairs(strokes) do
+            if select(5, stroke:GetPoint(1)) > select(5, upper:GetPoint(1)) then upper = stroke end
+        end
+        return #strokes, math.floor(math.deg(upper:GetRotation()) + 0.5)
+    end
+    local strokes, angle = chevron()
+    A.eq(strokes, 2, "the pane toggle is a bare chevron")
+    A.eq(angle, 45, "it points left while the stats pane is open")
+    c.frame.RightPaneHost:Hide()
+    A.eq(select(2, chevron()), -45, "it turns right when the pane closes")
+    c.frame.RightPaneHost:Show()
+    A.eq(select(2, chevron()), 45, "and left again when it opens")
     A.ok(not R.invisible(c.scene.backdrop, c.frame), "model scene backdrop is content and stays")
     A.ok(not R.invisible(c.level, c.frame), "level text stays")
     A.ok(not R.invisible(c.category.Title, c.frame), "stat category title stays")

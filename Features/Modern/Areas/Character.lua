@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- The 12.0 character window (Forever): pane backgrounds, equipment slots, model controls, the stats list and its
+-- The 12.0 character window (Forever): pane backgrounds, equipment slots, the stats list and its
 -- scroll bar, the vertical mode tabs and the stats sidebar tabs. The model scene backdrop is content and stays.
 -- Stat rows come from a ScrollBox pool, so they are skinned again whenever the list updates.
 
@@ -103,21 +103,10 @@ local function ModeTab(skin, tab)
     icon:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -1, 1)
 end
 
--- Zoom, rotate and reset: the grey square art becomes a flat button, the icon stays.
-local function ModelControls(skin)
-    local scene = _G.CharacterModelScene
-    local controls = ns.Usable(scene) and scene.ControlFrame
-    for _, button in ipairs(Character.Children(controls)) do
-        if ns.Usable(button) and button.Icon then
-            if ns.Usable(button.NormalTexture) then skin:Hold(button.NormalTexture) end
-            skin:Button(button)
-        end
-    end
-end
-
 -- Minimal scroll bar: the track art is held, the thumb becomes a flat bar in the border colour.
 function Character.ScrollBar(skin, bar)
     if not ns.Usable(bar) then return end
+    Modern.ScrollArrows(skin, bar)
     local track = bar.Track
     if not ns.Usable(track) then return end
     Character.HoldArt(skin, track)
@@ -252,7 +241,7 @@ function Character.Apply(skin, frame)
     styled[frame] = skin
     skin:Remember(frame, "modern character", function() styled[frame] = nil end)
     Panes(skin, frame)
-    ModelControls(skin)
+    Character.Controls(skin, frame)
     for _, tab in ipairs(Character.Children(frame.ModeTabs)) do
         if ns.Usable(tab) and tab.SelectedTexture then ModeTab(skin, tab) end
     end

@@ -214,6 +214,10 @@ function Frame:IsPlaying() return self._playing == true end
 function Frame:SetTexture(v) self._texture = v end
 function Frame:GetTexture() return self._texture end
 function Frame:SetColorTexture(...) self._color = { ... } end
+function Frame:SetRotation(radians) self._rotation = radians end
+function Frame:GetRotation() return self._rotation or 0 end
+function Frame:SetDesaturated(v) self._desaturated = v and true or false end
+function Frame:IsDesaturated() return self._desaturated == true end
 -- Colours of a gradient as { r, g, b, a } lists, the bottom or left end first.
 function Frame:SetGradient(orientation, from, to)
     self._gradient = { orientation, { from:GetRGBA() }, { to:GetRGBA() } }

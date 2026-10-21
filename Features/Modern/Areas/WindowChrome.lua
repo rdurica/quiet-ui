@@ -304,6 +304,7 @@ function Modern.Window(skin, frame, key, over)
         end
     end
     Modern.TabSystemChrome(skin, frame)
+    Modern.Checkboxes(skin, frame)
     Modern.CloseButton(skin, frame)
     Modern.SizeButtons(skin, frame)
     if key then

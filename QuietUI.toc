@@ -78,9 +78,11 @@ Features\Modern\Areas\UnitLayout.lua
 Features\Modern\Areas\Units.lua
 Features\Modern\Areas\CastBars.lua
 Features\Modern\Areas\WindowChrome.lua
+Features\Modern\Areas\Controls.lua
 Features\Modern\Areas\Bags.lua
 Features\Modern\Areas\Character.lua
 Features\Modern\Areas\CharacterLists.lua
+Features\Modern\Areas\CharacterControls.lua
 Features\Modern\Areas\Spellbook.lua
 Features\Modern\Areas\Professions.lua
 Features\Modern\Areas\Auction.lua
