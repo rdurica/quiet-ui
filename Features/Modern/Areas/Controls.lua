@@ -2,7 +2,8 @@ local _, ns = ...
 
 -- Small controls inside skinned windows. A checkbox loses Blizzard's box and tick for a dark square with a thin
 -- border and an accent mark while checked; the border turns accent under the mouse and the square greys out while
--- disabled. The arrows of a minimal scroll bar become bare accent chevrons, grey while they cannot scroll.
+-- disabled. The arrows of a minimal scroll bar become bare accent chevrons, grey while they cannot scroll. An
+-- expand / collapse icon becomes a bare accent plus or minus, read from the name of Blizzard's art.
 
 local Modern = ns.Modern
 
@@ -13,7 +14,10 @@ local STROKE = 6
 -- Descendant depth of a checkbox scan: deep enough for detail panes inside a window's sub-panels.
 local DEPTH = 5
 
+local SIGN = 10
+
 local checks = setmetatable({}, { __mode = "k" })  -- checkbox -> journal while applied
+local expanders = setmetatable({}, { __mode = "k" }) -- icon or button -> { skin, owner, expanded } while applied
 local arrows = setmetatable({}, { __mode = "k" })  -- arrow button -> { skin, up } while applied
 local hovered = setmetatable({}, { __mode = "k" })
 local hooked = setmetatable({}, { __mode = "k" })
@@ -136,4 +140,101 @@ function Modern.ScrollArrows(skin, bar)
     if not ns.Usable(bar) then return end
     Arrow(skin, bar.Back, true)
     Arrow(skin, bar.Forward, false)
+end
+
+-- Expanded (minus) or collapsed (plus) from an atlas or file name; nil when the name says neither.
+local function Expanded(name)
+    if type(name) ~= "string" then return nil end
+    name = name:lower()
+    for _, word in ipairs({ "expanded", "minus", "open", "collapse" }) do
+        if name:find(word, 1, true) then return true end
+    end
+    for _, word in ipairs({ "plus", "closed", "expand" }) do
+        if name:find(word, 1, true) then return false end
+    end
+end
+
+local function NameOf(texture)
+    if type(texture.GetAtlas) == "function" then
+        local ok, atlas = pcall(texture.GetAtlas, texture)
+        if ok and type(atlas) == "string" then return atlas end
+    end
+    if type(texture.GetTexture) == "function" then
+        local ok, file = pcall(texture.GetTexture, texture)
+        if ok and type(file) == "string" then return file end
+    end
+end
+
+-- Blizzard's art of `target`; on a pooled button skinned again, the skin's own sign is not part of it.
+local function Textures(target, skin)
+    if type(target.GetObjectType) == "function" and target:GetObjectType() == "Texture" then return { target } end
+    local list = {}
+    if type(target.GetRegions) ~= "function" then return list end
+    for _, region in ipairs({ target:GetRegions() }) do
+        if ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
+            and not (skin and skin:Owns(target, region)) then
+            list[#list + 1] = region
+        end
+    end
+    return list
+end
+
+-- The state of the first texture whose name tells it, preferring the ones Blizzard shows.
+local function State(target, skin)
+    local fallback
+    for _, texture in ipairs(Textures(target, skin)) do
+        local expanded = Expanded(NameOf(texture))
+        if expanded ~= nil then
+            if type(texture.IsShown) ~= "function" or texture:IsShown() then return expanded end
+            if fallback == nil then fallback = expanded end
+        end
+    end
+    return fallback
+end
+
+local function PaintExpander(target)
+    local state = expanders[target]
+    if not state then return end
+    local expanded = State(target, state.skin)
+    if expanded ~= nil then state.expanded = expanded end
+    local parts = state.skin:Own(state.owner, "expander", function()
+        return { Modern.GlyphLine(state.owner, SIGN, 2, 0, 0), Modern.GlyphLine(state.owner, 2, SIGN, 0, 0) }
+    end)
+    local bar, stem = parts[1], parts[2]
+    for _, line in ipairs({ bar, stem }) do
+        line:ClearAllPoints()
+        line:SetPoint("CENTER", target, "CENTER", 0, 0)
+        line:SetColorTexture(unpack(Modern.Theme().accent))
+    end
+    bar:Show()
+    stem:SetShown(not state.expanded)
+end
+
+-- `target` is an expand icon texture (a header's StateIcon) or a toggle button. Its art is held and a plus or minus
+-- drawn on its centre; art whose name tells no state is left to Blizzard.
+function Modern.Expander(skin, target)
+    if not ns.Usable(target) then return end
+    local expanded = State(target, skin)
+    if expanded == nil then return end
+    local textures = Textures(target, skin)
+    local owner = #textures == 1 and textures[1] == target and target:GetParent() or target
+    if not ns.Usable(owner) or type(owner.CreateTexture) ~= "function" then return end
+    for _, texture in ipairs(textures) do skin:Hold(texture) end
+    expanders[target] = { skin = skin, owner = owner, expanded = expanded }
+    skin:Remember(target, "modern expander", function() expanders[target] = nil end)
+    PaintExpander(target)
+    if hooked[target] then return end
+    hooked[target] = true
+    local function Again() ns.Run("modern controls", PaintExpander, target) end
+    for _, texture in ipairs(textures) do
+        for _, method in ipairs({ "SetAtlas", "SetTexture", "Show", "Hide", "SetShown" }) do
+            if type(texture[method]) == "function" then pcall(hooksecurefunc, texture, method, Again) end
+        end
+    end
+    if target == owner then
+        for _, method in ipairs({ "SetNormalAtlas", "SetNormalTexture", "RefreshIcon" }) do
+            if type(target[method]) == "function" then pcall(hooksecurefunc, target, method, Again) end
+        end
+        if type(target.HookScript) == "function" then pcall(target.HookScript, target, "OnClick", Again) end
+    end
 end

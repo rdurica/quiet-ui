@@ -55,6 +55,7 @@ function QuestLog.List(skin, quest)
         if ns.Usable(child.CollapseButton) and child.ButtonText then
             Modern.Character.HoldArt(skin, child)
             Modern.Strip(skin, child)
+            Modern.Expander(skin, child.CollapseButton)
         end
     end
     HoldKeys(skin, contents.StoryHeader, { "Background", "HighlightTexture", "Divider" })
