@@ -265,8 +265,18 @@ local function DraftSettings()
     return db
 end
 
+-- What Modernize draws: "off", or its stored options in a stable order.
+local function ModernState()
+    if not ns.Settings.Modernize() then return "off" end
+    local stored = ns.Settings.Effective().modernize
+    local parts = {}
+    for key, value in pairs(type(stored) == "table" and stored or {}) do parts[#parts + 1] = key .. "=" .. tostring(value) end
+    table.sort(parts)
+    return table.concat(parts, ",")
+end
+
 function Setup.Write()
-    local wasModern = ns.Settings.Modernize()
+    local wasModern = ModernState()
     local settings, err = DraftSettings()
     if not settings then ns.Print(err); return end
     if S.presetName then
@@ -282,11 +292,13 @@ function Setup.Write()
     Setup.LoadSavedDraft()
     Setup.Paint()
     if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
-    if ns.ApplyAll then ns.ApplyAll() end
-    -- Frames Blizzard built before the change keep some of the other look until a reload.
-    if wasModern ~= ns.Settings.Modernize() and ns.DB().enabled and type(ReloadUI) == "function" then
+    -- A Modernize change reloads instead of restyling in place: frames Blizzard built earlier keep some of the
+    -- other look, and the client does not give every restyled region back.
+    if wasModern ~= ModernState() and ns.DB().enabled and type(ReloadUI) == "function" then
         ReloadUI()
+        return
     end
+    if ns.ApplyAll then ns.ApplyAll() end
 end
 
 local NOTICE_SIZES = { "smaller", "default", "larger" }

@@ -37,7 +37,7 @@ Area colours outside the theme: health bar near-black `#242629`, mana `#3373E6`,
 ## Settings
 
 - Modernize is off unless checked (`modernize.enabled`). It is shared through presets; Reset default turns it off.
-- While checked, the tab shows Theme, Background and one checkbox per area; unchecked, they are hidden and keep their values. Nothing is stored until Save. Saving Modernize on or off while QuietUI is on reloads the UI once, so frames Blizzard built earlier take the full new look; saving without changing it does not.
+- While checked, the tab shows Theme, Background and one checkbox per area; unchecked, they are hidden and keep their values. Nothing is stored until Save. A Save that changes what Modernize draws (on, off, theme, background or an area) while QuietUI is on reloads the UI instead of restyling in place, so every frame takes the full new look; a Save that changes nothing there does not.
 - Theme: one theme today, Dark (`modernize.theme`; missing or unknown means Dark).
 - Background: panel background alpha 50, 75 or 90 % (`modernize.opacity`; anything else means 75).
 - Areas: one checkbox per registered area, in registration order; on unless unchecked (`modernize.<area key>`). Saving stores only values that differ from the defaults.
@@ -46,7 +46,7 @@ Area colours outside the theme: health bar near-black `#242629`, mana `#3373E6`,
 ## Rules
 
 - An area is one file under `Features/Modern/Areas/` registered through `ns.Modern.Register{ key, label, apply, restore, events, onEvent, addons }`. A bad entry is reported once and skipped.
-- Apply runs once per enabled area. Unchecking an area or Modernize restores only what changed. Changing theme or background restores and applies again.
+- Apply runs once per enabled area. Unchecking an area or Modernize restores only what changed. Changing theme or background restores and applies again (from Save this happens through the reload).
 - Every change goes through the area's journal (`Skin`); restore undoes it in reverse, so one area never touches another's frames. `/quiet off` and Reset restore all areas in reverse order.
 - An area's events reach its `onEvent` only while it is applied. `ADDON_LOADED` for a listed addon applies it again, so load-on-demand frames get skinned.
 - Blizzard art is held at alpha 0 (also against `SetAlphaFromBoolean` and vertex alpha), never hidden. No `Hide()`, `Show()` or state drivers on bars or unit frames; fade rules keep owning alpha.

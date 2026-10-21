@@ -263,6 +263,29 @@ h.test("saving Modernize on or off reloads the UI once; saving it again unchange
     A.eq(reloads, 2, "turning it off reloads")
     click(ui.save)
     A.eq(reloads, 2, "saving while it is already off does not")
+    click(stepper(t, "Background").plus)
+    click(ui.save)
+    A.eq(reloads, 2, "a new background while Modernize is off does not")
+    click(check(t, "Modernize"))
+    click(ui.save)
+    A.eq(reloads, 3, "turning it on again reloads")
+    click(stepper(t, "Background").minus)
+    click(ui.save)
+    A.eq(reloads, 4, "a new background while Modernize is on reloads")
+end)
+
+h.test("a Save that reloads leaves applying to the reload", function(t)
+    local A, ns = t.assert, t.ns
+    local applies = 0
+    ReloadUI = function() end
+    local ui = fixture(t)
+    QuietUIDB.enabled = true
+    ns.ApplyAll = function() applies = applies + 1 end
+    click(check(t, "Modernize"))
+    click(ui.save)
+    A.eq(applies, 0, "nothing restyled in place before the reload")
+    click(ui.save)
+    A.eq(applies, 1, "a Save without a Modernize change applies")
 end)
 
 h.test("saving Modernize on while QuietUI is off does not reload", function(t)
