@@ -2,9 +2,9 @@ local _, ns = ...
 
 -- NPC quest, gossip and item text windows take the dark window template: chrome, parchment backgrounds and
 -- panel materials are held, action buttons become flat fields, and the dark ink of their text becomes light:
--- neutral body text, gold headings and greetings, in the standard UI face with a shadow.
--- Text, rewards, gossip options and scripts stay Blizzard's. Gossip options and quest rewards are pooled, so the
--- ink is scanned again when a window shows, on its events and when its content is rebuilt.
+-- neutral body text, gold headings and greetings, in the standard UI face with a shadow. Their minimal scroll bars
+-- get the flat track and knob. Text, rewards, gossip options and scripts stay Blizzard's. Gossip options and quest
+-- rewards are pooled, so the ink is scanned again when a window shows, on its events and when its content is rebuilt.
 
 local Modern = ns.Modern
 local Npc = {}
@@ -21,6 +21,8 @@ local HEADING_NAMES = { QuestInfoTitleHeader = true, QuestInfoDescriptionHeader 
     QuestInfoObjectivesHeader = true, QuestProgressTitleText = true, QuestInfoRewardsFrameHeader = true,
     GreetingText = true, CurrentQuestsText = true, AvailableQuestsText = true, GossipGreetingText = true }
 local HEADING_KEYS = { "GreetingText", "Header", "TitleHeader" }
+-- Depth of the scroll bar search: window, panel, scroll frame, bar.
+local BAR_DEPTH = 4
 
 local function GossipPanel(win)
     return ns.Usable(win.GreetingPanel) and win.GreetingPanel or nil
@@ -94,6 +96,20 @@ local function Button(skin, button)
     Modern.Shapes.Field(skin, button)
 end
 
+-- The minimal scroll bars of the quest pages, the gossip greeting and the item text page.
+local function ScrollBars(skin, frame, depth)
+    if depth > BAR_DEPTH or not ns.Usable(frame) or type(frame.GetChildren) ~= "function" then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if ns.Usable(child) then
+            if ns.Usable(rawget(child, "Track")) and ns.Usable(rawget(child, "Back")) then
+                Modern.Character.ScrollBar(skin, child)
+            else
+                ScrollBars(skin, child, depth + 1)
+            end
+        end
+    end
+end
+
 local function Skin(skin, name)
     local win, def = _G[name], WINDOWS[name]
     if not ns.Usable(win) then return end
@@ -111,6 +127,7 @@ local function Skin(skin, name)
         local button = Resolve(win, ref)
         if button then Button(skin, button) end
     end
+    ScrollBars(skin, win, 0)
     Modern.InkTree(skin, win, { tone = Modern.Theme().text, heading = Npc.Heading, plain = true })
 end
 
