@@ -299,20 +299,35 @@ h.test("a player target or focus shows its class icon before the level; an NPC s
     CLASS_ICON_TCOORDS = nil
 end)
 
-h.test("a text whose points the client does not give back stays put, and a new background reports nothing", function(t)
+h.test("a value text whose points the client never gives back is still centred, and restore puts it on its parent", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local p = U.parts(U.frames()[1])
-    local text, left = p.health.TextString, p.health.LeftText
-    local before = U.points(text)
+    local text = p.health.TextString
+    local parent = text:GetParent()
     function text:GetNumPoints() return nil end
-    local getPoint = left.GetPoint
-    function left:GetPoint(i) if i == 2 then return end return getPoint(self, i) end
-    left:SetPoint("RIGHT", p.health, "RIGHT", 0, 0)
     enable(ns)
     QuietUICharDB.modernize.opacity = 90
     ns.Modern.Apply()
-    ns.Modern.Restore()
     A.eq(#mock.printed, 0, "nothing reported")
     text.GetNumPoints = nil
-    A.deep(U.points(text), before, "the unreadable text was never moved")
+    A.deep(U.points(text), { { "CENTER", p.health, "CENTER", 0, 0 } }, "centred on the bar")
+    function text:GetNumPoints() return nil end
+    ns.Modern.Restore()
+    text.GetNumPoints = nil
+    A.deep(U.points(text), { { "CENTER", parent, "CENTER", 0, 0 } }, "centred on its parent again")
+end)
+h.test("a value text the client stops giving points for after a restore is laid out again from its last points", function(t)
+    local A, ns = t.assert, t.ns
+    local p = U.parts(U.frames()[1])
+    local text = p.health.TextString
+    local before = U.points(text)
+    enable(ns)
+    local laid = U.points(text)
+    ns.Modern.Restore()
+    function text:GetNumPoints() return nil end
+    enable(ns)
+    text.GetNumPoints = nil
+    A.deep(U.points(text), laid, "centred on the bar again")
+    ns.Modern.Restore()
+    A.deep(U.points(text), before, "Blizzard's points back")
 end)

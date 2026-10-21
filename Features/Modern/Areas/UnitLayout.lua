@@ -21,6 +21,8 @@ local CLASS_ICON = 14     -- the class icon before a player target's level
 
 local rects = setmetatable({}, { __mode = "k" })  -- bar -> Blizzard rect relative to the frame, this cycle
 local laid = setmetatable({}, { __mode = "k" })   -- region -> points held while applied
+local blizzard = setmetatable({}, { __mode = "k" }) -- region -> Blizzard's points, last read while not laid out
+local fallback = setmetatable({}, { __mode = "k" }) -- region -> points to restore when none could be read
 local hooked = setmetatable({}, { __mode = "k" })
 local fonts = setmetatable({}, { __mode = "k" })  -- font string -> Blizzard font, while applied
 local busy = false
@@ -57,10 +59,13 @@ local function Hook(region)
     pcall(hooksecurefunc, region, "SetAllPoints", function() Place(region) end)
 end
 
--- Holds the given points on the region; the first call this cycle remembers Blizzard's points.
+-- Holds the given points on the region; the first call this cycle remembers Blizzard's points. The client
+-- does not always give a value text's points back (its value is secret), so the last readable ones are kept,
+-- and without any the region's fallback is restored.
 local function Anchor(skin, region, ...)
     if Locked(region) then return end
-    local saved = Modern.Points(region)
+    if not laid[region] then blizzard[region] = Modern.Points(region) or blizzard[region] end
+    local saved = blizzard[region] or fallback[region]
     if not saved then return end
     skin:Remember(region, "points", function()
         laid[region] = nil
@@ -141,6 +146,8 @@ local function Contents(skin, bar, thin)
         if ns.Usable(text) and thin then
             skin:Hold(text)
         elseif ns.Usable(text) and type(text.SetPoint) == "function" then
+            local parent = type(text.GetParent) == "function" and text:GetParent() or bar
+            fallback[text] = { { spec[1], parent, spec[1], 0, 0, n = 5 } }
             Anchor(skin, text, { spec[1], bar, spec[1], spec[2], 0 })
             local base = BaseFont(skin, text)
             if base then Font(skin, text, base[1], BAR_TEXT, Unoutlined(base[3])) end
