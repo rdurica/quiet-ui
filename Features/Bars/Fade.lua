@@ -134,6 +134,10 @@ local SETTLED_FOR = 0.2
 local applied = {}
 local settled = false
 local settledUntil = 0
+-- Between full passes only the bars that changed or still fade are walked: frame access is slow on
+-- this client and one bar fading must not walk every button of the others.
+local done = {}
+local fullDue = true
 
 local function Wanted(bar, show)
     if not (ns.Usable(bar) and bar:IsShown()) then return "hidden" end
@@ -152,7 +156,7 @@ function Bars.Update(showAll, elapsed, rescan)
     if rescan == nil then rescan = true end
     local showAllForced = showAll or ns.Glance.Active()
     -- ApplyBar reads hosts/covered, which ForgetBarButtons drops between rescans.
-    if S.dirty then settled = false end
+    if S.dirty then settled = false; fullDue = true end
     local lap = ns.Profiler.Clock()
     S.Collect()
     lap = ns.Profiler.Lap("bars / collect", lap)
@@ -189,7 +193,7 @@ function Bars.Update(showAll, elapsed, rescan)
         haveBarShow = true
         lap = ns.Profiler.Lap("bars / hover", lap)
     end
-    if settled and GetTime() >= settledUntil then settled = false end
+    if settled and GetTime() >= settledUntil then settled = false; fullDue = true end
     if settled then
         for _, entry in ipairs(resolved) do
             local show = RowForced(entry.id, showAllForced) or barShow[entry.id]
@@ -202,15 +206,29 @@ function Bars.Update(showAll, elapsed, rescan)
     end
     settled = true
     settledUntil = GetTime() + SETTLED_FOR
+    local full = fullDue
+    fullDue = false
+    if full then
+        ns.Wipe(done)
+        ns.Wipe(seenHeld)
+    end
     local mainAlpha, gamepadAlpha
     for _, entry in ipairs(resolved) do
         local show = RowForced(entry.id, showAllForced) or barShow[entry.id]
         for _, bar in ipairs(entry.frames) do
             local want = Wanted(bar, show)
-            applied[bar] = want
-            if want ~= "hidden" then
+            if full or applied[bar] ~= want or not done[bar] then
+                applied[bar] = want
+                done[bar] = true
+            else
+                want = "skip"
+            end
+            if want ~= "hidden" and want ~= "skip" then
                 local name, alpha = ApplyBar(bar, show, elapsed)
-                if type(alpha) == "number" and alpha ~= (show and 1 or 0) then settled = false end
+                if type(alpha) == "number" and alpha ~= (show and 1 or 0) then
+                    settled = false
+                    done[bar] = nil
+                end
                 if type(alpha) == "number" then
                     if MAIN_BAR[name] then
                         mainAlpha = alpha
@@ -221,13 +239,14 @@ function Bars.Update(showAll, elapsed, rescan)
             end
         end
     end
-    lap = ns.Profiler.Lap("bars / apply", lap)
+    lap = ns.Profiler.Lap(full and "bars / apply" or "bars / apply, partial", lap)
     local artAlpha = mainAlpha or gamepadAlpha
     if type(artAlpha) == "number" then
         FollowArt(artAlpha)
     end
-    ReleaseUnwatched()
-    ns.Profiler.Lap("bars / art", lap)
+    -- A partial pass did not watch the skipped bars, so only a full pass releases.
+    if full then ReleaseUnwatched() end
+    ns.Profiler.Lap(full and "bars / art" or "bars / art, partial", lap)
 end
 
 ns.Feature({

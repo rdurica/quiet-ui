@@ -124,3 +124,37 @@ h.test("Settled bars skip the per-frame walk, react to a change at once and rech
     A.ok(faded > 0, "a full pass runs again after 0.2 s")
     ns.UpdateFaded = update
 end)
+
+-- One bar fading must not walk the bars that already sit at their alpha.
+h.test("A fading bar does not walk a settled bar of another group", function(t)
+    local A, ns = t.assert, t.ns
+    local fading = CreateFrame("Frame", "MultiBarBottomLeft", UIParent)
+    local steady = CreateFrame("Frame", "MultiBarRight", UIParent)
+    _G.MultiBarBottomLeft, _G.MultiBarRight = fading, steady
+    t.boot()
+    ns.Hit = function() return false end
+    -- Bar 4 sits in group 2, shown always; bar 2 in group 1 follows the passes.
+    ns.Settings.GroupVisibility = function(group) return group == 2 and "always" or nil end
+    local function pass(showAll, elapsed)
+        ns.NextFadeTick()
+        ns.Bars.Update(showAll, elapsed or 1 / 60, false)
+    end
+    ns.Bars.ForgetButtons()
+    for _ = 1, 3 do pass(false, 1) end
+    A.eq(fading._alpha, 0, "precondition: bar 2 faded out")
+    A.eq(steady._alpha, 1, "precondition: bar 4 stays shown")
+    pass(true)
+    A.eq(fading._alpha, 1, "precondition: bar 2 shown")
+    local walked = 0
+    local update = ns.UpdateFaded
+    ns.UpdateFaded = function(frame, ...)
+        if frame == steady then walked = walked + 1 end
+        return update(frame, ...)
+    end
+    for _ = 1, 5 do pass(false) end
+    A.ok(fading._alpha > 0 and fading._alpha < 1, "precondition: bar 2 is mid-fade")
+    A.eq(walked, 0, "the fade of bar 2 walked the settled bar 4 every pass")
+    for _ = 1, 30 do pass(false) end
+    A.eq(fading._alpha, 0, "bar 2 still finishes its fade")
+    ns.UpdateFaded = update
+end)
