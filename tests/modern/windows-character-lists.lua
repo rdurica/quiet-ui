@@ -179,12 +179,10 @@ h.test("Windows turns Reputation, Currency and Statistics headers into section s
     A.ok(striped(statHead), "the strip survives the list skinning the pooled header again")
     A.ok(R.invisible(list[1], c.frame), "the currency header banner is held")
     A.ok(R.invisible(head.StateIcon, c.frame), "Blizzard's collapse icon gives way to the sign")
-    local text = ns.Modern.Theme().text
-    A.deep({ head.Name:GetTextColor() }, { text[1], text[2], text[3], 1 }, "the header title is light")
+    A.deep({ head.Name:GetTextColor() }, { 1, 0.82, 0, 1 }, "the header title keeps Blizzard's colour")
     A.ok(not R.invisible(currency.Content.CurrencyIcon, c.frame), "the currency icon stays")
     ns.Modern.Restore()
     A.ok(not striped(head), "Restore removes the strip")
-    A.deep({ head.Name:GetTextColor() }, { 1, 0.82, 0, 1 }, "Restore puts back the gold title")
     A.deep(L.diff(before), {}, "Currency restores exactly")
 end)
 

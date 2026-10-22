@@ -94,8 +94,8 @@ local function Overview(skin, frame)
     for _, key in ipairs(CARDS) do Card(skin, content[key], key:find("Primary", 1, true) ~= nil) end
 end
 
--- A pooled recipe list category: the common-button-list art goes for a section strip with a light title and an
--- accent plus / minus; a category rank bar gets the skill bar's track.
+-- A pooled recipe list category: the common-button-list art goes for a section strip and an accent plus / minus;
+-- the title keeps Blizzard's gold, white under the mouse; a category rank bar gets the skill bar's track.
 local function Category(skin, row)
     local collapse = row.CollapseButton
     Modern.Character.HoldArt(skin, row)
@@ -103,11 +103,6 @@ local function Category(skin, row)
     if ns.Usable(collapse) and ns.Usable(collapse.Icon) then
         Modern.Character.HoldArt(skin, collapse, collapse.Icon)
         Modern.Expander(skin, collapse.Icon)
-    end
-    local text = row.ButtonText
-    if ns.Usable(text) and type(text.GetTextColor) == "function" then
-        local color = Modern.Theme().text
-        skin:Set(text, "SetTextColor", color[1], color[2], color[3], 1)
     end
     Bar(skin, row.RankBar, RANK_ART)
 end

@@ -215,7 +215,7 @@ h.test("Windows shrinks professions side tabs to icon tabs and turns recipe cate
     A.ok(width < 55 and width == height, "a side tab shrinks to a square icon tab")
     A.ok(L.zoomed(c.frame.Professions1Tab.Icon), "the side tab icon is square-cropped")
     A.ok(striped(c.head, theme), "a recipe category is a section strip")
-    A.eq(select(1, c.head.ButtonText:GetTextColor()), theme.text[1], "the category title turns light")
+    A.eq(select(1, c.head.ButtonText:GetTextColor()), 1, "the category title keeps Blizzard's colour")
     local late = category(c.page.RecipeList.ScrollBox.ScrollTarget, {}, "Wands")
     c.page.RecipeList.ScrollBox:Update()
     A.ok(striped(late, theme), "a category pooled in after apply becomes a strip on the list update")

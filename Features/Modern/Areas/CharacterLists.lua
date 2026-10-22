@@ -2,7 +2,7 @@ local _, ns = ...
 
 -- Reputation, Skills, Currency and Statistics panes of the Forever character window: a pooled ScrollBox of collapsible headers
 -- (common-button-list art with a StateIcon) and rows whose Content holds a bar, plus a detail pane with one bar.
--- Headers become section strips with a light title, bars a borderless dark track as tall as their fill; the coloured
+-- Headers become section strips (the title keeps Blizzard's gold and white hover, its only hover cue), bars a borderless dark track as tall as their fill; the coloured
 -- fill stays.
 -- Currency and statistics rows have no bar and keep their icon, texts and hover art. A detail pane (skills, reputation,
 -- PvP rank) builds its Content from title banners, which become section strips, and icon rows, whose ornate gear slot
@@ -56,10 +56,6 @@ local function Row(skin, row, list)
         Character.HoldArt(skin, row, row.StateIcon)
         Modern.Strip(skin, row, Character.STRIP)
         Modern.Expander(skin, row.StateIcon)
-        if ns.Usable(row.Name) and type(row.Name.GetTextColor) == "function" then
-            local text = Modern.Theme().text
-            skin:Set(row.Name, "SetTextColor", text[1], text[2], text[3], 1)
-        end
         return
     end
     -- A statistics sub-header (Talent trees, Wealth) toggles with its own button.
