@@ -3,8 +3,8 @@
 -- backdrops, because the mock frames do not model stacking.
 local h = ...
 local M = h.lib("setupmodel")
-local same, scenario, opaque, darkControl, nativeAction = M.same, M.scenario, M.opaque, M.darkControl, M.nativeAction
-local goldSmall, tint, fillBounds, click, modes = M.goldSmall, M.tint, M.fillBounds, M.click, M.modes
+local same, scenario, opaque, darkControl = M.same, M.scenario, M.opaque, M.darkControl
+local tint, fillBounds, click, modes = M.tint, M.fillBounds, M.click, M.modes
 
 for _, mode in ipairs(modes) do
     h.test('setup window appearance: ' .. mode.name, function(t)
@@ -45,9 +45,6 @@ for _, mode in ipairs(modes) do
                 and tooltip.level == 2000 and tooltip.strata == 'TOOLTIP' and tooltip.alpha == 1 and tooltip.shown
                 and fullscreen.level == 3000 and fullscreen.strata == 'FULLSCREEN' and fullscreen.alpha == 1 and fullscreen.shown
         end
-        local function actionStyle(button)
-            return mode.nativeButtons == false and darkControl(button) or nativeAction(button)
-        end
         ns.Setup.Show()
         local ui = QuietUISetup
         expect(opaque(ui), 'setup has its own opaque dark background independent of SetBackdrop')
@@ -58,19 +55,16 @@ for _, mode in ipairs(modes) do
         expect(ui:GetFrameLevel() < tooltip.level, 'higher strata do not inflate DIALOG priority')
         expect(preservedForeign(), 'foreign dialog descendants, tooltip and fullscreen state are preserved')
         expect(QuietUIDB.enabled == false, 'setup opening preserves disabled addon')
-        if mode.portrait then
-            expect(ui.portrait.texture == 'player' and ui.portrait.shown and ui.TitleText.text == 'QuietUI'
-                and ui.CloseButton.shown, 'portrait title and close chrome are preserved')
-        elseif mode.backdrop then
-            expect(ui.backdrop and ui.backdrop.edgeFile:find('Gold'), 'gold fallback keeps gold frame')
-        else expect(ui.title and ui.close, 'flat fallback keeps title and usable close') end
+        expect(ui.template == nil and ui.backdrop == nil, 'setup uses its own flat chrome, not a Blizzard template or backdrop')
+        expect(ui.title.text == 'QuietUI' and ui.close.scripts.OnClick, 'flat header keeps the title and a usable close')
+        click(ui.close); expect(not ui.shown, 'close hides the window'); ns.Setup.Show()
         local height, width = ui.height, ui.width
-        local labels = { 'General', 'Visible', 'Bars', 'Groups', 'Player', 'Misc.', 'Info' }
-        expect(#ui.tabs == 7, 'seven tabs retained')
+        local labels = { 'General', 'Visible', 'Bars', 'Groups', 'Player', 'Misc.', 'Modern', 'Info' }
+        expect(#ui.tabs == 8, 'eight tabs')
         for index, tab in ipairs(ui.tabs) do
             click(tab)
             expect(tab.label.text == labels[index], 'tab order ' .. index)
-            expect(same(tab.label.textColor, 0.95, 0.75, 0.25), 'active tab uses gold accent without hover: ' .. labels[index])
+            expect(same(tab.label.textColor, 0.95, 0.75, 0.25) and tab.mark.shown, 'active tab uses the accent mark and label: ' .. labels[index])
             expect(ui.height == height and ui.width == width, 'switching tabs keeps window geometry')
             local pageTop = ui.pages[index].points[1][3]
             local footerTop = height - ui.save.points[1][3] - ui.save.height
@@ -87,13 +81,10 @@ for _, mode in ipairs(modes) do
             'General selectors span content width')
         for _, button in ipairs({ ui.presetSelector, ui.layoutSelector, ui.newPreset, ui.renamePreset,
             ui.deletePreset, ui.reset, ui.import, ui.save }) do
-            expect(actionStyle(button), 'native action appearance or dark missing-template fallback: ' .. (button.text ~= '' and button.text or button.label.text))
-        end
-        for _, button in ipairs(ui.tabs) do
-            expect(goldSmall(button), 'each small tab retains gold styling')
+            expect(darkControl(button), 'flat dark action: ' .. (button.text ~= '' and button.text or button.label.text))
         end
         for _, button in ipairs({ ui.groupRows[1].minus, ui.groupRows[1].plus }) do
-            expect(goldSmall(button), 'small tabs and steppers retain gold styling')
+            expect(darkControl(button), 'steppers use the flat dark control')
         end
         expect(ui.renamePreset.disabled and ui.deletePreset.disabled, 'unavailable preset actions remain disabled')
         local disabledAlpha, disabledLabelAlpha, disabledColor, disabledFont = tint(ui.renamePreset)
@@ -119,7 +110,7 @@ for _, mode in ipairs(modes) do
             'modal controls and mouse blocker stay above main content')
         expect(dialog.blocker.mouse and dialog.blocker.allPoints == ui and dialog.blocker.shown,
             'modal blocker covers setup and intercepts mouse')
-        expect(actionStyle(dialog.yes) and actionStyle(dialog.no), 'modal actions use native appearance or missing-template fallback')
+        expect(darkControl(dialog.yes) and darkControl(dialog.no), 'modal actions use the flat dark control')
         dialog.edit:SetText('Appearance'); click(dialog.yes); click(ui.save)
         expect(ui.shown and QuietUICharDB.presetId and QuietUIDB.enabled == false, 'Save commits preset and keeps disabled setup open')
         local enabledAlpha, enabledLabelAlpha, enabledColor, enabledFont = tint(ui.renamePreset)

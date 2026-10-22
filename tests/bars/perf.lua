@@ -93,3 +93,68 @@ h.test("No swing timer waits 10s before the next UIParent walk", function(t)
     t.ns.Bars.ScanSwing()
     A.eq(uiWalks(t) - before, 2, "The 10s fallback walk did not run")
 end)
+
+-- Hovering runs a bars pass every frame. Once every bar sits at its target alpha and nothing
+-- changed, a pass skips the bar walk; a change applies at once and a full pass still runs every 0.2 s.
+h.test("Settled bars skip the per-frame walk, react to a change at once and recheck every 0.2 s", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local bar = CreateFrame("Frame", "MultiBarBottomLeft", UIParent)
+    _G.MultiBarBottomLeft = bar
+    t.boot()
+    ns.Hit = function() return false end
+    local function pass(showAll, elapsed)
+        ns.NextFadeTick()
+        ns.Bars.Update(showAll, elapsed or 1 / 60, false)
+    end
+    ns.Bars.ForgetButtons()
+    for _ = 1, 3 do pass(false, 1) end
+    A.eq(bar._alpha, 0, "precondition: the bar faded out")
+    local faded = 0
+    local update = ns.UpdateFaded
+    ns.UpdateFaded = function(...) faded = faded + 1; return update(...) end
+    for _ = 1, 10 do pass(false) end
+    A.eq(faded, 0, "a settled pass does not walk the bars")
+    pass(true)
+    A.eq(bar._alpha, 1, "a show change applies at once")
+    faded = 0
+    for _ = 1, 10 do pass(true) end
+    A.eq(faded, 0, "settled again once shown")
+    mock.now = mock.now + 0.25
+    pass(true)
+    A.ok(faded > 0, "a full pass runs again after 0.2 s")
+    ns.UpdateFaded = update
+end)
+
+-- One bar fading must not walk the bars that already sit at their alpha.
+h.test("A fading bar does not walk a settled bar of another group", function(t)
+    local A, ns = t.assert, t.ns
+    local fading = CreateFrame("Frame", "MultiBarBottomLeft", UIParent)
+    local steady = CreateFrame("Frame", "MultiBarRight", UIParent)
+    _G.MultiBarBottomLeft, _G.MultiBarRight = fading, steady
+    t.boot()
+    ns.Hit = function() return false end
+    -- Bar 4 sits in group 2, shown always; bar 2 in group 1 follows the passes.
+    ns.Settings.GroupVisibility = function(group) return group == 2 and "always" or nil end
+    local function pass(showAll, elapsed)
+        ns.NextFadeTick()
+        ns.Bars.Update(showAll, elapsed or 1 / 60, false)
+    end
+    ns.Bars.ForgetButtons()
+    for _ = 1, 3 do pass(false, 1) end
+    A.eq(fading._alpha, 0, "precondition: bar 2 faded out")
+    A.eq(steady._alpha, 1, "precondition: bar 4 stays shown")
+    pass(true)
+    A.eq(fading._alpha, 1, "precondition: bar 2 shown")
+    local walked = 0
+    local update = ns.UpdateFaded
+    ns.UpdateFaded = function(frame, ...)
+        if frame == steady then walked = walked + 1 end
+        return update(frame, ...)
+    end
+    for _ = 1, 5 do pass(false) end
+    A.ok(fading._alpha > 0 and fading._alpha < 1, "precondition: bar 2 is mid-fade")
+    A.eq(walked, 0, "the fade of bar 2 walked the settled bar 4 every pass")
+    for _ = 1, 30 do pass(false) end
+    A.eq(fading._alpha, 0, "bar 2 still finishes its fade")
+    ns.UpdateFaded = update
+end)

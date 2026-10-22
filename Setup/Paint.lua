@@ -22,6 +22,21 @@ local function RangeKindText(kind)
     return "Unfriendly"
 end
 
+-- Theme and the areas show only while Modernize is checked.
+function Setup.PaintModern(frame)
+    Setup.PaintBox(frame.modernize.box, draft.modernize)
+    local name = draft.modernTheme or "dark"
+    frame.modernTheme.value:SetText(name:sub(1, 1):upper() .. name:sub(2))
+    for _, row in ipairs(frame.modernAreas) do
+        Setup.PaintBox(row.button.box, draft.modernAreas[row.key] ~= false)
+    end
+    Setup.PaintBox(frame.modernXPGain.box, draft.modernXPGain)
+    if draft.modernAreas.status ~= false then frame.modernXPGain:Enable() else frame.modernXPGain:Disable() end
+    for _, widget in ipairs(frame.modernOptions) do
+        if draft.modernize then widget:Show() else widget:Hide() end
+    end
+end
+
 function Setup.Paint()
     if not S.frame then return end
     if S.frame.presetSelector then
@@ -115,6 +130,7 @@ function Setup.Paint()
             end
         end
     end
+    if S.frame.modernize then Setup.PaintModern(S.frame) end
     if S.frame.groupRows then
         for _, row in ipairs(S.frame.groupRows) do
             row.value:SetText(tostring(draft.groups[row.id]))
@@ -152,17 +168,5 @@ function Setup.Paint()
         local max = math.max(0, count * 44 - Setup.GROUP_VIEW_H)
         S.frame.groupScroll:SetVerticalScroll(math.min(S.frame.groupScroll:GetVerticalScroll(), max))
     end
-    if S.frame.tabs then
-        for _, tab in ipairs(S.frame.tabs) do
-            local on = tab.id == S.frame.page
-            if tab.SetBackdropBorderColor then
-                if on then tab:SetBackdropBorderColor(0.95, 0.75, 0.25, 1)
-                else tab:SetBackdropBorderColor(0.75, 0.6, 0.28, 0.95) end
-            end
-            if tab.label and tab.label.SetTextColor then
-                if on then tab.label:SetTextColor(0.95, 0.75, 0.25)
-                else tab.label:SetTextColor(0.85, 0.85, 0.85) end
-            end
-        end
-    end
+    if S.frame.tabs then Setup.PaintTabs(S.frame) end
 end

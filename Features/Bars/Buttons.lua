@@ -96,6 +96,26 @@ function S.ButtonsFor(bar, deep)
     return list
 end
 
+-- Public discovery for consumers that decorate buttons but must not know the
+-- implementation cache or the individual Blizzard bar families.
+function Bars.Buttons()
+    local list, seen = {}, {}
+    local function addFrom(bar)
+        if not ns.Usable(bar) then return end
+        for _, button in ipairs(S.ButtonsFor(bar, true)) do
+            if not seen[button] then
+                seen[button] = true
+                list[#list + 1] = button
+            end
+        end
+    end
+    for name in pairs(BUTTON_PREFIX) do addFrom(_G[name]) end
+    -- Gamepad's button names vary by client and are not always descendants at
+    -- login, so include its loaded descendants explicitly.
+    addFrom(_G.GamepadMainActionBarFrame)
+    return list
+end
+
 function S.RegionsFor(bar)
     local list = S.regionCache[bar]
     if list then return list end

@@ -21,7 +21,7 @@ local S = {}
 
 S.ALLOWED_GLOBALS = {
     QuietUIDB = true, QuietUICharDB = true, QuietUISetup = true, QuietUIGlance = true,
-    BINDING_CATEGORY_QUIETUI = true, BINDING_NAME_QUIETUI_GLANCE = true,
+    BINDING_CATEGORY_QUIETUI = true, BINDING_NAME_QUIETUI_GLANCE = true, GetMinimapShape = true,
 }
 S.ALLOWED_SLASH_KEYS = { QUIETUI = true }
 S.CHECKED_DIRS = { "Core", "Settings", "Features", "Setup", "Layout" }

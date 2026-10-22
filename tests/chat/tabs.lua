@@ -128,13 +128,16 @@ h.test("Tabs are hidden until hovered", function(t)
     ChatFrame1Tab:SetAlpha(0.4)
     A.near(ChatFrame1Tab._alpha, 0, 0.01, "Blizzard alpha held off")
     GeneralDockManager:SetMouseOver(true)
+    t.mock.state.cursor = { 41, 41 } -- hover comes with a moved pointer
     ns.Chat.Update(0.01)
     A.near(ChatFrame1Tab._alpha, 1, 0.01, "dock hover shows the tabs")
     A.near(ChatFrame2Tab._alpha, 1, 0.01, "dock hover shows every tab")
     GeneralDockManager:SetMouseOver(false)
+    t.mock.state.cursor = { 42, 42 } -- hover comes with a moved pointer
     ns.Chat.Update(1)
     A.near(ChatFrame1Tab._alpha, 0, 0.01, "hidden again after hover")
     ChatFrame2Tab:SetMouseOver(true)
+    t.mock.state.cursor = { 43, 43 } -- hover comes with a moved pointer
     ns.Chat.Update(0.01)
     A.near(ChatFrame2Tab._alpha, 1, 0.01, "tab hover shows it")
 end)

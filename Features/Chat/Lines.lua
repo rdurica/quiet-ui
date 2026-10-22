@@ -251,6 +251,10 @@ local function BindBubbles(frame)
         end)
     end
     Chat.EnsureCatcher(frame)
+    if frame.HookScript then
+        frame:HookScript("OnShow", function() Chat.Wake() end)
+        frame:HookScript("OnHide", function() Chat.Wake() end)
+    end
     if frame.EnableMouseWheel then frame:EnableMouseWheel(true) end
     if frame.HookScript and not frame._quietWheel then
         frame._quietWheel = true

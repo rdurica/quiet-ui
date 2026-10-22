@@ -33,6 +33,19 @@ local function ChatCount()
     return temporaryMax > n and temporaryMax or n
 end
 Chat.ChatCount = ChatCount
+
+-- Per-frame paths look windows up by index; the global names are built once.
+local names = { [""] = {}, Tab = {}, EditBox = {} }
+
+function Chat.Window(i, part)
+    local list = names[part or ""]
+    local name = list[i]
+    if not name then
+        name = "ChatFrame" .. i .. (part or "")
+        list[i] = name
+    end
+    return _G[name]
+end
 ------------------------------------------------------------------------------
 -- Input box
 ------------------------------------------------------------------------------
@@ -223,7 +236,9 @@ local function SyncEdit(edit)
         return
     end
     local focused = edit._quietFocus or (edit.HasFocus and edit:HasFocus())
-    edit._quietWant = focused and 1 or 0
+    local want = focused and 1 or 0
+    if edit._quietWant ~= want then Chat.Wake() end
+    edit._quietWant = want
     HoldEditMouse(edit, focused)
     PadEdit(edit)
     HideEditChrome(edit)
