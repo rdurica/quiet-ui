@@ -89,14 +89,17 @@ local function SlotSize()
     return SLOT_SIZE
 end
 
--- A vertical mode tab shrinks to an equipment slot's size; its icon, cropped square, fills it inside the border.
-local function ModeTab(skin, tab)
+-- A vertical side tab (character modes, professions) shrinks to an equipment slot's size; its icon, cropped square and
+-- unmasked, fills it inside the border.
+function Character.IconTab(skin, tab)
+    if not ns.Usable(tab) then return end
     Modern.TabChrome(skin, tab)
     local size = SlotSize()
     skin:Set(tab, "SetSize", size, size)
     local icon = tab.Icon
     if not ns.Usable(icon) or type(icon.ClearAllPoints) ~= "function" then return end
     skin:Icon(icon)
+    Modern.NoMask(skin, icon)
     skin:Set(icon, "SetPoint", "TOPLEFT", tab, "TOPLEFT", 1, -1)
     icon:ClearAllPoints()
     icon:SetPoint("TOPLEFT", tab, "TOPLEFT", 1, -1)
@@ -243,7 +246,7 @@ function Character.Apply(skin, frame)
     Panes(skin, frame)
     Character.Controls(skin, frame)
     for _, tab in ipairs(Character.Children(frame.ModeTabs)) do
-        if ns.Usable(tab) and tab.SelectedTexture then ModeTab(skin, tab) end
+        if ns.Usable(tab) and tab.SelectedTexture then Character.IconTab(skin, tab) end
     end
     for index = 1, SIDEBAR_TABS do SidebarTab(skin, _G["PaperDollSidebarTab" .. index]) end
     Refresh(skin)

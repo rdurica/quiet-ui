@@ -142,7 +142,7 @@ function Modern.GlyphLine(button, width, height, x, y, angle)
     return line
 end
 
-local function CrossParts(button)
+function Modern.CrossParts(button)
     return { Modern.GlyphLine(button, CROSS_LENGTH, 2, 0, 0, 45), Modern.GlyphLine(button, CROSS_LENGTH, 2, 0, 0, -45) }
 end
 
@@ -205,7 +205,7 @@ end
 
 function Modern.CloseButton(skin, frame)
     local button = ns.Usable(frame) and FindClose(frame)
-    if button then Modern.GlyphButton(skin, button, "close", CrossParts, "danger") end
+    if button then Modern.GlyphButton(skin, button, "close", Modern.CrossParts, "danger") end
 end
 
 local SIZE_GLYPH = 10

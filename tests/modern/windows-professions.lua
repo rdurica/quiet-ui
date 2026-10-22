@@ -3,7 +3,8 @@
 -- ProfessionsContentFrame with cards PrimaryProfession1..2 / SecondaryProfession1..3 (Background card art,
 -- SpellButtonN with IconTexture and the IconTextureOverlay square frame, a StatusBar with Background, Fill and
 -- Border) and a CraftingPage (unnamed background, RecipeList with Background, SearchBox and minimal scroll bar,
--- RankBar, the red CreateButton with Left / Center / Right art and gear slots).
+-- RankBar, the red CreateButton with Left / Center / Right art and gear slots). The recipe list ScrollBox pools
+-- category buttons (two keyless common-button-list textures, ButtonText, CollapseButton with a minus Icon).
 local h = ...
 local L = h.lib("modern")
 local W = h.lib("modern-windows")
@@ -27,6 +28,7 @@ end
 
 local function sideTab(parent, list, selected)
     local tab = CreateFrame("Frame", nil, parent)
+    tab:SetSize(55, 55)
     tab.Background = art(tab, list, "SideTab", "BACKGROUND")
     tab.Icon = art(tab, nil, "SideTabIcon")
     tab.SelectedTexture = art(tab, list, "SideTabSelected", "OVERLAY")
@@ -58,7 +60,27 @@ local function card(content, list, key, name)
     button.IconTextureOverlay = art(button, list, "SquareFrame", "OVERLAY")
     button.spellString = text(button, name)
     bar(frame, list, "StatusBar", name)
+    local unlearn = CreateFrame("Button", nil, frame)
+    frame.UnlearnButton = unlearn
+    unlearn.Icon = art(unlearn, list, "RedCrossmark")
+    unlearn.Overlay = art(unlearn, list, "RedCrossmarkPressed", "OVERLAY")
     return frame
+end
+
+local function category(target, list, name)
+    local row = CreateFrame("Button", nil, target)
+    row:SetSize(271, 25)
+    art(row, list, "ListCategory", "ARTWORK")
+    art(row, list, "ListCategoryHover", "HIGHLIGHT")
+    row.ButtonText = text(row, name)
+    row.ButtonText:SetTextColor(1, 0.82, 0, 1)
+    row.CollapseButton = CreateFrame("Button", nil, row)
+    local icon = art(row.CollapseButton, nil, "ListMinus")
+    function icon:SetAtlas(atlas) self._atlas = atlas end
+    function icon:GetAtlas() return self._atlas end
+    icon:SetAtlas("common-button-list-minus")
+    row.CollapseButton.Icon = icon
+    return row
 end
 
 local function professions()
@@ -82,6 +104,11 @@ local function professions()
     for _, key in ipairs({ "Left", "Middle", "Right" }) do
         page.RecipeList.SearchBox[key] = art(page.RecipeList.SearchBox, list, "Search" .. key, "BACKGROUND")
     end
+    local box = CreateFrame("Frame", nil, page.RecipeList)
+    page.RecipeList.ScrollBox = box
+    box.ScrollTarget = CreateFrame("Frame", nil, box)
+    function box:Update() end
+    local head = category(box.ScrollTarget, list, "Reagents")
     local scroll = CreateFrame("Frame", nil, page.RecipeList)
     page.RecipeList.ScrollBar = scroll
     scroll.Track = CreateFrame("Frame", nil, scroll)
@@ -98,7 +125,18 @@ local function professions()
     slot.icon:SetTexture("Interface\\Icons\\Tool")
     slot.icon:SetTexCoord(0, 1, 0, 1)
     slot.NormalTexture = art(slot, list, "SlotNormal")
-    return { frame = frame, art = list, primary = primary, secondary = secondary, page = page, slot = slot }
+    return { frame = frame, art = list, primary = primary, secondary = secondary, page = page, slot = slot,
+        head = head }
+end
+
+local function tracked(bar, theme)
+    for _, region in ipairs(bar._regions) do
+        if region._shown ~= false and region._color and region._color[1] == theme.track[1]
+            and region._color[4] == theme.track[4] then
+            return true
+        end
+    end
+    return false
 end
 
 local function visibleArt(c)
@@ -120,14 +158,20 @@ h.test("Windows flattens the professions window, keeps bar fills, icons and text
     A.eq(R.visibleChrome(c.frame), "", "window chrome is hidden")
     A.eq(visibleArt(c), "", "card, icon frame, bar, tab, recipe list, field, button and slot art are all hidden")
     for _, card in ipairs({ c.primary, c.secondary }) do
-        A.ok(W.isDark(card), "card becomes a dark panel")
+        A.ok(not W.isDark(card) and B.border(card) == nil, "card stands bare on the panel")
         local button = card.SpellButton1
         A.ok(L.zoomed(button.IconTexture), "spell icon is square-cropped")
-        A.ok(W.isDark(button) and B.border(button) ~= nil, "spell gets a dark slot with a thin border")
-        A.ok(W.isDark(card.StatusBar), "skill bar becomes a dark field")
+        A.ok(not W.isDark(button) and B.border(button) == nil, "spell icon stands bare, without a box")
+        A.ok(tracked(card.StatusBar, ns.Modern.Theme()), "skill bar gets a dark track")
+        A.eq(B.border(card.StatusBar), nil, "skill bar has no border")
         A.ok(not R.invisible(card.StatusBar.Fill, c.frame), "skill bar fill stays")
         A.ok(not R.invisible(card.StatusBar.Rank.Text, c.frame), "rank text stays")
         A.ok(not R.invisible(card.ProfessionName, c.frame), "profession name stays")
+        local cross = 0
+        for _, region in ipairs(card.UnlearnButton._regions) do
+            if region ~= card.UnlearnButton.Icon and region ~= card.UnlearnButton.Overlay and region:IsShown() and region._color then cross = cross + 1 end
+        end
+        A.eq(cross, 2, "unlearn becomes a bare two-line cross")
     end
     A.ok(B.same(B.border(c.frame.ProfessionsOverviewTab), ns.Modern.Theme().accent), "selected side tab gets the accent")
     A.ok(not R.invisible(c.frame.ProfessionsOverviewTab.Icon, c.frame), "side tab icon stays")
@@ -149,5 +193,32 @@ h.test("Windows skins a professions card filled in after apply when the window s
     local late = card(c.frame.BookPage.ProfessionsContentFrame, list, "SecondaryProfession2", "Fishing")
     c.frame:Show()
     A.ok(R.invisible(late.Background, c.frame), "the late card loses its art on show")
-    A.ok(W.isDark(late.StatusBar), "the late card's bar becomes a dark field")
+    A.ok(tracked(late.StatusBar, ns.Modern.Theme()), "the late card's bar gets a dark track")
+end)
+
+local function striped(row, theme)
+    for _, region in ipairs(row._regions) do
+        if region._shown ~= false and (region._alpha or 1) > 0 and region._color and region._color[1] == theme.strip[1] then
+            return true
+        end
+    end
+    return false
+end
+
+h.test("Windows shrinks professions side tabs to icon tabs and turns recipe categories into section strips", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = professions()
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    local width, height = c.frame.Professions1Tab:GetSize()
+    A.ok(width < 55 and width == height, "a side tab shrinks to a square icon tab")
+    A.ok(L.zoomed(c.frame.Professions1Tab.Icon), "the side tab icon is square-cropped")
+    A.ok(striped(c.head, theme), "a recipe category is a section strip")
+    A.eq(select(1, c.head.ButtonText:GetTextColor()), theme.text[1], "the category title turns light")
+    local late = category(c.page.RecipeList.ScrollBox.ScrollTarget, {}, "Wands")
+    c.page.RecipeList.ScrollBox:Update()
+    A.ok(striped(late, theme), "a category pooled in after apply becomes a strip on the list update")
+    ns.Modern.Restore()
+    A.ok(not striped(c.head, theme), "Restore removes the strip")
 end)
