@@ -19,8 +19,8 @@ h.test("player bars sit in a dark box over the portrait space, power a thin line
     enable(ns)
     local box = U.barBox(player)
     A.ok(box, "box drawn")
-    A.deep(U.points(box), { { "TOPLEFT", player, "BOTTOMLEFT", 0, 28 }, { "BOTTOMRIGHT", player, "BOTTOMLEFT", 91, 0 } },
-        "box from the portrait's outer edge to the bar's far edge, 28 px tall from the bar's bottom")
+    A.deep(U.points(box), { { "TOPLEFT", p.health, "TOPLEFT", -1, 1 }, { "BOTTOMRIGHT", p.health, "BOTTOMRIGHT", 1, -6 } },
+        "box around the health bar and the power line below it")
     A.deep(box._color, ns.Modern.Theme().bg, "box in the theme background")
     A.ok(U.onePixelOn(player, box), "box has a 1 px border")
     A.deep(U.points(p.health), {
@@ -28,9 +28,9 @@ h.test("player bars sit in a dark box over the portrait space, power a thin line
         { "BOTTOMRIGHT", player, "BOTTOMLEFT", 90, 6 },
     }, "health inside the border, above the power line and a 1 px gap")
     A.deep(U.points(p.mana), {
-        { "TOPLEFT", player, "BOTTOMLEFT", 1, 5 },
-        { "BOTTOMRIGHT", player, "BOTTOMLEFT", 90, 1 },
-    }, "power a 4 px line along the box's bottom")
+        { "TOPLEFT", p.health, "BOTTOMLEFT", 0, -1 },
+        { "BOTTOMRIGHT", p.health, "BOTTOMRIGHT", 0, -5 },
+    }, "power a 4 px line under the health bar, along the box's bottom")
     A.alpha(p.portrait, 0, "portrait held")
     A.eq(p.portrait:GetNumPoints(), 0, "portrait not moved")
     A.eq(p.portrait:GetNumMaskTextures(), 1, "portrait mask untouched")
@@ -104,15 +104,15 @@ h.test("target and focus boxes reach right to the portrait's outer edge; the por
     for _, i in ipairs({ 3, 5 }) do
         local f = frames[i]
         local p = U.parts(f)
-        A.deep(U.points(U.barBox(f)), { { "TOPLEFT", f, "BOTTOMLEFT", 0, 28 }, { "BOTTOMRIGHT", f, "BOTTOMLEFT", 100, 0 } },
-            f:GetName() .. " box to the portrait's right edge")
+        A.deep(U.points(U.barBox(f)), { { "TOPLEFT", p.health, "TOPLEFT", -1, 1 }, { "BOTTOMRIGHT", p.health, "BOTTOMRIGHT", 1, -6 } },
+            f:GetName() .. " box around the health bar")
         A.deep(U.points(p.health), {
             { "TOPLEFT", f, "BOTTOMLEFT", 1, 27 },
             { "BOTTOMRIGHT", f, "BOTTOMLEFT", 99, 6 },
         }, f:GetName() .. " health inside the box")
         A.deep(U.points(p.mana), {
-            { "TOPLEFT", f, "BOTTOMLEFT", 1, 5 },
-            { "BOTTOMRIGHT", f, "BOTTOMLEFT", 99, 1 },
+            { "TOPLEFT", p.health, "BOTTOMLEFT", 0, -1 },
+            { "BOTTOMRIGHT", p.health, "BOTTOMRIGHT", 0, -5 },
         }, f:GetName() .. " thin power along its bottom")
         A.alpha(p.portrait, 0, f:GetName() .. " portrait held")
     end
@@ -174,9 +174,9 @@ h.test("a wider Blizzard power bar gets the health bar's edges", function(t)
     local p = U.parts(target)
     function p.mana:GetLeft() return -3 end
     enable(ns)
-    local health, mana = U.points(p.health), U.points(p.mana)
-    A.eq(mana[1][4], health[1][4], "power bar starts at the health bar's left edge")
-    A.eq(mana[2][4], health[2][4], "power bar ends at the health bar's right edge")
+    local mana = U.points(p.mana)
+    A.deep({ mana[1][2], mana[1][4] }, { p.health, 0 }, "power bar starts at the health bar's left edge")
+    A.deep({ mana[2][2], mana[2][4] }, { p.health, 0 }, "power bar ends at the health bar's right edge")
 end)
 
 h.test("bars move in combat unless the client protects them, then wait for combat to end", function(t)
@@ -194,6 +194,25 @@ h.test("bars move in combat unless the client protects them, then wait for comba
     mock.state.combat = true
     mock:fire("PLAYER_TARGET_CHANGED")
     A.eq(mana:GetNumPoints(), 2, "an unprotected bar is laid out in combat")
+end)
+
+h.test("the box stays around a protected bar that Blizzard moves in combat", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local target = U.frames()[3]
+    local p = U.parts(target)
+    mock:setUnit("target", { exists = true, player = false })
+    enable(ns)
+    function p.health:IsProtected() return true end
+    mock.state.combat = true
+    p.health:ClearAllPoints()
+    p.health:SetPoint("TOPLEFT", target, "BOTTOMLEFT", 0, 11)
+    mock:fire("PLAYER_TARGET_CHANGED")
+    A.deep(U.points(p.health), { { "TOPLEFT", target, "BOTTOMLEFT", 0, 11 } }, "Blizzard's points kept in combat")
+    local box = U.points(U.barBox(target))
+    A.eq(box[1][2], p.health, "box hangs on the health bar")
+    A.eq(box[2][2], p.health, "box ends on the health bar")
+    local mana = U.points(p.mana)
+    A.ok(mana[1][2] == p.health and mana[2][2] == p.health, "power bar hangs on the health bar")
 end)
 
 h.test("laying out again keeps the same points", function(t)

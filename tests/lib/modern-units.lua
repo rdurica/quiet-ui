@@ -243,10 +243,12 @@ local function edges(owner, anchor)
     return list
 end
 
--- The dark box QuietUI draws behind a unit's bars: a shown background fill on the frame, anchored to it.
+-- The dark box QuietUI draws behind a unit's bars: a shown background fill on the frame, anchored to it or its health bar.
 function U.barBox(frame)
     for _, r in ipairs(frame._regions or {}) do
-        if r._layer == "BACKGROUND" and r._shown and r._color and r._points[1] and r._points[1][2] == frame then
+        local rel = r._points[1] and r._points[1][2]
+        if r._layer == "BACKGROUND" and r._shown and r._color and rel
+            and (rel == frame or type(rel.GetStatusBarTexture) == "function") then
             return r
         end
     end

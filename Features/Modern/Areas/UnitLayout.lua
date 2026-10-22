@@ -212,13 +212,15 @@ local function PlayerLabels(skin, parts)
     Anchor(skin, combat, { "BOTTOMLEFT", parts.health, "TOPLEFT", -INSET, NAME_GAP + INSET })
 end
 
--- The dark box behind both bars, with the 1 px border in the theme or the target's rarity colour.
-local function Box(skin, frame, parts, l, r, top, bottom)
+-- The dark box behind both bars, with the 1 px border in the theme or the target's rarity colour. Box and
+-- power bar hang on the health bar: Blizzard re-anchors a protected health bar on a target change in
+-- combat, and they stay with it until combat ends.
+local function Box(skin, frame, parts)
     local box = skin:Own(frame, "bar box", function() return frame:CreateTexture(nil, "BACKGROUND") end)
     if not box then return end
     box:ClearAllPoints()
-    box:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", l, top)
-    box:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", r, bottom)
+    box:SetPoint("TOPLEFT", parts.health, "TOPLEFT", -INSET, INSET)
+    box:SetPoint("BOTTOMRIGHT", parts.health, "BOTTOMRIGHT", INSET, -(INSET + POWER_HEIGHT + POWER_GAP))
     box:SetColorTexture(unpack(Modern.Theme().bg))
     box:Show()
     skin:Border(frame, parts.border, box)
@@ -240,12 +242,12 @@ function Modern.UnitLayout(skin, frame, parts)
     local big = parts.player or Movable(parts.level)
     local bottom = hr[4]
     local top = bottom + (big and BOX_HEIGHT or SMALL_HEIGHT)
-    Box(skin, frame, parts, l, r, top, bottom)
+    Box(skin, frame, parts)
     local powerTop = bottom + INSET + POWER_HEIGHT
     Anchor(skin, health, { "TOPLEFT", frame, "BOTTOMLEFT", l + INSET, top - INSET },
         { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r - INSET, powerTop + POWER_GAP })
-    Anchor(skin, mana, { "TOPLEFT", frame, "BOTTOMLEFT", l + INSET, powerTop },
-        { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r - INSET, bottom + INSET })
+    Anchor(skin, mana, { "TOPLEFT", health, "BOTTOMLEFT", 0, -POWER_GAP },
+        { "BOTTOMRIGHT", health, "BOTTOMRIGHT", 0, -(POWER_GAP + POWER_HEIGHT) })
     Contents(skin, health)
     Contents(skin, mana, true)
     if parts.player then PlayerLabels(skin, parts) else Labels(skin, frame, parts) end
