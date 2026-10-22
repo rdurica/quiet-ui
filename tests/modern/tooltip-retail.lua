@@ -161,3 +161,24 @@ h.test("12.0 unit tooltip name colour does nothing while the area is off and the
     show()
     F.sameColor(A, { GameTooltipTextLeft1:GetTextColor() }, { 1, 1, 1 }, "no class colour while off")
 end, { beforeLoad = before })
+
+h.test("12.0 the chat item tooltip's close button becomes the thin cross and its art returns on restore", function(t)
+    local A, ns = t.assert, t.ns
+    fixture(ns)
+    local close = CreateFrame("Button", "ItemRefCloseButton", ItemRefTooltip)
+    ItemRefTooltip.CloseButton = close
+    close.normal = close:CreateTexture(nil, "ARTWORK")
+    close.normal:SetAlpha(1)
+    close.GetNormalTexture = function() return close.normal end
+    F.enable(ns)
+    A.alpha(close.normal, 0, "Blizzard's red and gold art is held")
+    A.alpha(close, 1, "the button itself stays")
+    local drawn = 0
+    for _, region in ipairs({ close:GetRegions() }) do
+        if region ~= close.normal and region:IsShown() and region._color then drawn = drawn + 1 end
+    end
+    A.eq(drawn, 2, "two cross lines are drawn")
+    ns.Modern.Restore()
+    A.alpha(close.normal, 1, "restore returns Blizzard's art")
+    A.eq(L.errors(t.mock), 0, "nothing was reported")
+end, { beforeLoad = before })

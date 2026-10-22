@@ -142,6 +142,8 @@ local function ApplyTip(skin, tip)
         Backdrop(skin, tip)
     end
     Bar(skin, tip)
+    -- The chat item tooltip's close button takes the windows' thin cross.
+    Modern.CloseButton(skin, tip)
     skinned[tip] = { skin = skin }
     Top(skin, tip, Modern.Theme().border)
     Watch(tip, nine ~= nil)
