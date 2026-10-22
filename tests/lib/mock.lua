@@ -79,6 +79,12 @@ local function newFrame(mock, kind, name, parent, template)
             if select("#", ...) == 0 then self._backdropBorder = nil else self._backdropBorder = { ... } end
         end
     end
+    if template and tostring(template):find("SecureActionButtonTemplate", 1, true) then
+        f._attributes = {}
+        f.SetAttribute = function(self, key, value) self._attributes[key] = value end
+        f.GetAttribute = function(self, key) return self._attributes[key] end
+        f.RegisterForClicks = function(self, ...) self._clicks = { ... } end
+    end
     return f
 end
 

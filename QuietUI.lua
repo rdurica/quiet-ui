@@ -81,6 +81,7 @@ local function Boot()
         ns.Print("is " .. state .. ".")
         print("   |cffffffff/quiet|r  switch it on or off")
         print("   |cffffffff/quiet setup|r  choose what stays visible")
+        ns.Setup.Welcome()
     end
     BootScan()
     ns.Glance.EnsureBinding()

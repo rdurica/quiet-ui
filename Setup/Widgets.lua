@@ -17,8 +17,9 @@ function Setup.ButtonText(button, text)
     if button.SetText then button:SetText(text) end
 end
 
-function Setup.Button(parent, text, onClick)
-    local button = CreateFrame("Button", nil, parent)
+-- With a template and no onClick the template keeps its own OnClick.
+function Setup.Button(parent, text, onClick, template)
+    local button = CreateFrame("Button", nil, parent, template)
     button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     button.label:SetPoint("LEFT", 8, 0)
     button.label:SetPoint("RIGHT", -8, 0)
@@ -27,7 +28,7 @@ function Setup.Button(parent, text, onClick)
     Setup.Hover(button)
     button:SetSize(128, 26)
     Setup.ButtonText(button, text)
-    button:SetScript("OnClick", onClick)
+    if onClick then button:SetScript("OnClick", onClick) end
     return button
 end
 

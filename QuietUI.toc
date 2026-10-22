@@ -126,6 +126,7 @@ Setup\Pages\Misc.lua
 Setup\Pages\Modern.lua
 Setup\Pages\Info.lua
 Setup\Minimap.lua
+Setup\Welcome.lua
 Layout\String.lua
 Layout\Layouts.lua
 Layout\Preview.lua
