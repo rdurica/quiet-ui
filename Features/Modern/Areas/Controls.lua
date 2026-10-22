@@ -171,6 +171,12 @@ function Modern.ScrollArrows(skin, bar)
     Arrow(skin, bar.Forward, "down")
 end
 
+-- Page buttons (the mailbox's Prev and Next): bare left and right chevrons; their labels stay.
+function Modern.PageArrows(skin, back, forward)
+    Arrow(skin, back, "left")
+    Arrow(skin, forward, "right")
+end
+
 -- UIPanelScrollBarTemplate (a Slider): the up and down buttons become the same chevrons, the knob a flat bar in the
 -- border colour that follows it.
 function Modern.SliderBar(skin, bar)

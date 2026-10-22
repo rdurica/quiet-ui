@@ -8,6 +8,7 @@ local L = h.lib("modern")
 local W = h.lib("modern-windows")
 local R = h.lib("modern-windows-retail")
 local P = h.lib("modern-shapes")
+local B = h.lib("modern-bags")
 
 local INK = { 0.18, 0.12, 0.06, 1 }
 
@@ -44,12 +45,33 @@ local function mailbox()
     P.texture(c, row, "art", "MailItemBorder", "BACKGROUND")
     P.text(c, row, "Merisa")
     c.row = P.itemButton(c, row, "MailItem1Button", { kind = "CheckButton", Icon = true, slot = true })
+    c.mailRow = row
+    -- The inbox page buttons: spellbook page art with a label beside it.
+    local inbox = CreateFrame("Frame", "InboxFrame", frame)
+    for _, page in ipairs({ { "InboxPrevPageButton", "PrevPage", "Prev" }, { "InboxNextPageButton", "NextPage", "Next" } }) do
+        local button = CreateFrame("Button", page[1], inbox)
+        local normal = P.texture(c, button, "art", "UI-SpellbookIcon-" .. page[2] .. "-Up", "ARTWORK")
+        function button:GetNormalTexture() return normal end
+        button.label = P.text(c, button, page[3])
+    end
     P.texture(c, frame, "art", "Stationery_Left", "BACKGROUND", { name = "SendStationeryBackgroundLeft" })
     P.texture(c, frame, "art", "UI-ClassTrainer-HorizontalBar", "ARTWORK")
     c.to = P.namedInput(c, frame, "SendMailNameEditBox")
     c.body = CreateFrame("EditBox", "SendMailBodyEditBox", frame)
     c.body:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
     c.body:SetTextColor(unpack(INK))
+    -- The divider reported by file id on Forever, so it is only known by its name.
+    local bar = P.texture(c, frame, "art", "137012", "ARTWORK", { name = "SendMailHorizontalBarLeft" })
+    c.barRight = P.texture(c, frame, "art", "137012", "ARTWORK")
+    c.barRight:SetPoint("LEFT", bar, "RIGHT", 0, 0)
+    -- The money bar under the player's coins and the gold input of the amount to send.
+    c.moneyBar = P.inset(c, frame, "SendMailMoneyInset")
+    c.moneyBg = CreateFrame("Frame", "SendMailMoneyBg", frame)
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do
+        c.moneyBg[key] = P.texture(c, c.moneyBg, "art", "MoneyBg-" .. key, "BACKGROUND")
+    end
+    c.gold = P.namedInput(c, frame, "SendMailMoneyGold")
+    c.coin = P.texture(c, c.gold, nil, "UI-GoldIcon", "ARTWORK")
     c.slot = attachment(c, frame, "SendMailAttachment1")
     c.send = P.panelButton(c, frame, "Send", "SendMailMailButton")
     c.frame = frame
@@ -80,6 +102,49 @@ h.test("Windows gives the mailbox the dark window with bare rows and light lette
     ns.Modern.Restore()
     A.deep(L.diff(before), {}, "the mailbox restores exactly")
     A.deep(L.diff(beforeOpen), {}, "the open letter restores exactly")
+end)
+
+h.test("Windows lets the inbox stand bare, without an inner box or row rules, and turns its pages with chevrons", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = mailbox()
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    A.ok(B.border(c.frame.Inset) == nil, "the inbox inset draws no second box")
+    for _, region in ipairs(c.frame.Inset._regions) do
+        A.ok(region._shown == false or not region._color, "the inbox inset has no darker fill")
+    end
+    for _, region in ipairs(c.mailRow._regions) do
+        A.ok(region._shown == false or not region._color, "a row has no rule under it")
+    end
+    for _, name in ipairs({ "InboxPrevPageButton", "InboxNextPageButton" }) do
+        local button = _G[name]
+        local strokes = 0
+        for _, region in ipairs(button._regions) do
+            if region._shown ~= false and region._color and region._color[1] == theme.accent[1] then strokes = strokes + 1 end
+        end
+        A.eq(strokes, 2, name .. " is a bare accent chevron")
+        A.ok(R.invisible(button:GetNormalTexture(), c.frame), name .. " loses the spellbook page art")
+        A.ok(not R.invisible(button.label, c.frame), name .. " keeps its label")
+    end
+    ns.Modern.Restore()
+    A.ok(not R.invisible(_G.InboxPrevPageButton:GetNormalTexture(), c.frame), "the page art comes back")
+end)
+
+h.test("Windows quiets the send page: no divider bars, the money as bare text, coin inputs without a border", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = mailbox()
+    W.enable(ns)
+    A.ok(R.invisible(_G.SendMailHorizontalBarLeft, c.frame), "the divider bar is held by its name")
+    A.ok(R.invisible(c.barRight, c.frame), "the unnamed right half anchored to it goes too")
+    A.ok(B.border(c.moneyBar) == nil and B.border(c.moneyBg) == nil, "the money bar has no border")
+    A.ok(not W.isDark(c.moneyBg), "the money bar has no field")
+    A.ok(W.isDark(c.gold), "a coin input keeps its dark field")
+    A.ok(B.border(c.gold) == nil, "a coin input has no border")
+    A.ok(not R.invisible(c.coin, c.frame), "the coin icon stays")
+    ns.Modern.Restore()
+    A.ok(not R.invisible(_G.SendMailHorizontalBarLeft, c.frame), "the divider bar comes back")
 end)
 
 h.test("Windows frames a mail attachment in its quality colour and crops it", function(t)
