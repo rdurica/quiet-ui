@@ -37,6 +37,13 @@ local function Move(skin, frame, ...)
     frame:SetPoint(...)
 end
 
+-- The zone button keeps its size and a higher level, so it would catch the clicks of the controls now on the band.
+local function Above(skin, frame, header)
+    if not ns.Usable(frame) or type(frame.GetFrameLevel) ~= "function" then return end
+    local level = header:GetFrameLevel() + 1
+    if frame:GetFrameLevel() < level then skin:Set(frame, "SetFrameLevel", level) end
+end
+
 -- Grey at rest, light under the mouse, like the window glyphs.
 local function Paint(button, over)
     local state = glyphs[button]
@@ -165,10 +172,13 @@ function Modern.MinimapHeader(skin, cluster, map)
     if ns.Usable(tracking) then
         Hold(skin, tracking, { "Background" })
         Move(skin, tracking, "LEFT", band, "LEFT", INSET, 0)
+        Above(skin, tracking, header)
+        Above(skin, tracking.Button, tracking)
         Lens(skin, tracking.Button)
     end
     if ns.Usable(calendar) then
         Move(skin, calendar, "RIGHT", band, "RIGHT", -INSET + 3, 0)
+        Above(skin, calendar, header)
         Calendar(skin, calendar, _G.MinimapZoneText)
     end
     ZoneText(skin, header, band)
