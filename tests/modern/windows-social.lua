@@ -84,3 +84,72 @@ h.test("Windows skins a who list row the list adds later", function(t)
     c.who.ScrollBox:Update()
     A.eq(P.visibleArt(late, R), "", "the new row's plate is held")
 end)
+
+-- The browse page's pooled results (Blizzard_LFGVanilla_Browse.xml): a grouping header (common-button-list-
+-- collapseExpand with plus / minus icons), a nested listing (common-button-list-mid2 with hover and selection) and
+-- a plain one (groupfinder-highlightbar).
+local function results(c, target)
+    local head = CreateFrame("Button", nil, target)
+    head:SetSize(312, 36)
+    head.ResultBG = P.texture(c, head, "art", "common-button-list-collapseExpand", "BACKGROUND", { atlas = true })
+    head.Highlight = P.texture(c, head, "art", "common-button-list-collapseExpand", "HIGHLIGHT", { atlas = true })
+    head.ExpandIcon = P.texture(c, head, "art", "common-button-list-plus", "ARTWORK", { atlas = true })
+    head.CollapseIcon = P.texture(c, head, "art", "common-button-list-minus", "ARTWORK", { atlas = true })
+    head.ExpandIcon:Hide()
+    head.CategoryLabel = P.text(c, head, "Groups")
+    local nested = CreateFrame("Button", nil, target)
+    nested.ResultBG = P.texture(c, nested, "art", "common-button-list-mid2", "BACKGROUND", { atlas = true })
+    nested.Highlight = P.texture(c, nested, "art", "common-button-list-mid2-hover", "BACKGROUND", { atlas = true })
+    nested.Selected = P.texture(c, nested, "keep", "common-button-list-mid2-selected", "OVERLAY", { atlas = true })
+    nested.Name = P.text(c, nested, "Milk Ninja")
+    nested.PartyIcon = P.texture(c, nested, "keep", "groupfinder-icon-leader", "ARTWORK", { atlas = true })
+    local plain = CreateFrame("Button", nil, target)
+    plain.ResultBG = P.texture(c, plain, "art", "groupfinder-highlightbar", "BACKGROUND", { atlas = true })
+    plain.Name = P.text(c, plain, "Leif Jorunn")
+    return head, nested, plain
+end
+
+local function striped(frame, strip)
+    for _, region in ipairs(frame._regions) do
+        if region._color and region._color[1] == strip[1] and region._shown ~= false then return true end
+    end
+    return false
+end
+
+-- Shown accent strokes of a sign: 1 minus, 2 plus.
+local function sign(frame, accent)
+    local count = 0
+    for _, region in ipairs(frame._regions) do
+        local col = region._color
+        if region._shown and (region._alpha or 1) > 0 and col and col[1] == accent[1]
+            and (region._w == 10 or region._h == 10) then count = count + 1 end
+    end
+    return count
+end
+
+h.test("Windows lets group finder results stand bare and turns their groupings into strips with a sign", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = P.new()
+    local parent = finder(c)
+    local browse = P.window(c, "LFGBrowseFrame", parent)
+    local box = P.scrollBox(browse)
+    local head, nested, plain = results(c, box.ScrollTarget)
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    A.eq(P.visibleArt(c, R), "", "result plates, hover art, grouping art and Blizzard's signs are held")
+    A.eq(P.hiddenKeep(c, R), "", "names, labels, leader icons and the selection stay")
+    A.ok(P.hasHover(nested) and P.hasHover(plain), "a listing lights up under the mouse")
+    A.ok(striped(head, theme.strip), "a grouping is a section strip")
+    A.eq(sign(head, theme.accent), 1, "an expanded grouping shows a minus")
+    head.CollapseIcon:Hide()
+    head.ExpandIcon:Show()
+    A.eq(sign(head, theme.accent), 2, "a collapsed grouping shows a plus")
+    local late = P.new()
+    local later = results(late, box.ScrollTarget)
+    box:Update()
+    A.eq(P.visibleArt(late, R), "", "results pooled in later stand bare on the list update")
+    A.ok(striped(later, theme.strip), "a later grouping is a strip")
+    ns.Modern.Restore()
+    A.ok(not striped(head, theme.strip) and sign(head, theme.accent) == 0, "Restore removes the strip and the sign")
+end)

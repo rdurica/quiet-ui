@@ -266,14 +266,15 @@ function Modern.Band(texture)
 end
 
 -- A section header: a solid strip a step lighter than the panel, with a 2 px accent edge on the left. With `height`
--- the strip is that tall, centred on the header, for headers Blizzard makes much taller than their title.
-function Modern.Strip(skin, header, height)
+-- the strip is that tall, centred on the header (moved down by `y`), for headers Blizzard makes much taller than
+-- their title.
+function Modern.Strip(skin, header, height, y)
     if not ns.Usable(header) or type(header.CreateTexture) ~= "function" then return end
     local parts = skin:Own(header, "strip", function()
         local fill = header:CreateTexture(nil, "BACKGROUND", nil, -8)
         if height then
-            fill:SetPoint("LEFT", header, "LEFT", 0, 0)
-            fill:SetPoint("RIGHT", header, "RIGHT", 0, 0)
+            fill:SetPoint("LEFT", header, "LEFT", 0, -(y or 0))
+            fill:SetPoint("RIGHT", header, "RIGHT", 0, -(y or 0))
             fill:SetHeight(height)
         else
             fill:SetAllPoints(header)
