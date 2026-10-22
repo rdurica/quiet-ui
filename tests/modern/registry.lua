@@ -274,7 +274,7 @@ local function Fixture(t, key)
         local bar = C.castbar("PlayerCastingBarFrame")
         return function(A)
             A.alpha(bar.Border, 0, "cast bar art was held")
-            A.eq(bar:GetHeight(), 18, "cast bar was laid out")
+            A.eq(bar:GetHeight(), 22, "cast bar was laid out")
         end
     end
     if key == "windows" then

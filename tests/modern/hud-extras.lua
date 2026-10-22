@@ -57,7 +57,12 @@ h.test("Cast bars flattens the breath bar and repaints it on every Setup, and re
     breath:Setup("BREATH")
     A.eq(breath.StatusBar:GetStatusBarTexture()._texture, ns.Modern.Theme().bar, "the fill is flat after Setup")
     A.eq(breath.StatusBar._statusColor[3], 0.95, "breath is blue")
-    A.ok(W.isDark(breath.StatusBar), "the bar sits on the theme panel")
+    local track = ns.Modern.Theme().track
+    local onTrack = false
+    for _, region in ipairs(breath.StatusBar._regions) do
+        if region._color and region._color[1] == track[1] and region:IsShown() then onTrack = true end
+    end
+    A.ok(onTrack, "the bar sits on the dark track")
     A.eq(#mock.printed, 0, "nothing reported")
     ns.Modern.Restore()
     breath:Setup("BREATH")

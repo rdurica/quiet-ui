@@ -1,8 +1,8 @@
 local _, ns = ...
 
 -- The breath, fatigue and feign death bars (MirrorTimerContainer.mirrorTimers, Forever UI source) take the cast bar
--- look: their cast bar frame, text box and background are held, the bar sits on the theme panel with a thin border
--- and a flat fill in the timer's colour. Blizzard sets the fill atlas on every Setup, so Setup is followed by a
+-- look: their cast bar frame, text box and background are held, the bar sits in the cast bar frame
+-- with a flat fill in the timer's colour. Blizzard sets the fill atlas on every Setup, so Setup is followed by a
 -- repaint; the hook does nothing while the area is off. Label and time text stay.
 
 local Modern = ns.Modern
@@ -37,8 +37,7 @@ local function Timer(skin, timer)
     for _, region in ipairs({ timer:GetRegions() }) do
         if IsTexture(region) then skin:Hold(region) end
     end
-    skin:Panel(bar)
-    skin:Border(bar)
+    Modern.CastBars.Frame(skin, bar)
     local fill = type(bar.GetStatusBarTexture) == "function" and bar:GetStatusBarTexture()
     local atlas = ns.Usable(fill) and type(fill.GetAtlas) == "function" and fill:GetAtlas()
     if type(atlas) == "string" then

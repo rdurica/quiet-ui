@@ -1,31 +1,41 @@
 local _, ns = ...
 
--- Cast bars of the player, pet, target and focus (and, through MirrorTimers, the breath and fatigue bars) (retail CastingBarMixin parts, with the classic
--- `<name>Icon` style globals as fallbacks). The frame art is held, the bar is taller with the theme
--- panel, border and flat fill, and the spell name and cast time sit inside it. Blizzard keeps the
--- player's spell icon hidden but still sets its texture, so an own square icon left of the bar
--- mirrors that texture and Blizzard's icon is held at alpha 0. Blizzard re-textures the fill on every
--- cast and re-anchors the parts in SetLook, so those are hooked; the hooks only act on tracked bars
--- and are inert while the area is off. Nameplate cast bars are recycled across units and stay Blizzard's.
+-- Cast bars of the player, pet, target and focus (retail CastingBarMixin parts, with the classic `<name>Icon`
+-- style globals as fallbacks); MirrorTimers gives the breath and fatigue bars the same frame. The frame art and
+-- the spark are held; the theme track with a black edge stands PAD px outside the bar, the flat fill carries a soft
+-- top sheen and a light line at its leading edge, and the spell name and cast time sit inside it. The player's
+-- bar is longer and taller. Blizzard keeps the player's spell icon hidden but
+-- still sets its texture, so an own square icon left of the bar mirrors that texture and Blizzard's icon is held
+-- at alpha 0. Blizzard re-textures the fill on every cast and re-anchors the parts in SetLook, so those are
+-- hooked; the hooks only act on tracked bars and are inert while the area is off. Nameplate cast bars are
+-- recycled across units and stay Blizzard's.
 
 local Modern = ns.Modern
+local CastBars = {}
+Modern.CastBars = CastBars
 
 local FRAMES = { "PlayerCastingBarFrame", "CastingBarFrame", "PetCastingBarFrame", "TargetFrameSpellBar",
     "FocusFrameSpellBar" }
-local ART = { "Border", "BorderShield", "TextBorder", "Background", "Flash", "ChannelShadow", "StandardGlow",
-    "CraftGlow", "InterruptGlow", "Shine" }
+local ART = { "Border", "BorderShield", "TextBorder", "Background", "Flash", "Spark", "ChannelShadow",
+    "StandardGlow", "CraftGlow", "InterruptGlow", "Shine" }
 
--- Fill colour per retail `barType`; a client without it keeps Blizzard's colours.
+-- Fill colour per retail `barType`; a client without it keeps Blizzard's colours. The cast gold is a step
+-- darker than the accent so the white spell name stays readable on it.
+local GOLD = { 0.78, 0.60, 0.20, 1 }
 local COLOURS = {
-    standard = "accent", empowered = "accent", applyingcrafting = "accent", applyingtalents = "accent",
-    channel = { 0.30, 0.75, 0.35, 1 },
+    standard = GOLD, empowered = GOLD, applyingcrafting = GOLD, applyingtalents = GOLD,
+    channel = { 0.25, 0.62, 0.30, 1 },
     uninterruptable = { 0.55, 0.55, 0.55, 1 },
     interrupted = "danger",
 }
 
 local PLAYER = { PlayerCastingBarFrame = true, CastingBarFrame = true }
-local PLAYER_HEIGHT, OTHER_HEIGHT = 18, 14
-local GAP = 2   -- between the icon and the bar
+local PLAYER_WIDTH = 260
+local PLAYER_HEIGHT, OTHER_HEIGHT = 22, 16
+local PLAYER_FONT, OTHER_FONT = 12, 10
+local PAD = 1   -- track and edge outside the fill
+local EDGE = { 0, 0, 0, 1 }
+local GAP = 2   -- between the icon and the frame
 local INSET = 4 -- text inside the bar's ends
 
 local tracked = setmetatable({}, { __mode = "k" })  -- bar -> { texture, theme }
@@ -115,12 +125,59 @@ local function Anchor(skin, region, ...)
     region:SetPoint(...)
 end
 
+-- Sets the size and the outline, keeping the face.
+local function Font(skin, text, size)
+    if type(text.GetFont) ~= "function" or type(text.SetFont) ~= "function" then return end
+    local ok, face, _, flags = pcall(text.GetFont, text)
+    if not ok or type(face) ~= "string" then return skin:Outline(text) end
+    flags = type(flags) == "string" and flags or ""
+    if not flags:find("OUTLINE", 1, true) then flags = flags == "" and "OUTLINE" or (flags .. ",OUTLINE") end
+    skin:Set(text, "SetFont", face, size, flags)
+end
+
+-- The dark track and black edge PAD px around the bar, and the sheen over the fill.
+function CastBars.Frame(skin, bar)
+    local panel = skin:Panel(bar, Modern.Theme().track)
+    if not panel then return end
+    panel:ClearAllPoints()
+    panel:SetPoint("TOPLEFT", bar, "TOPLEFT", -PAD, PAD)
+    panel:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", PAD, -PAD)
+    skin:Border(bar, EDGE, panel)
+    local sheen = skin:Own(bar, "cast sheen", function()
+        local texture = bar:CreateTexture(nil, "ARTWORK", nil, 7)
+        texture:SetAllPoints(bar)
+        texture:SetTexture(Modern.Theme().bar)
+        return texture
+    end)
+    if not sheen then return end
+    if type(CreateColor) == "function" and type(sheen.SetGradient) == "function" then
+        pcall(sheen.SetGradient, sheen, "VERTICAL", CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, 0.12))
+    else
+        sheen:SetVertexColor(1, 1, 1, 0.05)
+    end
+    sheen:Show()
+end
+
+-- A thin light line riding the fill's right end.
+local function Spark(skin, bar)
+    local fill = type(bar.GetStatusBarTexture) == "function" and bar:GetStatusBarTexture()
+    if not ns.Usable(fill) then return end
+    local line = skin:Own(bar, "cast spark", function() return bar:CreateTexture(nil, "OVERLAY") end)
+    if not line then return end
+    line:ClearAllPoints()
+    line:SetPoint("TOP", fill, "TOPRIGHT", 0, 0)
+    line:SetPoint("BOTTOM", fill, "BOTTOMRIGHT", 0, 0)
+    line:SetWidth(1)
+    line:SetColorTexture(1, 1, 1, 0.7)
+    line:Show()
+end
+
 local function Mirror(icon, texture)
     local own = mirrors[icon]
     if own then own:SetTexture(texture) end
 end
 
-local function Icon(skin, bar, height)
+local function Icon(skin, bar, size)
     local own = skin:Own(bar, "cast icon", function()
         local texture = bar:CreateTexture(nil, "ARTWORK")
         local holder = CreateFrame("Frame", nil, bar)
@@ -130,12 +187,12 @@ local function Icon(skin, bar, height)
     if not own then return end
     local texture, holder = own[1], own[2]
     texture:ClearAllPoints()
-    texture:SetPoint("RIGHT", bar, "LEFT", -GAP, 0)
-    texture:SetSize(height, height)
+    texture:SetPoint("RIGHT", bar, "LEFT", -(PAD + GAP), 0)
+    texture:SetSize(size, size)
     texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     texture:Show()
     holder:Show()
-    skin:Border(holder)
+    skin:Border(holder, EDGE)
     local icon = Part(bar, "Icon")
     if not icon then return end
     skin:Hold(icon)
@@ -149,20 +206,22 @@ local function Icon(skin, bar, height)
 end
 
 local function Layout(skin, bar)
-    local height = PLAYER[bar:GetName() or ""] and PLAYER_HEIGHT or OTHER_HEIGHT
+    local player = PLAYER[bar:GetName() or ""]
+    local height, size = player and PLAYER_HEIGHT or OTHER_HEIGHT, player and PLAYER_FONT or OTHER_FONT
     skin:Set(bar, "SetHeight", height)
+    if player then skin:Set(bar, "SetWidth", PLAYER_WIDTH) end
     local text = Part(bar, "Text")
     if text then
-        skin:Outline(text)
+        Font(skin, text, size)
         Anchor(skin, text, "LEFT", bar, "LEFT", INSET, 0)
         if type(text.SetJustifyH) == "function" then skin:Set(text, "SetJustifyH", "LEFT") end
     end
     local time = Part(bar, "CastTimeText")
     if time then
-        skin:Outline(time)
+        Font(skin, time, size)
         Anchor(skin, time, "RIGHT", bar, "RIGHT", -INSET, 0)
     end
-    Icon(skin, bar, height)
+    Icon(skin, bar, height + 2 * PAD)
 end
 
 -- Blizzard's SetLook puts the parts back where its look wants them.
@@ -177,9 +236,9 @@ local function Bar(skin, bar)
         local art = Part(bar, key)
         if art and type(art.SetAlpha) == "function" then Hide(skin, art) end
     end
-    skin:Panel(bar)
-    skin:Border(bar)
+    CastBars.Frame(skin, bar)
     Fill(skin, bar)
+    Spark(skin, bar)
     laid[bar] = skin
     skin:Remember(bar, "cast laid", function() laid[bar] = nil end)
     Layout(skin, bar)
