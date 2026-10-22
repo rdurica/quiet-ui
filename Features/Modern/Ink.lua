@@ -5,7 +5,9 @@ local _, ns = ...
 -- A SimpleHTML page (item text) is coloured per element. A font inked with a tone takes that colour instead,
 -- so body text can be neutral while headings keep the mirrored gold; the headings of a page are its H elements.
 -- A plain font also trades the serif parchment face for Arial Narrow with a dark shadow, which reads better on a dark
--- panel; Undo puts back Blizzard's last font object (or face) and shadow.
+-- panel; Undo puts back Blizzard's last font object (or face) and shadow. Dark colour codes inside the text (gossip
+-- quest titles) override the font colour, so they are rewritten the same way; Undo puts back Blizzard's text while
+-- it is still the rewritten one.
 
 local Modern = ns.Modern
 
@@ -18,6 +20,7 @@ local DEPTH = 7
 local inked = setmetatable({}, { __mode = "k" })   -- font -> Blizzard's last ink per element, while applied
 local styles = setmetatable({}, { __mode = "k" })  -- font -> { tone, plain }, while applied
 local dressed = setmetatable({}, { __mode = "k" }) -- font -> Blizzard's font object or face and shadow, while plain
+local coded = setmetatable({}, { __mode = "k" })   -- font -> { text = Blizzard's, shown = rewritten }, while applied
 local hooked = setmetatable({}, { __mode = "k" })
 local busy = false
 
@@ -86,10 +89,42 @@ local function Undress(font)
     if saved.offset then pcall(font.SetShadowOffset, font, unpack(saved.offset, 1, 2)) end
 end
 
+local function Code(hex)
+    return tonumber(hex, 16) / 255
+end
+
+-- Rewrites each dark |cAARRGGBB code of the text to the tone or the mirrored colour.
+local function Recode(font, tone)
+    if type(font.GetText) ~= "function" or type(font.SetText) ~= "function" then return end
+    local ok, text = pcall(font.GetText, font)
+    if not ok or type(text) ~= "string" or ns.IsSecret(text) or not text:find("|c", 1, true) then return end
+    local shown = text:gsub("|c(%x%x)(%x%x)(%x%x)(%x%x)", function(a, r, g, b)
+        local lr, lg, lb = Light(Code(r), Code(g), Code(b))
+        if not lr then return end
+        if tone then lr, lg, lb = tone[1], tone[2], tone[3] end
+        return string.format("|c%s%02x%02x%02x", a, lr * 255 + 0.5, lg * 255 + 0.5, lb * 255 + 0.5)
+    end)
+    if shown == text then return end
+    coded[font] = { text = text, shown = shown }
+    busy = true
+    pcall(font.SetText, font, shown)
+    busy = false
+end
+
+local function Uncode(font)
+    local saved = coded[font]
+    coded[font] = nil
+    if not saved then return end
+    local ok, text = pcall(font.GetText, font)
+    if ok and text == saved.shown then pcall(font.SetText, font, saved.text) end
+end
+
 -- `element` is nil for a font string, an element name for a SimpleHTML page.
 local function Lighten(font, element)
     local ink = inked[font]
     if busy or not ink then return end
+    local style = styles[font] or {}
+    if not element then Recode(font, style.tone) end
     local ok, r, g, b, a
     if element then
         ok, r, g, b, a = pcall(font.GetTextColor, font, element)
@@ -99,7 +134,6 @@ local function Lighten(font, element)
     if not ok then return end
     local lr, lg, lb = Light(r, g, b)
     if not lr then return end
-    local style = styles[font] or {}
     local tone = style.tone
     if tone and (not element or element == "P") then lr, lg, lb = tone[1], tone[2], tone[3] end
     ink[element or 1] = { r, g, b, a }
@@ -155,6 +189,7 @@ function Modern.Ink(skin, font, tone, plain)
             styles[font] = nil
             busy = true
             Undress(font)
+            Uncode(font)
             busy = false
             for key, color in pairs(ink or {}) do
                 if key == 1 then

@@ -183,3 +183,21 @@ h.test("NPC windows give their minimal scroll bars the flat track and knob and r
     ns.Modern.Restore()
     A.deep(L.diff(before), {}, "restore returns Blizzard's art")
 end)
+
+h.test("dark colour codes inside gossip quest titles become light, also when Blizzard sets the text again", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    W.area(ns, "windows")
+    local f = fixture()
+    local title = ink(CreateFrame("Button", nil, f.target), "|cff000000A Threat Within|r")
+    local gold = ink(CreateFrame("Button", nil, f.target), "|cffffd100Gold|r")
+    W.enable(ns)
+    local text = ns.Modern.Theme().text
+    local code = string.format("|cff%02x%02x%02x", text[1] * 255 + 0.5, text[2] * 255 + 0.5, text[3] * 255 + 0.5)
+    A.eq(title:GetText(), code .. "A Threat Within|r", "the dark code takes the neutral theme text")
+    A.eq(gold:GetText(), "|cffffd100Gold|r", "a light code stays")
+    title:SetText("|cff000000Report to Goldshire|r")
+    mock:fire("GOSSIP_SHOW")
+    A.eq(title:GetText(), code .. "Report to Goldshire|r", "a pooled option set again is lightened on the next scan")
+    ns.Modern.Restore()
+    A.eq(title:GetText(), "|cff000000Report to Goldshire|r", "Blizzard's text returns on restore")
+end)
