@@ -132,8 +132,12 @@ ns.Feature({
     -- No gate: apply also takes the chrome off again when Modern chat is switched off.
     apply = function()
         if ns.Settings.ModernChat() then Chat.StripAll() else Chat.Restore() end
+        Chat.ApplyHistory()
     end,
-    restore = function() Chat.Restore() end,
+    restore = function()
+        Chat.Restore()
+        Chat.RestoreHistory()
+    end,
     frame = function(elapsed)
         if ns.Settings.ModernChat() then Chat.Update(elapsed) end
     end,
@@ -142,10 +146,17 @@ ns.Feature({
     end,
     rescan = function(deep)
         if not deep and ns.Settings.ModernChat() then Chat.StripAll() end
+        if not deep then Chat.ApplyHistory() end
     end,
     events = {
-        UPDATE_CHAT_WINDOWS = function() Chat.StripAll(true) end,
-        UPDATE_FLOATING_CHAT_WINDOWS = function() Chat.StripAll(true) end,
+        UPDATE_CHAT_WINDOWS = function()
+            Chat.StripAll(true)
+            Chat.ApplyHistory()
+        end,
+        UPDATE_FLOATING_CHAT_WINDOWS = function()
+            Chat.StripAll(true)
+            Chat.ApplyHistory()
+        end,
     },
     hooks = {
         -- Hooked arguments are not ours to forward, except the chat frame.
@@ -154,6 +165,9 @@ ns.Feature({
         FCF_DockUpdate = function() Chat.StripAll() end,
         FCF_SetTabPosition = function() Chat.StripAll() end,
         FCF_RestorePositionAndDimensions = function() Chat.StripAll() end,
-        FCF_OpenTemporaryWindow = function() Chat.StripAll() end,
+        FCF_OpenTemporaryWindow = function()
+            Chat.StripAll()
+            Chat.ApplyHistory()
+        end,
     },
 })

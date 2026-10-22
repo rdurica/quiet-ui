@@ -96,6 +96,13 @@ function ns.Settings.ModernChat()
     return ns.Settings.Effective().chat ~= false
 end
 
+-- Lines sent from the chat input, oldest first. Kept per character, outside presets.
+function ns.Settings.ChatHistory()
+    local char = ns.Settings.CharDB()
+    if type(char.chatHistory) ~= "table" then char.chatHistory = {} end
+    return char.chatHistory
+end
+
 -- Missing means off. Only an explicit true selects the QuietUI layout when the addon turns on.
 function ns.Settings.ForceQuietLayout()
     return (ns.Settings.ActivePreset and ns.Settings.ActivePreset()) ~= nil

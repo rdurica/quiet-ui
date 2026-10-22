@@ -47,6 +47,7 @@ Features\Faders\Visible.lua
 Features\Menu\Bags.lua
 Features\Menu\Micro.lua
 Features\Chat\Input.lua
+Features\Chat\History.lua
 Features\Chat\Scroll.lua
 Features\Chat\Lines.lua
 Features\Chat\Text.lua

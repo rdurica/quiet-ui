@@ -296,6 +296,16 @@ function Frame:IsEnabled() return self._enabled ~= false end
 function Frame:SetCursorPosition() end
 function Frame:HighlightText() end
 function Frame:SetFocus() self._mock.state.focus = self end
+-- Native input history: newest last.
+function Frame:AddHistoryLine(line)
+    local list = rawget(self, "_history") or {}
+    self._history = list
+    list[#list + 1] = line
+    local max = rawget(self, "_historyMax") or 32
+    while #list > max do table.remove(list, 1) end
+end
+function Frame:GetHistoryLines() return rawget(self, "_historyMax") or 32 end
+function Frame:SetHistoryLines(n) self._historyMax = n end
 function Frame:ClearFocus() if self._mock.state.focus == self then self._mock.state.focus = nil end end
 function Frame:HasFocus() return self._mock.state.focus == self end
 -- Chat frame surface.
