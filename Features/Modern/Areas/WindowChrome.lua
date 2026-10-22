@@ -98,12 +98,14 @@ local function TabBorder(skin, tab)
     skin:Border(tab, Selected(tab) and theme.accent or theme.border)
 end
 
-function Modern.TabChrome(skin, tab)
+-- A bare tab keeps only its fill and hover, with no border and no selected accent.
+function Modern.TabChrome(skin, tab, bare)
     if not ns.Usable(tab) then return end
     HoldKeys(skin, tab, TAB_KEYS)
     skin:Panel(tab)
-    TabBorder(skin, tab)
     Modern.Shapes.Hover(skin, tab)
+    if bare then return end
+    TabBorder(skin, tab)
     tabs[tab] = skin
     skin:Remember(tab, "modern tab", function() tabs[tab] = nil end)
     if hooked[tab] then return end
@@ -123,11 +125,11 @@ end
 
 -- Tab buttons of the 12.0 TabSystem (spellbook / talents window) are children of TabSystem
 -- (PlayerSpellsFrame and its spellbook name it tabSystem).
-function Modern.TabSystemChrome(skin, frame)
+function Modern.TabSystemChrome(skin, frame, bare)
     local system = ns.Usable(frame) and (frame.TabSystem or frame.tabSystem)
     if not ns.Usable(system) or type(system.GetChildren) ~= "function" then return end
     for _, tab in ipairs({ system:GetChildren() }) do
-        if ns.Usable(tab) and (tab.Left or tab.LeftActive) then Modern.TabChrome(skin, tab) end
+        if ns.Usable(tab) and (tab.Left or tab.LeftActive) then Modern.TabChrome(skin, tab, bare) end
     end
 end
 

@@ -4,7 +4,7 @@ local _, ns = ...
 -- inner frame, the gilded dividers, the spec rings and the count boxes are held, so the window panel shows round the
 -- tree art, which is content and stays inside a thin quiet edge. Each tree title gets a thin rule, the trees quiet
 -- lines between them. Spec and talent icons are cropped square; a talent's state border becomes a thin border in the
--- colour of its state. Talent buttons are pooled, so new ones are skinned when the page shows or loads a tree.
+-- colour of its state. The spec tabs stand without a border. Talent buttons are pooled, so new ones are skinned when the page shows or loads a tree.
 
 local Modern = ns.Modern
 local Talents = {}
@@ -23,6 +23,8 @@ local STATES = { { "yellow", "accent" }, { "green", GREEN }, { "red", "danger" }
 -- Talents-small-divider draws its line along the bottom of its art; the rule is shorter than the faded ends.
 local RULE_INSET, RULE_Y = 20, 2
 local STROKE = 6
+-- Blizzard's search box spans most of the space beside the tabs.
+local SEARCH_WIDTH = 140
 
 local styled = setmetatable({}, { __mode = "k" })  -- TalentsFrame -> journal while applied
 local nodes = setmetatable({}, { __mode = "k" })   -- talent button -> journal while applied
@@ -176,12 +178,14 @@ function Talents.Apply(skin, frame)
     for _, key in ipairs(DIVIDERS) do Divider(skin, talents, key) end
     local currency = talents.ClassCurrencyDisplay
     if ns.Usable(currency) and ns.Usable(currency.Border) then skin:Hold(currency.Border) end
-    Modern.Shapes.Field(skin, talents.SearchBox)
+    local search = talents.SearchBox
+    Modern.Shapes.Field(skin, search)
+    if ns.Usable(search) and type(search.SetWidth) == "function" then skin:Set(search, "SetWidth", SEARCH_WIDTH) end
     Options(skin, talents.SearchOptionsDropdown)
     for _, key in ipairs(BUTTONS) do Modern.Shapes.Field(skin, talents[key]) end
     local spec = talents.ActiveSpec
     if ns.Usable(spec) then Modern.Shapes.Field(skin, spec.ActivateButton) end
-    Modern.TabSystemChrome(skin, talents)
+    Modern.TabSystemChrome(skin, talents, true)
     Refresh(skin, talents)
     Watch(talents)
 end
