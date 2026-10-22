@@ -1,7 +1,8 @@
 local _, ns = ...
 
 -- Unit frames as one compact bar: no portrait, one dark box with a 1 px border takes the portrait's space;
--- the health bar fills it and the power bar is a thin line along its bottom. The value sits in the health
+-- the health bar fills it and the power bar is a thin line along its bottom. Target, focus and boss keep
+-- Blizzard's health bar where it stands, the box around it. The value sits in the health
 -- bar; name and level sit above the box, the player shows neither. Edges are layout numbers, never unit values.
 -- Each bar's rect is read once per apply cycle, before anything moves: Blizzard re-anchors target bars
 -- on every classification check, and its SetPoint is answered by putting the layout back.
@@ -213,8 +214,7 @@ local function PlayerLabels(skin, parts)
 end
 
 -- The dark box behind both bars, with the 1 px border in the theme or the target's rarity colour. Box and
--- power bar hang on the health bar: Blizzard re-anchors a protected health bar on a target change in
--- combat, and they stay with it until combat ends.
+-- power bar hang on the health bar, so they stay with it wherever Blizzard puts it.
 local function Box(skin, frame, parts)
     local box = skin:Own(frame, "bar box", function() return frame:CreateTexture(nil, "BACKGROUND") end)
     if not box then return end
@@ -236,16 +236,17 @@ function Modern.UnitLayout(skin, frame, parts)
     if not Numbers(fl, fb) then return end
     local hr, pr = Rect(skin, health, fl, fb), Rect(skin, portrait, fl, fb)
     if not hr or not pr then return end
-    -- The box reaches from the portrait's outer edge to the health bar's far edge, up from its bottom.
-    local l, r = hr[1], hr[2]
-    if parts.right then r = pr[2] else l = pr[1] end
-    local big = parts.player or Movable(parts.level)
-    local bottom = hr[4]
-    local top = bottom + (big and BOX_HEIGHT or SMALL_HEIGHT)
     Box(skin, frame, parts)
-    local powerTop = bottom + INSET + POWER_HEIGHT
-    Anchor(skin, health, { "TOPLEFT", frame, "BOTTOMLEFT", l + INSET, top - INSET },
-        { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r - INSET, powerTop + POWER_GAP })
+    if not parts.right then
+        -- The box reaches from the portrait's outer edge to the health bar's far edge, up from its bottom.
+        -- Target, focus and boss keep Blizzard's health bar: Blizzard puts it back on its own point and size
+        -- on a target change in combat, while it is protected.
+        local l, r = pr[1], hr[2]
+        local bottom = hr[4]
+        local top = bottom + ((parts.player or Movable(parts.level)) and BOX_HEIGHT or SMALL_HEIGHT)
+        Anchor(skin, health, { "TOPLEFT", frame, "BOTTOMLEFT", l + INSET, top - INSET },
+            { "BOTTOMRIGHT", frame, "BOTTOMLEFT", r - INSET, bottom + INSET + POWER_HEIGHT + POWER_GAP })
+    end
     Anchor(skin, mana, { "TOPLEFT", health, "BOTTOMLEFT", 0, -POWER_GAP },
         { "BOTTOMRIGHT", health, "BOTTOMRIGHT", 0, -(POWER_GAP + POWER_HEIGHT) })
     Contents(skin, health)

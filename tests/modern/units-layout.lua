@@ -1,5 +1,6 @@
 -- Modern unit frames: one compact bar. The portrait is held, a dark bordered box takes its space, health fills
--- it and power is a thin line along its bottom; name and level sit above the box, the player shows neither.
+-- it and power is a thin line along its bottom; target, focus and boss keep Blizzard's health bar inside the box.
+-- Name and level sit above the box, the player shows neither.
 -- Fixture geometry: bars 91 x 11 (left 0, right 91, top 11, bottom 0), portrait 100 wide from 0, frame origin 0.
 local h = ...
 local U = h.lib("modern-units")
@@ -95,21 +96,20 @@ h.test("health value texts are 12 pt in Blizzard's face with a shadow; power val
     A.alpha(p.mana.TextString, 1, "power text released")
 end)
 
-h.test("target and focus boxes reach right to the portrait's outer edge; the portrait is held", function(t)
+h.test("target and focus keep Blizzard's health bar inside the box; the portrait is held", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local frames = U.frames()
     mock:setUnit("target", { exists = true, player = true })
     mock:setUnit("focus", { exists = true, player = false })
+    local before = { U.points(frames[3].TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar),
+        U.points(frames[5].TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar) }
     enable(ns)
-    for _, i in ipairs({ 3, 5 }) do
+    for n, i in ipairs({ 3, 5 }) do
         local f = frames[i]
         local p = U.parts(f)
         A.deep(U.points(U.barBox(f)), { { "TOPLEFT", p.health, "TOPLEFT", -1, 1 }, { "BOTTOMRIGHT", p.health, "BOTTOMRIGHT", 1, -6 } },
             f:GetName() .. " box around the health bar")
-        A.deep(U.points(p.health), {
-            { "TOPLEFT", f, "BOTTOMLEFT", 1, 27 },
-            { "BOTTOMRIGHT", f, "BOTTOMLEFT", 99, 6 },
-        }, f:GetName() .. " health inside the box")
+        A.deep(U.points(p.health), before[n], f:GetName() .. " health keeps Blizzard's points")
         A.deep(U.points(p.mana), {
             { "TOPLEFT", p.health, "BOTTOMLEFT", 0, -1 },
             { "BOTTOMRIGHT", p.health, "BOTTOMRIGHT", 0, -5 },
@@ -196,7 +196,7 @@ h.test("bars move in combat unless the client protects them, then wait for comba
     A.eq(mana:GetNumPoints(), 2, "an unprotected bar is laid out in combat")
 end)
 
-h.test("the box stays around a protected bar that Blizzard moves in combat", function(t)
+h.test("box and power stay with a target bar that Blizzard puts back on its own point in combat", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local target = U.frames()[3]
     local p = U.parts(target)
@@ -224,10 +224,9 @@ h.test("laying out again keeps the same points", function(t)
     A.deep(U.points(p.health), first, "idempotent")
 end)
 
-h.test("Blizzard re-anchoring a laid-out bar (target classification) gets the layout back", function(t)
+h.test("Blizzard re-anchoring a laid-out bar gets the layout back", function(t)
     local A, ns = t.assert, t.ns
-    local target = U.frames()[3]
-    local p = U.parts(target)
+    local p = U.parts(U.frames()[1])
     enable(ns)
     local laid = U.points(p.health)
     p.health:ClearAllPoints()
