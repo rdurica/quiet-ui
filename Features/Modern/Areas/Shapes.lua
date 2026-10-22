@@ -193,8 +193,9 @@ end
 
 -- One frame by its shape; true when its children need no walk.
 function Shapes.One(skin, frame, opts)
-    local bare = opts.bare and opts.bare[frame]
     if opts.shape and opts.shape(skin, frame) then return true end
+    -- Read after the area's shape, which may mark the frame bare.
+    local bare = opts.bare and opts.bare[frame]
     if IsTip(frame) then return true end
     local kind = KindOf(frame)
     if IsTexture(rawget(frame, "LeftActive")) and IsTexture(rawget(frame, "Left")) then

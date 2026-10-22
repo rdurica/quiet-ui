@@ -37,9 +37,33 @@ local function Regions(frame)
     return { frame:GetRegions() }
 end
 
--- What the shared shapes do not know: category buttons, the sell tab strip, item header frames, the favourite and
--- refresh buttons and the bare column headers.
+local function Number(value)
+    return type(value) == "number" and not ns.IsSecret(value) and value or 0
+end
+
+-- A result row's name cell: an icon and quality border beside the name text, far wider than a slot.
+local function IsCell(frame)
+    if not IsTexture(rawget(frame, "IconBorder")) or not IsTexture(frame.Icon or frame.icon) then return false end
+    local text = rawget(frame, "Text")
+    if ns.Usable(text) and type(text.GetObjectType) == "function" and text:GetObjectType() == "FontString" then
+        return true
+    end
+    local width = type(frame.GetWidth) == "function" and Number(frame:GetWidth()) or 0
+    local height = type(frame.GetHeight) == "function" and Number(frame:GetHeight()) or 0
+    return height > 0 and width > height * 2
+end
+
+-- What the shared shapes do not know: name cells, bare inner panels, category buttons, the sell tab strip, item
+-- header frames, the favourite and refresh buttons and the bare column headers.
 local function Particular(skin, frame)
+    -- A name cell keeps a cropped icon beside its name; the slot treatment would stretch over the whole column.
+    if IsCell(frame) then
+        skin:Hold(frame.IconBorder)
+        skin:Icon(frame.Icon or frame.icon)
+        return true
+    end
+    -- Inner panels (category list, result lists, the sell form, the item display) stand bare on the panel.
+    if ns.Usable(rawget(frame, "NineSlice")) and not Modern.Shapes.IsField(frame) then bare[frame] = true end
     -- A category button: the button art goes, the tree lines, highlight and selection stay.
     if IsTexture(frame.Lines) and IsTexture(frame.NormalTexture) then
         skin:Hold(frame.NormalTexture)

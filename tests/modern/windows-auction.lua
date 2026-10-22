@@ -108,6 +108,16 @@ local function auctionHouse()
     items.RefreshFrame.RefreshButton = square(items.RefreshFrame, list, "Refresh")
     items.HeaderContainer = CreateFrame("Frame", nil, items)
     local header = threePiece("Button", items.HeaderContainer, list, "Price")
+    items.ScrollBox = CreateFrame("Frame", nil, items)
+    function items.ScrollBox:Update() end
+    local row = CreateFrame("Button", nil, items.ScrollBox)
+    local cell = CreateFrame("Frame", nil, row)
+    cell:SetSize(300, 16)
+    cell.Icon = cell:CreateTexture(nil, "ARTWORK")
+    cell.Icon:SetTexture("Interface\\Icons\\Belt")
+    cell.Icon:SetTexCoord(0, 1, 0, 1)
+    cell.IconBorder = art(cell, list, "CellIconBorder", "OVERLAY")
+    cell.Text = text(cell, "Gnomish Harm Prevention Belt")
     header.Arrow = art(header, nil, "SortArrow", "OVERLAY")
 
     local sell = inner(frame, list, "ItemSellFrame", "SellBackground")
@@ -120,6 +130,7 @@ local function auctionHouse()
     display.NineSlice = R.nineSlice(display, list)
     local slot = CreateFrame("Button", nil, display)
     display.ItemButton = slot
+    slot:SetSize(40, 40)
     slot.EmptyBackground = art(slot, list, "ItemIconEmpty", "BACKGROUND")
     slot.Icon = slot:CreateTexture(nil, "BORDER")
     slot.Icon:SetTexture("Interface\\Icons\\Sword")
@@ -131,7 +142,7 @@ local function auctionHouse()
     BidAmountGoldMiddle = art(gold, list, "BidMiddle", "BACKGROUND")
     gold.texture = art(gold, nil, "CoinGold", "OVERLAY")
     return { frame = frame, art = list, categories = categories, weapons = weapons, header = header, slot = slot,
-        gold = gold }
+        gold = gold, display = display, cell = cell }
 end
 
 local function visibleArt(c)
@@ -166,7 +177,11 @@ h.test("Windows flattens the auction house, keeps icons, texts and selection art
     A.ok(W.isDark(bar.FavoritesSearchButton), "the favourites button becomes a flat square")
     A.ok(not W.isDark(frame.MoneyFrameBorder), "the money stays bare")
     A.ok(not R.invisible(frame.MoneyFrameBorder.MoneyFrame.Gold, frame), "the money text stays")
-    A.ok(B.border(c.categories) ~= nil, "an inner panel gets a thin border")
+    A.ok(B.border(c.categories) == nil, "an inner panel stands bare, without a border")
+    A.ok(B.border(c.display) == nil, "the item display stands bare, without a border")
+    A.ok(B.border(c.cell) == nil and not W.isDark(c.cell), "a name cell gets no slot field or border")
+    A.ok(L.zoomed(c.cell.Icon) and not R.invisible(c.cell.Icon, frame), "a name cell keeps its cropped icon")
+    A.ok(not R.invisible(c.cell.Text, frame), "a name cell keeps its name")
     A.ok(L.zoomed(c.slot.Icon), "the item icon is square-cropped")
     A.ok(not R.invisible(c.gold.texture, frame), "the coin icon of a bid box stays")
     A.eq(#mock.printed, 0, "nothing reported")
