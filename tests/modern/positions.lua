@@ -13,7 +13,7 @@ end
 h.test("ResetPositions clears saved points, restores tracked originals and keeps Modern settings", function(t)
     local A, ns = t.assert, t.ns
     QuietUICharDB = {
-        modernize = { enabled = true, opacity = 90, windows = false },
+        modernize = { enabled = true, theme = "dark", windows = false },
         windowPoints = { ZzResetWindow = { "CENTER", "CENTER", 210, -110 } },
         unrelated = { keep = true },
     }
@@ -26,7 +26,7 @@ h.test("ResetPositions clears saved points, restores tracked originals and keeps
     ns.Modern.ResetPositions()
     A.eq(QuietUICharDB.windowPoints, nil, "all saved positions are cleared")
     A.deep(W.point(frame), original, "Blizzard point returns immediately")
-    A.deep(QuietUICharDB.modernize, { enabled = true, opacity = 90, windows = false }, "Modern choices stay")
+    A.deep(QuietUICharDB.modernize, { enabled = true, theme = "dark", windows = false }, "Modern choices stay")
     A.deep(QuietUICharDB.unrelated, { keep = true }, "other character settings stay")
 end)
 
@@ -51,7 +51,7 @@ end)
 
 h.test("Modern tab Reset positions is visible while enabled and clears points without Save", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
-    QuietUICharDB = { modernize = { enabled = true, opacity = 90 }, windowPoints = { ZzResetWindow = { "CENTER", "CENTER", 1, 2 } } }
+    QuietUICharDB = { modernize = { enabled = true, theme = "dark" }, windowPoints = { ZzResetWindow = { "CENTER", "CENTER", 1, 2 } } }
     ns.ApplyAll = function() end
     ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
     ns.Layout.Choices = function() return {} end
@@ -69,7 +69,7 @@ h.test("Modern tab Reset positions is visible while enabled and clears points wi
     A.ok(reset:IsVisible(), "shown with Modernize")
     reset._scripts.OnClick(reset)
     A.eq(QuietUICharDB.windowPoints, nil, "cleared immediately, before Save")
-    A.deep(QuietUICharDB.modernize, { enabled = true, opacity = 90 }, "other settings remain")
+    A.deep(QuietUICharDB.modernize, { enabled = true, theme = "dark" }, "other settings remain")
     local modernize
     for _, control in ipairs(mock.frames) do
         if control._kind == "Button" and control.label and control.label._text == "Modernize" then modernize = control end

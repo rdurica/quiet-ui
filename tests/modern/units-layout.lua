@@ -306,7 +306,6 @@ h.test("a value text whose points the client never gives back is still centred, 
     local parent = text:GetParent()
     function text:GetNumPoints() return nil end
     enable(ns)
-    QuietUICharDB.modernize.opacity = 90
     ns.Modern.Apply()
     A.eq(#mock.printed, 0, "nothing reported")
     text.GetNumPoints = nil

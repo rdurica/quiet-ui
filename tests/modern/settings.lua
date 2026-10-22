@@ -26,16 +26,6 @@ h.test("ModernArea is off with Modernize off, on by default, off only for an exp
     A.eq(ns.Settings.ModernArea("units"), true)
 end)
 
-h.test("ModernOpacity is 0.5, 0.75 or 0.9", function(t)
-    local A, ns = t.assert, t.ns
-    QuietUICharDB = {}
-    A.near(ns.Settings.ModernOpacity(), 0.75)
-    QuietUICharDB = { modernize = { opacity = 50 } }; A.near(ns.Settings.ModernOpacity(), 0.5)
-    QuietUICharDB = { modernize = { opacity = 75 } }; A.near(ns.Settings.ModernOpacity(), 0.75)
-    QuietUICharDB = { modernize = { opacity = 90 } }; A.near(ns.Settings.ModernOpacity(), 0.9)
-    QuietUICharDB = { modernize = { opacity = 33 } }; A.near(ns.Settings.ModernOpacity(), 0.75)
-end)
-
 h.test("ModernTheme defaults to dark", function(t)
     QuietUICharDB = {}
     t.assert.eq(t.ns.Settings.ModernTheme(), "dark")
@@ -44,7 +34,7 @@ end)
 h.test("modernize is a preset key: a preset saved on one character applies on another", function(t)
     local A, ns = t.assert, t.ns
     QuietUIDB = {}
-    local modernize = { enabled = true, theme = "dark", opacity = 90, bars = false }
+    local modernize = { enabled = true, theme = "dark", bars = false }
     QuietUICharDB = { modernize = modernize }
     local id = ns.Settings.SavePreset(nil, "Modern", { layoutName = "Raid", layoutType = 1 }, QuietUICharDB)
     A.deep(ns.Settings.Presets()[id].settings.modernize, modernize, "stored in the preset")
@@ -54,7 +44,6 @@ h.test("modernize is a preset key: a preset saved on one character applies on an
     A.ok(ns.Settings.ActivatePreset(id))
     A.deep(QuietUICharDB.modernize, modernize)
     A.eq(ns.Settings.Modernize(), true)
-    A.near(ns.Settings.ModernOpacity(), 0.9)
     A.eq(ns.Settings.ModernArea("bars"), false)
 end)
 
@@ -69,7 +58,7 @@ end)
 h.test("Reset default clears modernize, Modernize is off, windowPoints is kept", function(t)
     local A, ns = t.assert, t.ns
     QuietUIDB = {}
-    QuietUICharDB = { windowPoints = { ZzA = { "CENTER", "CENTER", 1, 2 } }, modernize = { enabled = true, opacity = 90 } }
+    QuietUICharDB = { windowPoints = { ZzA = { "CENTER", "CENTER", 1, 2 } }, modernize = { enabled = true } }
     ns.Settings.ActivatePreset(nil, {})
     A.eq(QuietUICharDB.modernize, nil, "modernize cleared")
     A.eq(ns.Settings.Modernize(), false)

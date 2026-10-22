@@ -14,7 +14,7 @@ The Modern tab of `/quiet setup`. Modernize reskins Blizzard's frames in place i
 
 ## Palette
 
-Theme Dark (`Features/Modern/Theme.lua` is the source of truth; keep this table in step with it). Panels take the Background setting as alpha.
+Theme Dark (`Features/Modern/Theme.lua` is the source of truth; keep this table in step with it). Panels have background alpha 90 %; it cannot be changed.
 
 | Key | RGB | Hex | Used for |
 |---|---|---|---|
@@ -37,9 +37,8 @@ Area colours outside the theme: health bar near-black `#242629`, mana `#3373E6`,
 ## Settings
 
 - Modernize is off unless checked (`modernize.enabled`). It is shared through presets; Reset default turns it off.
-- While checked, the tab shows Theme, Background and one checkbox per area; unchecked, they are hidden and keep their values. Nothing is stored until Save. A Save that changes what Modernize draws (on, off, theme, background or an area) while QuietUI is on reloads the UI instead of restyling in place, so every frame takes the full new look; a Save that changes nothing there does not.
+- While checked, the tab shows Theme and one checkbox per area; unchecked, they are hidden and keep their values. Nothing is stored until Save. A Save that changes what Modernize draws (on, off, theme or an area) while QuietUI is on reloads the UI instead of restyling in place, so every frame takes the full new look; a Save that changes nothing there does not.
 - Theme: one theme today, Dark (`modernize.theme`; missing or unknown means Dark).
-- Background: panel background alpha 50, 75 or 90 % (`modernize.opacity`; anything else means 75).
 - Areas: one checkbox per registered area, in registration order; on unless unchecked (`modernize.<area key>`). Saving stores only values that differ from the defaults.
 - The XP area heads its own section with Show on big XP gain (`modernize.xpGain`, on by default, disabled while the XP area is off): quest XP and any single gain of at least 5 % of the level show the XP bar for 5 s, even when the XP row is Only on hover; see [visible.md](visible.md).
 

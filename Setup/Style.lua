@@ -15,7 +15,7 @@ function Setup.Colors()
     return ns.Modern.Theme()
 end
 
--- A theme colour at full opacity: the setup keeps its fills opaque whatever the Background setting.
+-- A theme colour at full opacity: the setup keeps its fills opaque whatever the panel background alpha.
 function Setup.Solid(color)
     return { color[1], color[2], color[3], 1 }
 end

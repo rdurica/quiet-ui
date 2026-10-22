@@ -13,7 +13,7 @@ local S = { areas = {}, byKey = {}, events = {}, frame = nil, signature = nil }
 Modern.state = S
 
 -- Settings keys of the modernize table that an area key must not shadow.
-local RESERVED = { enabled = true, theme = true, opacity = true, xpGain = true }
+local RESERVED = { enabled = true, theme = true, xpGain = true }
 
 local function Problem(spec)
     if type(spec) ~= "table" then return "the spec must be a table" end
@@ -86,9 +86,9 @@ local function Restore(area)
     ns.Profiler.Run("modern " .. area.key, skin.Undo, skin)
 end
 
--- A changed theme or background skins the applied areas again.
+-- A changed theme skins the applied areas again.
 local function Signature()
-    return ns.Settings.ModernTheme() .. "|" .. ns.Settings.ModernOpacity()
+    return ns.Settings.ModernTheme()
 end
 
 function Modern.Apply()

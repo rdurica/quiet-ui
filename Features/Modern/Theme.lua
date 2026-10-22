@@ -5,6 +5,8 @@ local _, ns = ...
 local Modern = ns.Modern
 
 local ORDER = { "dark" }
+-- Panels let 10 % of the world through.
+local BG_ALPHA = 0.9
 local THEMES = {
     dark = {
         -- Graphite with a cool cast rather than black, so a window does not read as a hole in the world.
@@ -38,9 +40,9 @@ function Modern.Themes()
     return ns.Copy(ORDER)
 end
 
--- A fresh copy of the active theme with the background opacity applied.
+-- A fresh copy of the active theme with the panel background alpha applied.
 function Modern.Theme()
     local theme = ns.Copy(THEMES[ns.Settings.ModernTheme()] or THEMES.dark)
-    theme.bg[4] = ns.Settings.ModernOpacity()
+    theme.bg[4] = BG_ALPHA
     return theme
 end

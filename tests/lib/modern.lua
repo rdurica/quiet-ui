@@ -11,7 +11,7 @@ function L.errors(mock)
     return n
 end
 
--- Modernize on (plus extra keys such as { bars = false, opacity = 90 }).
+-- Modernize on (plus extra keys such as { bars = false, xpGain = false }).
 function L.enable(extra)
     local m = { enabled = true }
     for k, v in pairs(extra or {}) do m[k] = v end

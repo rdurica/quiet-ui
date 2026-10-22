@@ -13,5 +13,5 @@ The goal is a clean UI, not a configurable framework. It works out of the box; s
 | [bars.md](bars.md) | Action bar fade groups, the swing timer, Enemy/Friend, and group visibility. |
 | [player.md](player.md) | Player and pet frames, thresholds, a living target, buffs and debuffs, and the In range gradient. |
 | [misc.md](misc.md) | Modern chat, quest update notices, Highlights, and Quest mobs. |
-| [modern.md](modern.md) | Modernize: the Modern tab, theme, background, the area list, and movable windows. |
+| [modern.md](modern.md) | Modernize: the Modern tab, theme, the area list, and movable windows. |
 | [glance.md](glance.md) | The Glance key and `/quiet glance`. |

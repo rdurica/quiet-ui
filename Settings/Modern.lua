@@ -2,8 +2,6 @@ local _, ns = ...
 
 -- Modernize getters and the saved window points. Missing values mean the default.
 
-local OPACITY = { [50] = 0.5, [75] = 0.75, [90] = 0.9 }
-
 local function Stored()
     local stored = ns.Settings.Effective().modernize
     if type(stored) == "table" then return stored end
@@ -18,11 +16,6 @@ end
 -- Missing means on while Modernize is on. Only an explicit false turns one area off.
 function ns.Settings.ModernArea(key)
     return ns.Settings.Modernize() and Stored()[key] ~= false
-end
-
--- Background alpha: 0.5, 0.75 or 0.9. Anything else means 0.75.
-function ns.Settings.ModernOpacity()
-    return OPACITY[Stored().opacity] or 0.75
 end
 
 -- Missing means on while the XP and reputation area is on. Only an explicit false turns it off.

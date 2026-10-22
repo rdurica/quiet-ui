@@ -35,18 +35,12 @@ Setup.ROWS = {
 
 local RANGE_YARDS = { 10, 28, "spell" }
 
-local OPACITIES = { 50, 75, 90 }
-
 local function ReadModern(source)
     local stored = type(source.modernize) == "table" and source.modernize or {}
     draft.modernize = stored.enabled == true
     draft.modernTheme = "dark"
     for _, name in ipairs(ns.Modern.Themes()) do
         if name == stored.theme then draft.modernTheme = name end
-    end
-    draft.modernOpacity = 75
-    for _, percent in ipairs(OPACITIES) do
-        if stored.opacity == percent then draft.modernOpacity = percent end
     end
     draft.modernXPGain = stored.xpGain ~= false
     draft.modernAreas = {}
@@ -62,7 +56,6 @@ local function WriteModern()
     end
     if draft.modernize then put("enabled", true) end
     if draft.modernTheme ~= "dark" then put("theme", draft.modernTheme) end
-    if draft.modernOpacity ~= 75 then put("opacity", draft.modernOpacity) end
     if not draft.modernXPGain then put("xpGain", false) end
     for _, area in ipairs(ns.Modern.Areas()) do
         if draft.modernAreas[area.key] == false then put(area.key, false) end
@@ -136,15 +129,6 @@ function Setup.NudgeModernTheme(sign)
     end
     index = math.max(1, math.min(#names, index + sign))
     draft.modernTheme = names[index]
-    Setup.Paint()
-end
-
-function Setup.NudgeModernOpacity(sign)
-    local index = 2
-    for i, percent in ipairs(OPACITIES) do
-        if percent == draft.modernOpacity then index = i end
-    end
-    draft.modernOpacity = OPACITIES[math.max(1, math.min(#OPACITIES, index + sign))]
     Setup.Paint()
 end
 
