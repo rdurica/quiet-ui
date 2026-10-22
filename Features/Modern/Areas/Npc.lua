@@ -1,10 +1,11 @@
 local _, ns = ...
 
--- NPC quest, gossip and item text windows take the dark window template: chrome, parchment backgrounds and
--- panel materials are held, action buttons become flat fields, and the dark ink of their text becomes light:
--- neutral body text, gold headings and greetings, in the standard UI face with a shadow. Their minimal scroll bars
--- get the flat track and knob. Text, rewards, gossip options and scripts stay Blizzard's. Gossip options and quest
--- rewards are pooled, so the ink is scanned again when a window shows, on its events and when its content is rebuilt.
+-- NPC quest, gossip and item text windows take the dark window template without a sunken inset: chrome,
+-- parchment backgrounds and panel materials are held, action buttons become flat fields, and the dark ink of their
+-- text becomes light: neutral body text, gold headings and greetings, in the standard UI face with a shadow. Their
+-- minimal scroll bars get the flat track and knob. Text, rewards, gossip options and scripts stay Blizzard's. Gossip
+-- options and quest rewards are pooled, so the ink is scanned again when a window shows, on its events and when its
+-- content is rebuilt.
 
 local Modern = ns.Modern
 local Npc = {}
@@ -113,7 +114,7 @@ end
 local function Skin(skin, name)
     local win, def = _G[name], WINDOWS[name]
     if not ns.Usable(win) then return end
-    Modern.Window(skin, win)
+    Modern.Window(skin, win, nil, nil, true)
     Modern.Header(skin, win)
     for _, suffix in ipairs(SUFFIXES) do Hold(skin, _G[name .. suffix]) end
     for _, art in ipairs(def.art or {}) do Hold(skin, _G[art]) end

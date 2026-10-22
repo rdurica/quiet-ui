@@ -84,6 +84,22 @@ h.test("Windows gives NPC windows the dark template, light text and flat buttons
     A.deep(L.diff(before), {}, "NPC windows restore exactly")
 end)
 
+h.test("NPC windows keep their text on the panel: the inset gets no sunken box", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local f = fixture()
+    f.quest.Inset = CreateFrame("Frame", nil, f.quest)
+    f.gossip.Inset = CreateFrame("Frame", nil, f.gossip)
+    W.enable(ns)
+    for _, frame in ipairs({ f.quest, f.gossip }) do
+        local filled = 0
+        for _, region in ipairs(frame.Inset._regions) do
+            if region._shown ~= false and region._color then filled = filled + 1 end
+        end
+        A.eq(filled, 0, frame:GetName() .. " inset has no fill")
+    end
+end)
+
 h.test("pooled gossip options are lightened on show and on GOSSIP_SHOW, and hooks are inert after restore", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     W.area(ns, "windows")

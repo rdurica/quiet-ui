@@ -321,8 +321,8 @@ function Modern.Dialog(skin, frame)
 end
 
 -- A window: dark fill lit towards the top and a quiet outline, Blizzard chrome held, optionally a title drag
--- handle (above `over`).
-function Modern.Window(skin, frame, key, over)
+-- handle (above `over`). A `flat` window keeps its text on the panel: its insets get no sunken box.
+function Modern.Window(skin, frame, key, over, flat)
     if not ns.Usable(frame) then return end
     local theme = Modern.Theme()
     local fill = skin:Panel(frame)
@@ -330,7 +330,7 @@ function Modern.Window(skin, frame, key, over)
     skin:Border(frame, theme.outline)
     Modern.WindowChrome(skin, frame)
     -- A window's own insets sink a step below the panel. Not the map's: its BorderFrame inset lies over the canvas.
-    for _, inset in ipairs({ frame.Inset or false, frame.InsetRight or false }) do
+    for _, inset in ipairs(flat and {} or { frame.Inset or false, frame.InsetRight or false }) do
         if inset and not IsTexture(inset) and ns.Usable(inset) and type(inset.CreateTexture) == "function" then
             skin:Panel(inset, theme.sunk)
         end
