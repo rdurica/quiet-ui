@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- Tooltip chrome: a borderless grey panel with an accent edge and a glow along the top in the item's
+-- Tooltip chrome: a borderless grey panel with an accent edge along the top in the item's
 -- quality colour (theme border otherwise). Tooltips are secure frames: a tooltip with a NineSlice (every 12.0 tooltip) never
 -- gets a script replaced, and OnTooltipSetItem is never touched (it throws on 12.0). Item quality
 -- and the player's class colour arrive through TooltipDataProcessor post calls registered at load;
@@ -13,7 +13,7 @@ local Modern = ns.Modern
 -- The queue status panel (the LFG eye's hover panel) and the friends tooltip are tooltip backdrops too.
 local TIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "QueueStatusFrame",
     "FriendsTooltip" }
-local EDGE, GLOW, GLOW_ALPHA = 2, 64, 0.15
+local EDGE = 2
 local skinned = setmetatable({}, { __mode = "k" })    -- tip -> { skin, nine } while the area is applied
 local hooked = setmetatable({}, { __mode = "k" })
 
@@ -42,31 +42,16 @@ local function Quality(link, id)
     return quality
 end
 
--- The glow fades from the edge down; a client without gradients gets a faint flat wash.
-local function Glow(texture, rgb)
-    texture:SetColorTexture(1, 1, 1, 1)
-    local gradient = type(texture.SetGradient) == "function" and type(CreateColor) == "function"
-        and pcall(texture.SetGradient, texture, "VERTICAL", CreateColor(rgb[1], rgb[2], rgb[3], 0),
-            CreateColor(rgb[1], rgb[2], rgb[3], GLOW_ALPHA))
-    if not gradient then texture:SetColorTexture(rgb[1], rgb[2], rgb[3], GLOW_ALPHA / 3) end
-end
-
 local function Top(skin, tip, rgb)
-    local edge, glow = unpack(skin:Own(tip, "tooltip top", function()
+    local edge = skin:Own(tip, "tooltip edge", function()
         local line = tip:CreateTexture(nil, "BORDER", nil, 1)
         line:SetPoint("TOPLEFT", tip, "TOPLEFT", 0, 0)
         line:SetPoint("TOPRIGHT", tip, "TOPRIGHT", 0, 0)
         line:SetHeight(EDGE)
-        local wash = tip:CreateTexture(nil, "BORDER", nil, 0)
-        wash:SetPoint("TOPLEFT", line, "BOTTOMLEFT", 0, 0)
-        wash:SetPoint("TOPRIGHT", line, "BOTTOMRIGHT", 0, 0)
-        wash:SetHeight(GLOW)
-        return { line, wash }
-    end))
+        return line
+    end)
     edge:SetColorTexture(unpack(rgb))
-    Glow(glow, rgb)
     edge:Show()
-    glow:Show()
 end
 
 -- Item quality colour from uncommon up, or the theme border.
@@ -75,7 +60,7 @@ local function Paint(tip, data)
     if not record or not ns.Usable(tip) then return end
     local link = Link(tip, data)
     local quality = link and Quality(link, ItemID(link, data))
-    -- Poor and common items keep the theme border: a white glow reads as glare.
+    -- Poor and common items keep the theme border: a white edge reads as glare.
     local color = quality and quality >= 2 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
     Top(record.skin, tip, color and { color.r, color.g, color.b, 1 } or Modern.Theme().border)
 end
