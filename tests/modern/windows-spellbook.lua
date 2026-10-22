@@ -117,7 +117,7 @@ local function visibleArt(c, list)
 end
 
 local function accent(ns, frame)
-    return B.same(B.border(frame), ns.Modern.Theme().accent)
+    return W.marked(ns, frame)
 end
 
 h.test("Windows flattens the spellbook pages, spell slots, tabs and search, keeps content and restores it", function(t)
@@ -133,8 +133,8 @@ h.test("Windows flattens the spellbook pages, spell slots, tabs and search, keep
     A.ok(W.isDark(button) and B.border(button) ~= nil, "spell slot gets a dark fill and a thin border")
     A.ok(not R.invisible(c.item.TextContainer.Name, c.frame), "spell name stays")
     A.ok(not R.invisible(c.header.Text, c.frame), "category title stays")
-    A.ok(accent(ns, c.tabs[1]), "selected spellbook tab gets the accent border")
-    A.ok(not accent(ns, c.tabs[2]), "other spellbook tab keeps the theme border")
+    A.ok(accent(ns, c.tabs[1]), "selected spellbook tab gets the accent line")
+    A.ok(not accent(ns, c.tabs[2]), "other spellbook tab has no accent line")
     A.ok(not R.invisible(c.tabs[1].Icon, c.frame), "tab icon stays")
     A.ok(W.isDark(c.book.SearchBox), "spellbook search box becomes a dark field")
     A.ok(W.isDark(c.talents.ApplyButton), "talent apply button becomes a dark field")

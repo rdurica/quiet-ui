@@ -173,7 +173,7 @@ h.test("Windows flattens the professions window, keeps bar fills, icons and text
         end
         A.eq(cross, 2, "unlearn becomes a bare two-line cross")
     end
-    A.ok(B.same(B.border(c.frame.ProfessionsOverviewTab), ns.Modern.Theme().accent), "selected side tab gets the accent")
+    A.ok(W.marked(ns, c.frame.ProfessionsOverviewTab), "selected side tab gets the accent line")
     A.ok(not R.invisible(c.frame.ProfessionsOverviewTab.Icon, c.frame), "side tab icon stays")
     A.ok(W.isDark(c.page.CreateButton), "create button becomes a dark field")
     A.ok(not R.invisible(c.page.CreateButton.Text, c.frame), "create button text stays")

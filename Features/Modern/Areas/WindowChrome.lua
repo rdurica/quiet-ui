@@ -84,7 +84,7 @@ function Modern.WindowChrome(skin, frame)
     if ns.Usable(container) then HoldKeys(skin, container, { "portrait", "Portrait" }) end
 end
 
--- The accent border marks the selected tab: Blizzard shows the Active (side tab: Selected) art for it.
+-- A 2 px accent line on the top edge marks the selected tab: Blizzard shows the Active (side tab: Selected) art for it.
 local function Selected(tab)
     for _, key in ipairs(SELECTED_KEYS) do
         local active = tab[key]
@@ -95,7 +95,17 @@ end
 
 local function TabBorder(skin, tab)
     local theme = Modern.Theme()
-    skin:Border(tab, Selected(tab) and theme.accent or theme.border)
+    skin:Border(tab, theme.border)
+    local mark = skin:Own(tab, "tab mark", function()
+        local texture = tab:CreateTexture(nil, "OVERLAY", nil, 7)
+        texture:SetHeight(2)
+        texture:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, 0)
+        texture:SetPoint("TOPRIGHT", tab, "TOPRIGHT", 0, 0)
+        return texture
+    end)
+    if not mark then return end
+    mark:SetColorTexture(unpack(theme.accent))
+    mark:SetShown(Selected(tab))
 end
 
 -- A bare tab keeps only its fill and hover, with no border and no selected accent.

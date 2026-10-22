@@ -145,7 +145,7 @@ local function visibleArt(c)
 end
 
 local function accent(ns, frame)
-    return B.same(B.border(frame), ns.Modern.Theme().accent)
+    return W.marked(ns, frame)
 end
 
 -- The selected sidebar tab: a shown 2 px accent line, and no border around the tab.
@@ -216,8 +216,8 @@ h.test("Windows replaces the character window art with flat chrome, keeps conten
         A.eq(tab.Icon:GetNumPoints(), 2, tab:GetName() .. " icon fills the tab")
         A.ok(L.zoomed(tab.Icon), tab:GetName() .. " icon is cropped square")
     end
-    A.ok(accent(ns, c.modes[1]), "selected mode tab gets the accent border")
-    A.ok(not accent(ns, c.modes[2]), "other mode tab keeps the theme border")
+    A.ok(accent(ns, c.modes[1]), "selected mode tab gets the accent line")
+    A.ok(not accent(ns, c.modes[2]), "other mode tab has no accent line")
     A.ok(marked(ns, c.sidebar[1]), "selected sidebar tab gets the accent line")
     A.ok(not marked(ns, c.sidebar[2]), "other sidebar tab has no line")
     for _, tab in ipairs(c.sidebar) do
@@ -231,7 +231,7 @@ h.test("Windows replaces the character window art with flat chrome, keeps conten
     A.deep(L.diff(before), {}, "character window restores exactly")
 end)
 
-h.test("Windows moves the accent border with Blizzard's tab selection and skins pooled stat rows", function(t)
+h.test("Windows moves the accent line with Blizzard's tab selection and skins pooled stat rows", function(t)
     local A, ns = t.assert, t.ns
     W.area(ns, "windows")
     local c = character()

@@ -164,7 +164,7 @@ h.test("Windows flattens the auction house, keeps icons, texts and selection art
     local frame, bar = c.frame, c.frame.SearchBar
     A.eq(R.visibleChrome(frame), "", "window chrome is hidden")
     A.eq(visibleArt(c), "", "panel, field, button, category, money, header and slot art are all hidden")
-    A.ok(B.same(B.border(frame.BuyTab), ns.Modern.Theme().accent), "the selected tab gets the accent")
+    A.ok(W.marked(ns, frame.BuyTab), "the selected tab gets the accent line")
     for _, field in ipairs({ bar.SearchBox, bar.SearchButton, bar.FilterButton, c.gold }) do
         A.ok(W.isDark(field), "field, button and dropdown become a dark field")
     end

@@ -96,7 +96,7 @@ h.test("Windows flattens the merchant window, keeps icons, texts and arrows, and
     local frame = c.frame
     A.eq(R.visibleChrome(frame), "", "window chrome is hidden")
     A.eq(visibleArt(c), "", "card, slot, button, money, dropdown and loose art are all hidden")
-    A.ok(B.same(B.border(c.tab), ns.Modern.Theme().accent), "the selected tab gets the accent")
+    A.ok(W.marked(ns, c.tab), "the selected tab gets the accent line")
     A.ok(not W.isDark(c.cutlass) and B.border(c.cutlass) == nil, "an item card stays bare")
     local point, relative = W.point(c.cutlass.ItemButton.icon)
     A.deep(point, { "TOPLEFT", "TOPLEFT", 3, -3 }, "the item icon sits inset in its slot")

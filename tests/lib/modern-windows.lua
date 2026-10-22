@@ -69,6 +69,23 @@ function W.point(frame)
     return { point, relativePoint, x, y }, relative
 end
 
+-- A selected tab: a shown 2 px accent line on its top edge, and the theme border around it.
+function W.marked(ns, tab)
+    local theme = ns.Modern.Theme()
+    local function same(color, want)
+        return color ~= nil and color[1] == want[1] and color[2] == want[2] and color[3] == want[3]
+    end
+    local line, edge = false, false
+    for _, region in ipairs(tab._regions) do
+        if region._shown and region._color and region._layer == "OVERLAY" then
+            if region._h == 2 and same(region._color, theme.accent) then line = true end
+            if same(region._color, theme.accent) and region._h ~= 2 then return false end
+            if same(region._color, theme.border) then edge = true end
+        end
+    end
+    return line and edge
+end
+
 function W.isDark(frame)
     if frame._backdropColor and frame._backdropColor[1] == 0.075 then return true end
     for _, region in ipairs(frame._regions) do
