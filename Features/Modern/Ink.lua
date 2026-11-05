@@ -4,7 +4,7 @@ local _, ns = ...
 -- string keeps Blizzard's colour calls: a hook answers each new ink, Undo puts back the ink Blizzard set last.
 -- A SimpleHTML page (item text) is coloured per element. A font inked with a tone takes that colour instead,
 -- so body text can be neutral while headings keep the mirrored gold; the headings of a page are its H elements.
--- A plain font also trades the serif parchment face for Arial Narrow with a dark shadow, which reads better on a dark
+-- A plain font keeps Blizzard's face and size and only gains a dark shadow, which reads better on a dark
 -- panel; Undo puts back Blizzard's last font object (or face) and shadow. Dark colour codes inside the text (gossip
 -- quest titles) override the font colour, so they are rewritten the same way; Undo puts back Blizzard's text while
 -- it is still the rewritten one.
@@ -49,15 +49,6 @@ local function IsHTML(font)
     return type(font.GetObjectType) == "function" and font:GetObjectType() == "SimpleHTML"
 end
 
--- Arial Narrow carries Central European letters (ě, ř, ů), which FRIZQT__ of the enUS client lacks. It looks a
--- point smaller than the parchment faces.
-local FACE, GROW = "Fonts\\ARIALN.TTF", 1
-
-local function IsFace(face)
-    return type(face) == "string" and face:lower():gsub("/", "\\") == FACE:lower()
-end
-
--- Arial Narrow a point above Blizzard's size, Blizzard's flags, a dark shadow.
 local function Dress(font)
     local ok, face, size, flags = pcall(font.GetFont, font)
     if not ok or type(size) ~= "number" or ns.IsSecret(size) then return end
@@ -71,7 +62,6 @@ local function Dress(font)
         if type(font.GetShadowOffset) == "function" then saved.offset = { font:GetShadowOffset() } end
         dressed[font] = saved
     end
-    if not IsFace(face) then pcall(font.SetFont, font, FACE, size + GROW, flags or "") end
     pcall(font.SetShadowColor, font, 0, 0, 0, 1)
     pcall(font.SetShadowOffset, font, 1, -1)
 end
@@ -176,7 +166,7 @@ local function Hook(font)
     end
 end
 
--- `tone` (optional) is the colour dark body ink becomes; without it ink is mirrored. `plain` swaps the face.
+-- `tone` (optional) is the colour dark body ink becomes; without it ink is mirrored. `plain` adds a dark shadow.
 function Modern.Ink(skin, font, tone, plain)
     if not ns.Usable(font) or type(font.GetTextColor) ~= "function" or type(font.SetTextColor) ~= "function" then
         return
