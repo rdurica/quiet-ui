@@ -317,3 +317,16 @@ h.test("An empty bag slot with Blizzard's placeholder art, not the wing atlas, i
     ns.Modern.Restore()
     A.alpha(slot.icon, 1, "after Restore the placeholder is Blizzard's again")
 end)
+
+h.test("Forever's EmptyBagIcon, the bag silhouette over an empty slot, is held and restored", function(t)
+    local A, ns = t.assert, t.ns
+    local bag = setup(ns)
+    local slot = B.item(bag, "ContainerFrame1Item1")
+    slot.EmptyBagIcon = slot:CreateTexture(nil, "ARTWORK")
+    slot.EmptyBagIcon:SetTexture(133622)
+    slot.EmptyBagIcon:SetAlpha(0.5)
+    W.enable(ns)
+    A.alpha(slot.EmptyBagIcon, 0, "the bag silhouette is held invisible")
+    ns.Modern.Restore()
+    A.alpha(slot.EmptyBagIcon, 0.5, "Restore gives it back")
+end)
