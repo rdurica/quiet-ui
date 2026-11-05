@@ -11,7 +11,7 @@ Opinionated UI for WoW Forever. Modern and quiet: few frames, few buttons, text 
 
 ## Behavior
 
-The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), one file per `/quiet setup` tab. Read the relevant file before changing behavior and update it in the same commit. `README.md` is for players and links there.
+The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), one file per `/quiet setup` tab. Read the relevant file before changing behavior and update it in the same commit when behavior or a rule changes; looks, sizes, colours and frame names live in the code, not the spec. Keep the spec short. `README.md` is for players and links there.
 
 ## Client
 
@@ -25,19 +25,20 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 
 ## Touching the UI
 
-- Action bars only through alpha. Do not use `Hide()`, `Show()`, or state drivers on bars.
+- Action bars are faded only through alpha. Modernize may change textures, TexCoords, colours and its own child regions on action buttons and bar art. Do not use `Hide()`, `Show()`, or state drivers on bars.
 - No secure snippets. Do not touch `ChatFrame_OpenChat`.
-- `PlayerFrame` and `PetFrame` only through alpha, per `docs/features/player.md`. TargetFrame may only be faded through alpha for Require a living target. Party and raid frames may only be faded through alpha for the optional autohide rule in `docs/features/visible.md`. Do not hide the minimap, vehicle / extra action / zone ability, or the LFG eye (`QueueStatus`, `LFGEye`).
+- `PlayerFrame` and `PetFrame` only through alpha, per `docs/features/player.md`. TargetFrame may only be faded through alpha for Require a living target. Party and raid frames may only be faded through alpha for the optional autohide rule in `docs/features/visible.md`; Modernize reskins them (textures, colours, own regions, the points of their bars) per `docs/features/modern.md`, never their alpha or the frames' own points. Do not hide the minimap, vehicle / extra action / zone ability, or the LFG eye (`QueueStatus`, `LFGEye`).
+- Modernize may change textures, TexCoords, colours, fonts, its own child regions, and the points and sizes of parts inside the frames it skins, all through its journal and restored on undo. Window and protected points change only out of combat. Alpha stays owned by the fade rules; the minimap is never hidden or faded. Content art (talent trees, spell icons, character models, map canvas) stays. Design direction: `docs/features/modern.md`. Few borders: cards, icons, bars and sections stand bare on the panel, parted by section strips or a quiet rule; a border only where it carries meaning (quality, selected tab, state). A box must fit what it frames, never cut a fill.
 - Blizzard overwrites alpha. Hold the wanted value with a `SetAlpha` hook and the `_quietApplying` flag so the hook does not loop.
 - Disabling must restore saved alpha and textures (`RestoreAll`). Give new behavior both `apply` and `restore` in its feature spec, so `ApplyAll` and `RestoreAll` cover it.
 
 ## Code
 
-- Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key. Do not add libraries.
+- Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key, plus `GetMinimapShape` only while the Modern minimap area is applied (restore its prior value on undo). Do not add libraries.
 - Folders, in load order. One responsibility per file, at most 400 lines (checked by `tests/core/structure.lua`, together with cross-file references and stray globals).
   - `Core/`: helpers every file uses (`DB`, `Print`, `Report`, `Run`, `Usable`, `IsSecret`, `Flat`, `Backdropped`), alpha hooks, fading, hover catchers, nameplate helpers, texture hiding, `RestoreAlpha`, world state (`ns.World`), the profiler, and the feature registry (`Feature.lua`).
-  - `Settings/`: `ns.Settings`: `CharDB` store, the getters (`Pinned`, `PlayerStyle`, `GroupAuras`, `ChatFade`, `Range`, `Highlights`, `QuestMobs`, and the rest), presets with personal snapshots, and migrations.
-  - `Features/<Feature>/`: one folder per feature, one table on `ns` (`ns.Bars`, `ns.Faders`, `ns.Chat`, `ns.Menu`, `ns.QuestNotice`, `ns.Highlights`, `ns.QuestMobs`, `ns.Glance`). Bars: action bars, ownership, `ShowAll`, `BarTarget`. Faders: XP bar, cooldown manager, damage meter, player / pet / party frames, quest tracker, buffs, range gradient. Chat: chrome, line bubbles, input box. Menu: bag button and micro menu fade. QuestNotice: quest snapshots, notices and their bounded queue. Highlights: soft-interact glow and the soft-target CVars it sets and restores. QuestMobs: the quest icon left of an attackable quest mob's nameplate. Glance: the Glance key.
+  - `Settings/`: `ns.Settings`: `CharDB` store, the getters, presets with personal snapshots, and migrations.
+  - `Features/<Feature>/`: one folder per feature, one table on `ns` (`ns.Bars`, `ns.Modern`, …). Modern: the area registry with `Theme`, `Skin` (a per-area change journal) and `Movable`; a new area is one file under `Features/Modern/Areas/` registered through `ns.Modern.Register`, loaded before `Feature.lua` in the `.toc`.
   - `Setup/`: `ns.Setup`, the `/quiet setup` window: window, widgets, draft, paint, minimap button, and one file per tab in `Pages/`.
   - `Layout/`: `ns.Layout`, the `QuietUI` Edit Mode layout: layouts, preview, prompt, settle. `String.lua` holds only the Edit Mode export string; update it by pasting a new export.
   - `QuietUI.lua`: last file. Boot, `ApplyAll`, `RestoreAll`, `OnUpdate` scheduler, `/quiet`. It walks the registry for apply, restore, events and per-frame phases; adding a feature never changes it.

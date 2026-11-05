@@ -133,8 +133,11 @@ function Layout.ShippedHash()
     return Hash(Layout.STRING or "")
 end
 
+-- The account remembers the version offered, the character that it answered for itself.
 function Layout.MarkAnswered()
-    ns.DB().layoutHash = Layout.ShippedHash()
+    local hash = Layout.ShippedHash()
+    ns.DB().layoutHash = hash
+    ns.Settings.CharDB().layoutHash = hash
 end
 
 function Layout.Load()
@@ -341,6 +344,8 @@ end
 -- retries on every apply until it has run once per session.
 function Layout.Ensure()
     if ns.Settings.ActivePreset and ns.Settings.ActivePreset() then return end
+    -- The welcome answers first; the layout prompt follows on the next apply.
+    if ns.Setup.WelcomeOpen() then return end
     if S.done or InCombatLockdown() or not Layout.Ready() then return end
     local ok, finished = pcall(Layout.Check)
     if not ok then

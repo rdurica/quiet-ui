@@ -38,7 +38,11 @@ h.test("Temporary CPU timing measures, completes and stops reporting", function(
     update(0.1)
     local lines = bodies(mock)
     A.ok(lines[2]:find("CPU timing: 10.0 seconds", 1, true), "CPU timing summary: " .. tostring(lines[2]))
-    A.eq(lines[#lines], "layout: 3.000 ms/s, 3.000 ms/call (10 calls).")
+    A.eq(lines[#lines], "layout: 3.000 ms/s, 3.000 ms/call, max 3.00 ms (10 calls).")
+    local saved = QuietUIDB.lastProfile
+    A.type(saved, "table", "the result is kept for reading after /reload")
+    A.ok(saved[1]:find("CPU timing: 10.0 seconds", 1, true), "saved summary")
+    A.eq(saved[#saved], "layout: 3.000 ms/s, 3.000 ms/call, max 3.00 ms (10 calls).", "saved rows")
     local count = #mock.printed
     mock.now = started + 20
     update(0.1)
@@ -100,16 +104,16 @@ h.test("Smooth breakdown rows, total, inactive timer and completion", function(t
     update(0.1)
     local output = table.concat(bodies(mock), "\n")
     local rows = {
-        { "resource bar", "0.900 ms/s, 1.000 ms/call (9 calls)." },
-        { "player frame", "1.800 ms/s, 2.000 ms/call (9 calls)." },
-        { "party frames", "2.700 ms/s, 3.000 ms/call (9 calls)." },
-        { "buffs", "3.600 ms/s, 4.000 ms/call (9 calls)." },
+        { "resource bar", "0.900 ms/s, 1.000 ms/call, max 1.00 ms (9 calls)." },
+        { "player frame", "1.800 ms/s, 2.000 ms/call, max 2.00 ms (9 calls)." },
+        { "party frames", "2.700 ms/s, 3.000 ms/call, max 3.00 ms (9 calls)." },
+        { "buffs", "3.600 ms/s, 4.000 ms/call, max 4.00 ms (9 calls)." },
     }
     for _, row in ipairs(rows) do
         local text = "smooth / " .. row[1] .. ": " .. row[2]
         A.ok(output:find(text, 1, true), "Missing or incorrect detailed timing: " .. text)
     end
-    A.ok(output:find("smooth: 9.450 ms/s, 10.500 ms/call (9 calls).", 1, true),
+    A.ok(output:find("smooth: 9.450 ms/s, 10.500 ms/call, max 10.50 ms (9 calls).", 1, true),
         "Smooth total must include shared sampling and retain its original meaning")
     local reads = timerReads
     mock.now = started + 11

@@ -6,24 +6,23 @@ local _, ns = ...
 
 local Setup = ns.Setup
 local S = Setup.state
-local draft = Setup.draft
 
 local TABS = {
     { id = "general", label = "General", height = 224 },
-    { id = "visible", label = "Visible", height = 262 },
-    { id = "bars", label = "Bars", height = 308 },
-    { id = "groups", label = "Groups", height = 320 },
-    { id = "player", label = "Player", height = 306 },
-    { id = "chat", label = "Misc.", height = 320 },
-    { id = "info", label = "Info", height = 148 },
+    { id = "visible", label = "Visible", height = 300 },
+    { id = "bars", label = "Bars", height = 370 },
+    { id = "groups", label = "Groups", height = 416 },
+    { id = "player", label = "Player", height = 352 },
+    { id = "chat", label = "Misc.", height = 260 },
+    { id = "modern", label = "Modern", height = 310 },
+    { id = "info", label = "Info", height = 200 },
 }
 
--- Portrait frame needs room under the portrait. Gold dialog needs room inside the thick edge.
-local CHROME = {
-    portrait = { width = 612, side = 26, tabY = -74, pageY = -102, footer = 52, buttonY = 16 },
-    gold = { width = 636, side = 38, tabY = -56, pageY = -88, footer = 64, buttonY = 28, titleY = -30, closeX = -18, closeY = -16 },
-    flat = { width = 592, side = 16, tabY = -40, pageY = -76, footer = 52, buttonY = 16, titleY = -14, closeX = -10, closeY = -10 },
-}
+-- Tabs in a sidebar on the left, pages right of it, actions in a footer under the pages.
+local WIDTH, SIDEBAR, PAD, FOOTER, TAB_H = 940, 184, 28, 60, 34
+local CONTENT_X = SIDEBAR + PAD
+local PAGE_Y = -(Setup.HEADER + 20)
+local BUTTON_Y = 17
 
 local function MaxPage()
     local max = 0
@@ -33,25 +32,36 @@ local function MaxPage()
     return max
 end
 
-local function TabButton(parent, text, width, onClick)
-    local button = ns.Backdropped("Button", nil, parent)
-    button:SetSize(width, 22)
-    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    button.label:SetPoint("CENTER")
+local function TabButton(parent, text, onClick)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(SIDEBAR - 16, TAB_H)
+    Setup.Strip(button)
+    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    button.label:SetPoint("LEFT", 14, 0)
     button.label:SetText(text)
-    Setup.SkinSmall(button)
-    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(0.95, 0.75, 0.25, 0.15)
+    Setup.Hover(button)
     button:SetScript("OnClick", onClick)
     return button
 end
 
-local function Page(parent, id, height, metrics)
+-- The selected tab is a strip with an accent mark; the others are plain grey text.
+function Setup.PaintTabs(frame)
+    for _, tab in ipairs(frame.tabs) do
+        if tab.id == frame.page then
+            tab.fill:Show(); tab.mark:Show()
+            tab.label:SetTextColor(unpack(Setup.Colors().accent))
+        else
+            tab.fill:Hide(); tab.mark:Hide()
+            tab.label:SetTextColor(0.8, 0.8, 0.8)
+        end
+    end
+end
+
+local function Page(parent, id, height)
     local page = CreateFrame("Frame", nil, parent)
     page.id = id
     page:SetSize(Setup.CONTENT_W, height)
-    page:SetPoint("TOPLEFT", metrics.side, metrics.pageY)
+    page:SetPoint("TOPLEFT", CONTENT_X, PAGE_Y)
     page:SetFrameLevel(parent:GetFrameLevel() + 20)
     page:Hide()
     return page
@@ -76,41 +86,6 @@ local function EnsureEscape(widget)
     UISpecialFrames[#UISpecialFrames + 1] = name
 end
 
-local function ApplyPortrait(widget)
-    pcall(function()
-        if widget.SetPortraitToUnit then
-            widget:SetPortraitToUnit("player")
-            return
-        end
-        if type(SetPortraitTexture) ~= "function" then return end
-        local texture = widget.portrait
-        if not texture and widget.PortraitContainer then
-            texture = widget.PortraitContainer.portrait
-        end
-        if texture then
-            SetPortraitTexture(texture, "player")
-        end
-    end)
-end
-
-local function CloseButton(parent, metrics)
-    local button = ns.Backdropped("Button", nil, parent)
-    button:SetSize(22, 22)
-    button:SetPoint("TOPRIGHT", metrics.closeX, metrics.closeY)
-    button:SetFrameLevel(parent:GetFrameLevel() + 20)
-    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    button.label:SetPoint("CENTER")
-    button.label:SetText("X")
-    Setup.SkinSmall(button)
-    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(0.95, 0.75, 0.25, 0.2)
-    button:SetScript("OnClick", function()
-        parent:Hide()
-    end)
-    return button
-end
-
 function Setup.PresetDialog(owner, title, text, accept)
     local dialog = owner.presetDialog
     if not dialog then
@@ -118,53 +93,26 @@ function Setup.PresetDialog(owner, title, text, accept)
         blocker:SetAllPoints(owner)
         blocker:SetFrameLevel(owner:GetFrameLevel() + 75)
         blocker:EnableMouse(true)
-        local ok, widget = pcall(CreateFrame, "Frame", nil, blocker, "PortraitFrameTemplate")
-        local side, bodyY, editY, buttonY = 26, -96, -154, 18
-        if ok and widget and ns.PortraitChrome(widget) then
-            dialog = widget
-            ns.ApplyTitle(dialog, "Shared preset")
-            ApplyPortrait(dialog)
-            dialog:SetSize(420, 244)
-        else
-            dialog = ok and widget or ns.Backdropped("Frame", nil, blocker)
-            if ns.DialogGoldWindow(dialog) then
-                side, bodyY, editY, buttonY = 28, -56, -114, 28
-                dialog:SetSize(420, 214)
-            else
-                ns.Flat(dialog, 1)
-                side, bodyY, editY, buttonY = 16, -40, -98, 16
-                dialog:SetSize(380, 186)
-            end
-            dialog.title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            dialog.title:SetText("Shared preset")
-            dialog.title:SetPoint("TOP", 0, -26)
-        end
-        ns.DialogBackground(dialog)
-        dialog.blocker = blocker
-        dialog:SetScript("OnHide", function() blocker:Hide() end)
+        local width, side = 440, 20
+        dialog = CreateFrame("Frame", nil, blocker)
+        dialog:SetSize(width, 196)
         dialog:SetPoint("CENTER")
         dialog:SetFrameLevel(owner:GetFrameLevel() + 80)
         dialog:EnableMouse(true)
-        local close = dialog.CloseButton or dialog.closeButton
-        if close then close:SetScript("OnClick", function() dialog:Hide() end) end
+        Setup.Window(dialog, "Shared preset", function() dialog:Hide() end)
+        dialog.blocker = blocker
+        dialog:SetScript("OnHide", function() blocker:Hide() end)
         dialog.body = Setup.Body(dialog, "")
-        local contentWidth = (side == 16 and 380 or 420) - 2 * side
-        dialog.body:SetWidth(contentWidth)
-        dialog.body:SetPoint("TOPLEFT", side, bodyY)
-        dialog.edit = ns.Backdropped("EditBox", nil, dialog)
-        if not ns.GoldEdge(dialog.edit) then ns.Flat(dialog.edit, 1) end
-        dialog.edit:SetSize(contentWidth, 24)
-        dialog.edit:SetPoint("TOPLEFT", side, editY)
-        dialog.edit:SetFontObject("GameFontHighlightSmall")
-        dialog.edit:SetAutoFocus(false)
-        dialog.edit:SetMaxLetters(64)
-        dialog.edit:SetTextInsets(6, 6, 0, 0)
+        dialog.body:SetWidth(width - 2 * side)
+        dialog.body:SetPoint("TOPLEFT", side, -(Setup.HEADER + 18))
+        dialog.edit = Setup.Field(dialog, width - 2 * side, 64)
+        dialog.edit:SetPoint("TOPLEFT", side, -(Setup.HEADER + 66))
         dialog.edit:SetScript("OnEscapePressed", function() dialog:Hide() end)
         dialog.edit:SetScript("OnEnterPressed", function() dialog.yes:GetScript("OnClick")() end)
         dialog.yes = Setup.Button(dialog, "Confirm", function() end)
-        dialog.yes:SetPoint("BOTTOMRIGHT", -side, buttonY)
+        dialog.yes:SetPoint("BOTTOMRIGHT", -side, 16)
         dialog.no = Setup.Button(dialog, "Cancel", function() dialog:Hide() end)
-        dialog.no:SetPoint("BOTTOMLEFT", side, buttonY)
+        dialog.no:SetPoint("BOTTOMLEFT", side, 16)
         owner.presetDialog = dialog
     end
     dialog.body:SetText(title)
@@ -180,64 +128,7 @@ function Setup.PresetDialog(owner, title, text, accept)
     if text ~= nil then dialog.edit:SetFocus(); dialog.edit:HighlightText() end
 end
 
-local function CreateSetup()
-    local ok, widget = pcall(CreateFrame, "Frame", "QuietUISetup", UIParent, "PortraitFrameTemplate")
-    local kind = "flat"
-    if ok and widget and ns.PortraitChrome(widget) then
-        kind = "portrait"
-        widget._quietPortrait = true
-        ns.ApplyTitle(widget, "QuietUI")
-        ApplyPortrait(widget)
-    else
-        if not (ok and widget) then
-            widget = ns.Backdropped("Frame", "QuietUISetup", UIParent)
-        end
-        if ns.DialogGoldWindow(widget) then
-            kind = "gold"
-        else
-            ns.Flat(widget, 0.9)
-        end
-    end
-    local metrics = CHROME[kind]
-    widget:ClearAllPoints()
-    widget:SetSize(metrics.width, -metrics.pageY + MaxPage() + metrics.footer)
-    widget:SetPoint("CENTER")
-    widget:SetFrameStrata("DIALOG")
-    ns.DialogBackground(widget)
-    widget:EnableMouse(true)
-    widget:Hide()
-    EnsureEscape(widget)
-
-    if kind ~= "portrait" then
-        widget.title = widget:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        widget.title:SetText("QuietUI")
-        widget.title:SetPoint("TOP", 0, metrics.titleY)
-        widget.close = CloseButton(widget, metrics)
-    end
-
-    widget.tabs = {}
-    widget.pages = {}
-    -- Keep every tab on one centered row.
-    local tabW, gap = 68, 4
-    local total = #TABS * tabW + (#TABS - 1) * gap
-    local x = -total / 2
-    for _, info in ipairs(TABS) do
-        local id = info.id
-        local tab = TabButton(widget, info.label, tabW, function()
-            ShowPage(widget, id)
-        end)
-        tab.id = id
-        tab:SetFrameLevel(widget:GetFrameLevel() + 20)
-        tab:SetPoint("TOP", widget, "TOP", x + tabW / 2, metrics.tabY)
-        x = x + tabW + gap
-        widget.tabs[#widget.tabs + 1] = tab
-        widget.pages[#widget.pages + 1] = Page(widget, id, info.height, metrics)
-    end
-
-    for index, info in ipairs(TABS) do
-        Setup.Pages[info.id](widget, widget.pages[index])
-    end
-
+local function Footer(widget)
     widget.reset = Setup.Button(widget, "Reset default", function()
         if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         ns.Settings.ActivatePreset(nil, {})
@@ -252,13 +143,90 @@ local function CreateSetup()
     widget.save = Setup.Button(widget, "Save", function()
         Setup.Write()
     end)
-    widget.reset:SetFrameLevel(widget:GetFrameLevel() + 20)
-    widget.import:SetFrameLevel(widget:GetFrameLevel() + 20)
-    widget.save:SetFrameLevel(widget:GetFrameLevel() + 20)
+    -- Save is the main action: accent edge and label.
+    Setup.EdgeColor(widget.save, Setup.Colors().accent)
+    widget.save.label:SetTextColor(unpack(Setup.Colors().accent))
+    for _, button in ipairs({ widget.reset, widget.import, widget.save }) do
+        button:SetFrameLevel(widget:GetFrameLevel() + 20)
+    end
+    widget.reset:SetPoint("BOTTOMLEFT", CONTENT_X, BUTTON_Y)
+    widget.import:SetPoint("BOTTOMLEFT", CONTENT_X + widget.reset:GetWidth() + 8, BUTTON_Y)
+    widget.save:SetPoint("BOTTOMRIGHT", -PAD, BUTTON_Y)
+end
 
-    widget.reset:SetPoint("BOTTOMLEFT", metrics.side, metrics.buttonY)
-    widget.import:SetPoint("BOTTOM", 0, metrics.buttonY)
-    widget.save:SetPoint("BOTTOMRIGHT", -metrics.side, metrics.buttonY)
+-- The header band drags the window; the point is kept account-wide in setupPoint.
+local function Place(widget)
+    local saved = ns.DB().setupPoint
+    widget:ClearAllPoints()
+    if type(saved) == "table" and type(saved[3]) == "number" and type(saved[4]) == "number" then
+        widget:SetPoint(saved[1], UIParent, saved[2], saved[3], saved[4])
+    else
+        widget:SetPoint("CENTER")
+    end
+end
+
+local function Movable(widget)
+    if type(widget.SetMovable) ~= "function" or type(widget.StartMoving) ~= "function" then return end
+    widget:SetMovable(true)
+    if type(widget.SetClampedToScreen) == "function" then widget:SetClampedToScreen(true) end
+    local handle = CreateFrame("Frame", nil, widget)
+    handle:SetPoint("TOPLEFT", 0, 0)
+    handle:SetPoint("TOPRIGHT", -Setup.HEADER, 0)
+    handle:SetHeight(Setup.HEADER)
+    handle:SetFrameLevel(widget:GetFrameLevel() + 10)
+    handle:EnableMouse(true)
+    handle:RegisterForDrag("LeftButton")
+    handle:SetScript("OnDragStart", function() widget:StartMoving() end)
+    handle:SetScript("OnDragStop", function()
+        widget:StopMovingOrSizing()
+        local point, _, relativePoint, x, y = widget:GetPoint(1)
+        if point and not ns.IsSecret(x) and not ns.IsSecret(y) then
+            ns.DB().setupPoint = { point, relativePoint, x, y }
+        end
+        -- StartMoving marks the frame user placed; the saved point is the only position source.
+        if type(widget.SetUserPlaced) == "function" then pcall(widget.SetUserPlaced, widget, false) end
+    end)
+    widget.dragHandle = handle
+end
+
+local function CreateSetup()
+    local widget = CreateFrame("Frame", "QuietUISetup", UIParent)
+    widget:SetSize(WIDTH, -PAGE_Y + MaxPage() + FOOTER + 12)
+    widget:SetFrameStrata("DIALOG")
+    widget:EnableMouse(true)
+    widget:Hide()
+    Setup.Window(widget, "QuietUI", function() widget:Hide() end)
+    Movable(widget)
+    EnsureEscape(widget)
+
+    -- The sidebar sinks a step below the panel, like the insets of a Modernize window.
+    local side = widget:CreateTexture(nil, "BACKGROUND", nil, -6)
+    side:SetPoint("TOPLEFT", 1, -(Setup.HEADER + 1))
+    side:SetPoint("BOTTOMLEFT", 1, 1)
+    side:SetWidth(SIDEBAR - 1)
+    side:SetColorTexture(unpack(Setup.Colors().sunk))
+    Setup.Rule(widget, { "TOPLEFT", SIDEBAR, -(Setup.HEADER + 1) }, { "BOTTOMLEFT", SIDEBAR, 1 })
+    Setup.Rule(widget, { "BOTTOMLEFT", SIDEBAR, FOOTER }, { "BOTTOMRIGHT", -1, FOOTER })
+
+    widget.tabs = {}
+    widget.pages = {}
+    for index, info in ipairs(TABS) do
+        local id = info.id
+        local tab = TabButton(widget, info.label, function()
+            ShowPage(widget, id)
+        end)
+        tab.id = id
+        tab:SetFrameLevel(widget:GetFrameLevel() + 20)
+        tab:SetPoint("TOPLEFT", 8, -(Setup.HEADER + 12) - (index - 1) * (TAB_H + 2))
+        widget.tabs[#widget.tabs + 1] = tab
+        widget.pages[#widget.pages + 1] = Page(widget, id, info.height)
+    end
+
+    for index, info in ipairs(TABS) do
+        Setup.Pages[info.id](widget, widget.pages[index])
+    end
+
+    Footer(widget)
     widget:SetScript("OnHide", function()
         if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         for _, key in ipairs({ "presetMenu", "layoutMenu", "presetDialog" }) do
@@ -282,9 +250,7 @@ function Setup.Show()
     if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
     S.frame = S.frame or CreateSetup()
     Setup.LoadSavedDraft()
-    if S.frame._quietPortrait then
-        ApplyPortrait(S.frame)
-    end
+    Place(S.frame)
     S.frame:Show()
     ns.RaiseDialog(S.frame)
     ShowPage(S.frame, S.frame.page or "general")

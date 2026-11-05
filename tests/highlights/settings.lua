@@ -93,30 +93,30 @@ h.test("Clean profile reads all three categories off", function(t)
     expect(t, true, true, true, "All stored must read all on")
 end)
 
-h.test("Misc. shows Highlights below Quests with three unchecked choices on one row", function(t)
+h.test("Misc. shows Highlights right of Chat and Quests with three unchecked choices stacked", function(t)
     local A = t.assert
     local ns = fixture(t)
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     local page = ui.pages[6]
-    A.ok(ui.tabs[6].label._text == "Misc." and #ui.tabs == 7, "Misc. stays the sixth of seven tabs")
+    A.ok(ui.tabs[6].label._text == "Misc." and #ui.tabs == 8, "Misc. stays the sixth of eight tabs")
     local section = header(ui)
-    local _, sectionY = offset(section, page)
-    local _, sizeY = offset(ui.questNoticeSize, page)
-    A.ok(-sectionY >= -sizeY + ui.questNoticeSize:GetHeight(), "Highlights must sit below the Quests controls")
-    local previousX, rowY, previousWidth
+    local sectionX, sectionY = offset(section, page)
+    local sizeX = offset(ui.questNoticeSize, page)
+    A.ok(sectionX >= sizeX + ui.questNoticeSize:GetWidth(), "Highlights must sit in the column right of the Quests controls")
+    local previousY, previousHeight
     for _, key in ipairs({ "herb", "ore", "quest" }) do
         local widget = choice(ui, key)
         A.ok(widget:GetParent() == page, LABELS[key] .. " belongs on Misc.")
         A.eq(widget.label._text, LABELS[key], "Choice label must be " .. LABELS[key])
         A.ok(not widget.box._checked, LABELS[key] .. " must start unchecked")
         local x, y = offset(widget, page)
+        A.eq(x, sectionX, LABELS[key] .. " shares the Highlights column")
         A.ok(-y >= -sectionY + section:GetHeight(), LABELS[key] .. " sits under the Highlights heading")
-        if rowY then
-            A.eq(y, rowY, "Highlights choices must share one row")
-            A.ok(x >= previousX + previousWidth, "Highlights choices must not overlap and go left to right")
+        if previousY then
+            A.ok(-y >= -previousY + previousHeight, "Highlights choices must not overlap and go top to bottom")
         end
-        previousX, rowY, previousWidth = x, y, widget:GetWidth()
+        previousY, previousHeight = y, widget:GetHeight()
     end
 end)
 

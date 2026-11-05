@@ -12,8 +12,14 @@ Setup.draft = {}
 Setup.Pages = {}
 local draft = Setup.draft
 
-Setup.CONTENT_W = 560
-Setup.GROUP_VIEW_H = 264
+Setup.CONTENT_W = 700
+-- Two columns of a page, and the left edge of the right one.
+Setup.COLUMN_W = 330
+Setup.RIGHT_X = Setup.CONTENT_W - Setup.COLUMN_W
+Setup.GROUP_VIEW_H = 352
+-- Centres of the Always visible and Only on hover columns (Visible and Groups tabs).
+Setup.ALWAYS_X = Setup.CONTENT_W - 220
+Setup.HOVER_X = Setup.CONTENT_W - 90
 
 Setup.ROWS = {
     { key = "xp", label = "XP bar" },
@@ -28,6 +34,34 @@ Setup.ROWS = {
 }
 
 local RANGE_YARDS = { 10, 28, "spell" }
+
+local function ReadModern(source)
+    local stored = type(source.modernize) == "table" and source.modernize or {}
+    draft.modernize = stored.enabled == true
+    draft.modernTheme = "dark"
+    for _, name in ipairs(ns.Modern.Themes()) do
+        if name == stored.theme then draft.modernTheme = name end
+    end
+    draft.modernXPGain = stored.xpGain ~= false
+    draft.modernAreas = {}
+    for _, area in ipairs(ns.Modern.Areas()) do draft.modernAreas[area.key] = stored[area.key] ~= false end
+end
+
+-- Only values that differ from the defaults are stored. Unchecked Modernize keeps the rest.
+local function WriteModern()
+    local stored
+    local function put(key, value)
+        stored = stored or {}
+        stored[key] = value
+    end
+    if draft.modernize then put("enabled", true) end
+    if draft.modernTheme ~= "dark" then put("theme", draft.modernTheme) end
+    if not draft.modernXPGain then put("xpGain", false) end
+    for _, area in ipairs(ns.Modern.Areas()) do
+        if draft.modernAreas[area.key] == false then put(area.key, false) end
+    end
+    return stored
+end
 
 function Setup.ReadDraft(source)
     if S.frame and S.frame.rangeSpell and S.frame.rangeSpell.edit:HasFocus() then S.frame.rangeSpell.edit:ClearFocus() end
@@ -77,6 +111,7 @@ function Setup.ReadDraft(source)
         local mode = type(source.groupVisibility) == "table" and source.groupVisibility[group]
         if mode == "always" or mode == "hover" then draft.groupVisibility[group] = mode end
     end
+    ReadModern(source)
     draft.groups, draft.hostile, draft.friendly = {}, {}, {}
     for _, row in ipairs(ns.BAR_ROWS) do
         local n = type(source.groups) == "table" and source.groups[row.id]
@@ -84,6 +119,17 @@ function Setup.ReadDraft(source)
         draft.hostile[row.id] = type(source.hostile) == "table" and source.hostile[row.id] == true
         draft.friendly[row.id] = type(source.friendly) == "table" and source.friendly[row.id] == true
     end
+end
+
+function Setup.NudgeModernTheme(sign)
+    local names = ns.Modern.Themes()
+    local index = 1
+    for i, name in ipairs(names) do
+        if name == draft.modernTheme then index = i end
+    end
+    index = math.max(1, math.min(#names, index + sign))
+    draft.modernTheme = names[index]
+    Setup.Paint()
 end
 
 function Setup.LoadSavedDraft()
@@ -198,11 +244,23 @@ local function DraftSettings()
     db.groups = groups
     db.hostile = SavedFlags(draft.hostile)
     db.friendly = SavedFlags(draft.friendly)
+    db.modernize = WriteModern()
     if S.presetName then db.forceLayout = nil end
     return db
 end
 
+-- What Modernize draws: "off", or its stored options in a stable order.
+local function ModernState()
+    if not ns.Settings.Modernize() then return "off" end
+    local stored = ns.Settings.Effective().modernize
+    local parts = {}
+    for key, value in pairs(type(stored) == "table" and stored or {}) do parts[#parts + 1] = key .. "=" .. tostring(value) end
+    table.sort(parts)
+    return table.concat(parts, ",")
+end
+
 function Setup.Write()
+    local wasModern = ModernState()
     local settings, err = DraftSettings()
     if not settings then ns.Print(err); return end
     if S.presetName then
@@ -218,6 +276,12 @@ function Setup.Write()
     Setup.LoadSavedDraft()
     Setup.Paint()
     if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
+    -- A Modernize change reloads instead of restyling in place: frames Blizzard built earlier keep some of the
+    -- other look, and the client does not give every restyled region back.
+    if wasModern ~= ModernState() and ns.DB().enabled and type(ReloadUI) == "function" then
+        ReloadUI()
+        return
+    end
     if ns.ApplyAll then ns.ApplyAll() end
 end
 

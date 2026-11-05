@@ -6,6 +6,8 @@ local S = Setup.state
 
 -- Bottom-left of the minimap, clear of the tracking button.
 local MINIMAP_ANGLE = 225
+-- On a square map the button sits inside the edge, with the other flat buttons (Features/Modern/Areas/MinimapButtons.lua).
+local SQUARE_INSIDE = 14
 local minimapButton
 local minimapHooked
 
@@ -23,9 +25,18 @@ local function PlaceMinimap(button)
     local rad = math.rad(MinimapDegrees())
     local w = map:GetWidth()
     if type(w) ~= "number" or w <= 0 then w = 140 end
-    local radius = w / 2 + 5
+    local h = map:GetHeight()
+    if type(h) ~= "number" or h <= 0 then h = w end
+    local x, y = math.cos(rad), math.sin(rad)
+    local radiusX, radiusY = w / 2 + 5, w / 2 + 5
+    if type(GetMinimapShape) == "function" and GetMinimapShape() == "SQUARE" then
+        -- Project the direction onto the square edge instead of the circle.
+        local edge = math.max(math.abs(x), math.abs(y))
+        x, y = x / edge, y / edge
+        radiusX, radiusY = w / 2 - SQUARE_INSIDE, h / 2 - SQUARE_INSIDE
+    end
     button:ClearAllPoints()
-    button:SetPoint("CENTER", map, "CENTER", math.cos(rad) * radius, math.sin(rad) * radius)
+    button:SetPoint("CENTER", map, "CENTER", x * radiusX, y * radiusY)
 end
 
 local function CursorDegrees(map)
@@ -65,11 +76,13 @@ local function CreateMinimap()
     icon:SetSize(20, 20)
     icon:SetPoint("CENTER")
     ApplyGear(icon)
+    button.icon = icon
 
     local border = button:CreateTexture(nil, "OVERLAY")
     border:SetSize(53, 53)
     border:SetPoint("TOPLEFT")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    button.border = border
     button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
     button:SetScript("OnDragStart", function(self)
@@ -126,4 +139,15 @@ function Setup.EnsureMinimap()
     end
     minimapButton = CreateMinimap()
     PlaceMinimap(minimapButton)
+    -- The button is created after boot; Modernize may already be applied.
+    local Modern = ns.Modern
+    if Modern and Modern.MinimapButtonCreated then Modern.MinimapButtonCreated(minimapButton) end
+end
+
+function Setup.MinimapButton()
+    return minimapButton
+end
+
+function Setup.PlaceMinimap()
+    if minimapButton then PlaceMinimap(minimapButton) end
 end

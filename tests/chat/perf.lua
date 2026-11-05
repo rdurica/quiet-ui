@@ -41,3 +41,34 @@ h.test("Still pointer does not probe settled chat bubbles", function(t)
     tick(1 / 60)
     A.ok(overs >= 1, "A moving pointer skipped bubble hover")
 end)
+
+h.test("A still, settled chat runs its full pass at most every 0.1 s and still answers focus at once", function(t)
+    local A, mock, ns = t.assert, t.mock, t.ns
+    t.boot()
+    local events = mock:eventFrame("PLAYER_LOGIN")
+    local function tick(elapsed) events._scripts.OnUpdate(events, elapsed) end
+    ChatFrame1:AddMessage("settled chat line", 1, 1, 1)
+    -- Tabs fade out over 0.3 s of frame time.
+    for _ = 1, 30 do tick(1 / 60) end
+    mock:advance(0.5)
+    tick(1 / 60)
+    local eases = 0
+    local ease = ns.EaseAlpha
+    ns.EaseAlpha = function(...)
+        eases = eases + 1
+        return ease(...)
+    end
+    -- The clock does not move: every frame lands inside the calm window.
+    for _ = 1, 5 do tick(1 / 60) end
+    A.eq(eases, 0, "A still, settled chat eased its tabs and input every frame")
+    mock:advance(0.11)
+    tick(1 / 60)
+    A.ok(eases > 0, "The periodic chat pass stopped running")
+    tick(1 / 60)
+    local edit = ChatFrame1EditBox
+    local before = edit:GetAlpha()
+    edit:SetFocus()
+    edit._scripts.OnEditFocusGained(edit)
+    tick(1 / 60)
+    A.ok(edit:GetAlpha() > before, "A focused input waited for the calm window to end")
+end)

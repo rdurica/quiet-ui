@@ -105,7 +105,7 @@ h.test("Misc. shows Quest mobs checked under Highlights with an English info tex
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     local page = ui.pages[6]
-    A.ok(label(ui.tabs[6]) == "Misc." and #ui.tabs == 7, "Misc. stays the sixth of seven tabs")
+    A.ok(label(ui.tabs[6]) == "Misc." and #ui.tabs == 8, "Misc. stays the sixth of eight tabs")
     local box = choice(ui)
     A.eq(box._parent, page, "Quest mobs belongs on Misc.")
     A.ok(checked(ui), "Clean profile must paint Quest mobs checked")
@@ -136,7 +136,7 @@ h.test("Setup keeps one height on every tab and fits the tallest page", function
     local ui = t.mock:findByName("QuietUISetup")
     choice(ui)
     local height = ui._h
-    A.ok(height <= 474, "Setup must stay compact")
+    A.ok(height <= 600, "Setup must stay compact")
     local tallest = 0
     for _, page in ipairs(ui.pages) do if page._h > tallest then tallest = page._h end end
     for index, tab in ipairs(ui.tabs) do

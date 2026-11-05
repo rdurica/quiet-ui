@@ -180,3 +180,24 @@ h.test("A layout reads the fade setting once and timed lines fade, expire and re
     tick(); tick()
     A.ok(catcherOf(mock):IsShown(), "Restore and reapply must refresh the catcher immediately")
 end)
+
+h.test("A still pointer reads chat and tab hover at most every 0.1 s instead of every frame", function(t)
+    local A, mock, ns = t.assert, t.mock, t.ns
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = { chatFade = 10 }
+    local _, _, tick = fixture(t, 118)
+    tick(); tick()
+    local reads = 0
+    local over = ns.MouseOver
+    ns.MouseOver = function(...) reads = reads + 1; return over(...) end
+    for i = 1, 60 do
+        mock.state.cursor = { i, i }
+        tick()
+    end
+    local moving = reads
+    reads = 0
+    for _ = 1, 60 do tick() end
+    A.ok(moving > 0, "a moving pointer reads hover")
+    A.ok(reads * 4 <= moving, "a still pointer reads hover far less often: " .. reads .. " vs " .. moving)
+    ns.MouseOver = over
+end)

@@ -16,22 +16,22 @@ function Profiler.Start()
         ns.Print("CPU timing is not available on this client.")
         return
     end
-    profile = { started = GetTime(), sections = {}, smooth = {}, frames = 0 }
+    profile = { started = GetTime(), sections = {}, smooth = {}, details = {}, frames = 0 }
     ns.Print("Measuring QuietUI for 10 seconds. Keep playing in the same situation.")
 end
 
 local function Rows(sections)
     local rows = {}
     for name, section in pairs(sections) do
-        rows[#rows + 1] = { name = name, ms = section.ms, calls = section.calls }
+        rows[#rows + 1] = { name = name, ms = section.ms, calls = section.calls, max = section.max }
     end
     table.sort(rows, function(a, b) return a.ms > b.ms end)
     return rows
 end
 
-local function PrintRow(row, duration, prefix)
-    ns.Print(string.format("%s%s: %.3f ms/s, %.3f ms/call (%d calls).",
-        prefix or "", row.name, row.ms / duration, row.ms / row.calls, row.calls))
+local function RowText(row, duration, prefix)
+    return string.format("%s%s: %.3f ms/s, %.3f ms/call, max %.2f ms (%d calls).",
+        prefix or "", row.name, row.ms / duration, row.ms / row.calls, row.max, row.calls)
 end
 
 -- Called every frame; prints the result after ten seconds. `pending` names a pending layout job.
@@ -42,24 +42,36 @@ function Profiler.Finish(pending)
     if duration < 10 then return end
     local rows = Rows(profile.sections)
     local preset = ns.Settings.ActivePreset and ns.Settings.ActivePreset()
-    ns.Print(string.format("CPU timing: %.1f seconds, %d frames, preset %s; pending layout: %s.", duration,
-        profile.frames, preset and preset.name or "<no preset>", tostring(pending or "none")))
-    if ns.Layout.Status then ns.Print(ns.Layout.Status()) end
-    for i = 1, math.min(8, #rows) do
-        PrintRow(rows[i], duration)
+    -- Every row is kept in QuietUIDB.lastProfile, so the result can be read after /reload.
+    local saved = {}
+    local function emit(text, print)
+        saved[#saved + 1] = text
+        if print then ns.Print(text) end
+    end
+    emit(string.format("CPU timing: %.1f seconds, %d frames, preset %s; pending layout: %s.", duration,
+        profile.frames, preset and preset.name or "<no preset>", tostring(pending or "none")), true)
+    if ns.Layout.Status then emit(ns.Layout.Status(), true) end
+    for i, row in ipairs(rows) do
+        emit(RowText(row, duration), i <= 8)
     end
     -- Details are included in the smooth total and do not consume the top-eight slots.
     for _, row in ipairs(Rows(profile.smooth)) do
-        PrintRow(row, duration, "smooth / ")
+        emit(RowText(row, duration, "smooth / "), true)
     end
+    -- Laps break a section into its steps; they are only saved, to keep the chat short.
+    for _, row in ipairs(Rows(profile.details)) do
+        emit(RowText(row, duration, "lap / "), false)
+    end
+    ns.DB().lastProfile = saved
     profile = nil
 end
 
 local function Record(sections, label, started)
     local ms = math.max(0, debugprofilestop() - started)
     local section = sections[label]
-    if not section then section = { ms = 0, calls = 0 }; sections[label] = section end
+    if not section then section = { ms = 0, calls = 0, max = 0 }; sections[label] = section end
     section.ms, section.calls = section.ms + ms, section.calls + 1
+    if ms > section.max then section.max = ms end
 end
 
 -- ns.Run that also times the call while a profile runs. A nil label is not timed.
@@ -70,6 +82,18 @@ function Profiler.Run(label, fn, ...)
     if active then
         Record(active.sections, label, started)
     end
+end
+
+-- Steps inside a section: `local t = Profiler.Clock()` then `t = Profiler.Lap("step", t)` after each
+-- step. Both are nil and free while no profile runs.
+function Profiler.Clock()
+    return profile and debugprofilestop() or nil
+end
+
+function Profiler.Lap(label, started)
+    if not profile or not started then return nil end
+    Record(profile.details, label, started)
+    return debugprofilestop()
 end
 
 -- Times one detail of the smooth sampler. Only called while a profile runs.

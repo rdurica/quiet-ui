@@ -1,26 +1,26 @@
 local _, ns = ...
 
 local Setup = ns.Setup
-local S = Setup.state
 local draft = Setup.draft
 
 Setup.Pages.visible = function(widget, visible)
     widget.always = Setup.Section(visible, "Visibility",
         "Always visible keeps an element on screen. Only on hover overrides its automatic triggers; Glance and Edit Mode still reveal it. With both unchecked, its usual rules apply. Party and raid frames use their own exploration fade rules.")
     widget.always:SetPoint("TOPLEFT", visible, "TOPLEFT", 0, 0)
-    local alwaysHeader = Setup.ColumnLabel(visible, "Always visible")
-    alwaysHeader:SetPoint("TOP", visible, "TOPLEFT", 380, 0)
-    local hoverHeader = Setup.ColumnLabel(visible, "Only on hover")
-    hoverHeader:SetPoint("TOP", visible, "TOPLEFT", 484, 0)
+    local alwaysHeader = Setup.ColumnLabel(widget.always, "Always visible")
+    alwaysHeader:SetPoint("TOP", visible, "TOPLEFT", Setup.ALWAYS_X, -6)
+    local hoverHeader = Setup.ColumnLabel(widget.always, "Only on hover")
+    hoverHeader:SetPoint("TOP", visible, "TOPLEFT", Setup.HOVER_X, -6)
     widget.rows = {}
-    local y = -20
-    for _, info in ipairs(Setup.ROWS) do
+    local y = -30
+    for index, info in ipairs(Setup.ROWS) do
         local key = info.key
         local row = CreateFrame("Frame", nil, visible)
-        row:SetSize(Setup.CONTENT_W, 22)
+        row:SetSize(Setup.CONTENT_W, Setup.ROW)
+        Setup.Stripe(row, index)
         row.label = Setup.Body(row, info.label)
-        row.label:SetWidth(308)
-        row.label:SetPoint("LEFT", 2, 0)
+        row.label:SetWidth(Setup.ALWAYS_X - 60)
+        row.label:SetPoint("LEFT", 8, 0)
         row.always = Setup.TargetBox(row, function()
             draft[key] = not draft[key]
             if draft[key] then draft.hoverOnly[key] = false end
@@ -32,8 +32,8 @@ Setup.Pages.visible = function(widget, visible)
             if draft.hoverOnly[key] then draft[key] = false end
             Setup.Paint()
         end)
-        row.always:SetPoint("CENTER", row, "LEFT", 380, 0)
-        row.hover:SetPoint("CENTER", row, "LEFT", 484, 0)
+        row.always:SetPoint("CENTER", row, "LEFT", Setup.ALWAYS_X, 0)
+        row.hover:SetPoint("CENTER", row, "LEFT", Setup.HOVER_X, 0)
         row.key = key
         if info.noHover then
             row.hover:Disable()
@@ -44,8 +44,7 @@ Setup.Pages.visible = function(widget, visible)
                 "Uncheck Always visible to fade these frames while exploring.\nCombat, instances, hover, Glance and Edit Mode reveal them.")
         end
         row:SetPoint("TOPLEFT", visible, "TOPLEFT", 0, y)
-        y = y - 24
+        y = y - Setup.ROW
         widget.rows[#widget.rows + 1] = row
     end
-
 end

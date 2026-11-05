@@ -26,7 +26,7 @@ one setup window lets you tweak what stays visible.
 ## Install
 
 1. Download the zip from the [latest release](https://github.com/rdurica/quiet-ui/releases/latest).
-2. Extract it into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+2. Extract it into `World of Warcraft/_forever_/Interface/AddOns/`.
    The addon file should end up at `AddOns/QuietUI/QuietUI.toc`.
 3. Start the game or type `/reload`. Accept the optional QuietUI layout, or choose
    **Not now** to keep your current layout.
@@ -50,7 +50,12 @@ to `` ` `` if the key is free; change it under **QuietUI** in **Key Bindings**.
 
 Open `/quiet setup`, change your choices, then click **Save**. **X** or **Escape**
 closes the window without saving. Tabs: General (presets and layout), Visible,
-Bars, Groups, Player, Misc. (chat, quest updates, highlights, quest mobs), and Info.
+Bars, Groups, Player, Misc. (chat, quest updates, highlights, quest mobs), Modern, and Info.
+Modernize is experimental and off by default; some windows may still look unfinished. The Modern tab can give bars, unit frames (party, raid and boss
+frames too), cast bars, windows and dialogs, map, quest tracker, minimap, tooltips, damage meter,
+auras and XP/reputation a dark, flat look. Choose areas
+individually, drag supported windows by their title, or reset their saved positions.
+Turning Modernize or QuietUI off restores the original look.
 
 ![QuietUI setup](docs/images/img007.png)
 

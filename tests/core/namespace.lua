@@ -6,8 +6,6 @@ local BASELINE = {
     "ApplyAll",
     "Copy",
     "DB",
-    "DialogBackground",
-    "DialogGoldWindow",
     "EaseAlpha",
     "EnsureAlphaHook",
     "FocusChanged",
@@ -39,7 +37,6 @@ local BASELINE = {
     "Usable",
     "Wipe",
     "Run", "Flat", "Backdropped", "Feature", "Features",
-    "GoldEdge", "PortraitChrome", "ApplyTitle",
 }
 
 h.test("ns exposes exactly the baseline functions plus Run, Flat, Backdropped, Feature, Features", function(t)

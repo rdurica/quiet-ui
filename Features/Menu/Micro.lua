@@ -55,6 +55,13 @@ end
 local microButtons = {}
 local microBuilt = false
 local microSeen = {}
+-- Frame access is slow on this client. The catcher's corners are read at most every MICRO_EVERY
+-- seconds (hovering runs a pass each frame), and while every button sits at its alpha with the same
+-- wanted state a pass skips the button walk; a full walk still runs with each placement.
+local MICRO_EVERY = 0.1
+local microPlaceAt = 0
+local microShow
+local microSettled = false
 
 -- Names and frames share the seen set, so a button listed both ways is kept once.
 local function AddMicro(frame, key)
@@ -83,6 +90,8 @@ local function BuildMicroButtons()
     end
     for key in pairs(microSeen) do microSeen[key] = nil end
     microBuilt = true
+    microSettled = false
+    microPlaceAt = 0
 end
 
 local function MicroList()
@@ -215,11 +224,24 @@ end
 
 local function UpdateMicro(elapsed)
     if not ns.DB().enabled then return end
-    PlaceMicroCatcher()
-    local show = ns.Settings.VisibilityShow("micro", false, MicroHot())
+    local now = GetTime()
+    local due = now >= microPlaceAt
+    if due then
+        PlaceMicroCatcher()
+        microPlaceAt = now + MICRO_EVERY
+    end
+    local show = ns.Settings.VisibilityShow("micro", false, MicroHot()) and true or false
+    if microSettled and show == microShow and not due then return end
+    microShow = show
+    microSettled = true
+    local target = show and 1 or 0
     local list = MicroList()
     for i = 1, #list do
-        if ns.Usable(list[i]) then ns.UpdateFaded(list[i], show, elapsed) end
+        local button = list[i]
+        if ns.Usable(button) then
+            ns.UpdateFaded(button, show, elapsed)
+            if button._quietAlpha ~= target then microSettled = false end
+        end
     end
 end
 

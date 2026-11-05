@@ -7,6 +7,9 @@ local cooldownFrames = state.cooldownFrames
 local meterFrames = state.meterFrames
 local questFrames = state.questFrames
 
+local SMOOTH_STEP = 1 / 30
+local smoothElapsed = 0
+
 -- Cooldowns matter only when fighting or grouped, so hover does not count.
 local function CooldownsShouldShow()
     return ns.World.InCombat() or ns.World.InForcedInstance() or ns.World.InGroup() or ns.World.InEditMode()
@@ -23,7 +26,9 @@ end
 
 function Faders.Update(elapsed)
     local glance = ns.Glance.Active()
-    ns.Run("xp bar", UpdateVisible, "xp", statusFrames, Faders.XPShouldShow(), false, ns.World.XPForced(), glance, elapsed)
+    local gain = Faders.XPGainShows()
+    ns.Run("xp bar", UpdateVisible, "xp", statusFrames, Faders.XPShouldShow() or gain, false,
+        ns.World.XPForced() or gain, glance, elapsed)
     ns.Run("cooldown manager", UpdateVisible, "cooldowns", cooldownFrames, CooldownsShouldShow(), true, nil,
         glance, elapsed)
     ns.Run("damage meter", UpdateVisible, "meter", meterFrames, Faders.MeterShouldShow(), true, nil, glance, elapsed)
@@ -51,8 +56,13 @@ ns.Feature({
     fade = function(elapsed) Faders.Update(elapsed) end,
     frame = function(elapsed)
         -- Range changes while you walk, with no focus or cursor change, so it cannot wait for a rescan.
-        ns.Profiler.Run("range", Faders.UpdateRange, elapsed)
-        ns.Profiler.Run("smooth", Faders.UpdateSmooth, elapsed, ns.Profiler.Active() and ns.Profiler.Smooth or nil)
+        -- 30 updates a second keep 0.3 s fades smooth at a fraction of the per-frame cost.
+        smoothElapsed = smoothElapsed + (elapsed or 0)
+        if smoothElapsed < SMOOTH_STEP then return end
+        local step = smoothElapsed
+        smoothElapsed = 0
+        ns.Profiler.Run("range", Faders.UpdateRange, step)
+        ns.Profiler.Run("smooth", Faders.UpdateSmooth, step, ns.Profiler.Active() and ns.Profiler.Smooth or nil)
     end,
     rescan = function(deep) Faders.Find(deep and true or false) end,
     events = {
@@ -73,5 +83,8 @@ ns.Feature({
         ACTIONBAR_SLOT_CHANGED = function() Faders.ForgetRangeSlot() end,
         SPELLS_CHANGED = function() Faders.ForgetRangeSlot() end,
         QUEST_TURNED_IN = function(_, xp) Faders.MarkQuestXP(xp) end,
+        PLAYER_XP_UPDATE = function(_, unit)
+            if unit == nil or unit == "player" then Faders.NoteXP() end
+        end,
     },
 })
