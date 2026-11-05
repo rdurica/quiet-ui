@@ -21,7 +21,10 @@ end
 
 -- Minimap ---------------------------------------------------------------------------------------
 
-function R.minimap()
+-- opts.night builds the dial as WoW Forever shows it at night: sky UI-HUD-Minimap-NightCycle, ring
+-- UI-HUD-Minimap-Frame-Cycle. parts.setSky(atlas) is Blizzard switching the sky atlas later (day <-> night).
+function R.minimap(opts)
+    local night = opts and opts.night
     local cluster, map = MinimapCluster, Minimap
     local parts = { cluster = cluster }
     map._mask = ROUND_MASK
@@ -51,13 +54,16 @@ function R.minimap()
     parts.dial:SetSize(42, 42)
     parts.dial:SetPoint("CENTER", container, "CENTER", 49.5, 77.4)
     local dayCycle = parts.dial:CreateTexture(nil, "BACKGROUND")
-    dayCycle.GetAtlas = function() return "UI-HUD-Minimap-DayCycle" end
+    dayCycle._atlas = night and "UI-HUD-Minimap-NightCycle" or "UI-HUD-Minimap-DayCycle"
+    dayCycle.GetAtlas = function(self) return self._atlas end
+    parts.setSky = function(atlas) dayCycle._atlas = atlas end
     dayCycle:SetAlpha(1)
     dayCycle:SetSize(33, 33)
     dayCycle:SetPoint("CENTER", parts.dial, "CENTER", 0, 0)
     parts.dial.Background = dayCycle
     parts.dialRing = parts.dial:CreateTexture(nil, "OVERLAY")
-    parts.dialRing.GetAtlas = function() return "UI-HUD-Minimap-FrameCycle" end
+    local ringAtlas = night and "UI-HUD-Minimap-Frame-Cycle" or "UI-HUD-Minimap-FrameCycle"
+    parts.dialRing.GetAtlas = function() return ringAtlas end
     parts.dialRing:SetAlpha(1)
 
     -- BorderTop: NineSliceCodeTemplate, pieces are textures of the frame.
