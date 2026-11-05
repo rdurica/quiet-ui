@@ -93,6 +93,10 @@ end
 local function dayButton(c, index, parent)
     local button = CreateFrame("Button", "CalendarDayButton" .. index, parent)
     button:SetSize(91, 91)
+    -- A click marks the day selected, as Blizzard's day button does (not through the optional global setter).
+    button:SetScript("OnClick", function(self)
+        c.frame.selectedDayButton = self
+    end)
     button.base = {}
     local function base(region)
         button.base[region] = true
