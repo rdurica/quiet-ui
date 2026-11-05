@@ -74,6 +74,10 @@ Type `/quiet setup` or click the minimap button. Everything is in one window, wi
 
 Found something odd, especially in Modern? Please [open an issue](https://github.com/rdurica/quiet-ui/issues).
 
+QuietUI is free and always will be. If you enjoy it, you can buy me a coffee:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V61IEMZV)
+
 ## Documentation
 
 Every feature, setting and visibility rule is described in [docs/features](docs/features/README.md).
