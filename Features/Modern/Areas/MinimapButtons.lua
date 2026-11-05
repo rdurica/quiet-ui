@@ -107,6 +107,8 @@ local function Dial(skin, container, map)
     local point, relative, relativePoint = dial:GetPoint(1)
     if point ~= "CENTER" or relative ~= container or relativePoint ~= "CENTER" then return end
     local offset = map:GetHeight() * (map:GetScale() or 1) / 2 - INSIDE
+    -- The dial has its own scale; it would push the plate past the map's edge and make it larger than the others.
+    skin:Set(dial, "SetScale", 1)
     skin:Set(dial, "SetPoint", "CENTER", container, "CENTER", offset, offset)
     dial:ClearAllPoints()
     dial:SetPoint("CENTER", container, "CENTER", offset, offset)
