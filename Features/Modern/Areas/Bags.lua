@@ -43,8 +43,9 @@ local function IconOf(button)
     return button.icon or button.Icon
 end
 
--- Blizzard slot art replaced by the flat slot: the bevelled frame, the empty-slot wing and the thick quest border.
-local SLOT_ART = { "ItemSlotBackground", "IconQuestTexture", "ExtendedSlot" }
+-- Blizzard slot art replaced by the flat slot: the bevelled frame, the empty-slot wing, the thick quest border and
+-- Forever's bag silhouette over an empty slot.
+local SLOT_ART = { "ItemSlotBackground", "IconQuestTexture", "ExtendedSlot", "EmptyBagIcon" }
 
 local function Shown(texture)
     return ns.Usable(texture) and type(texture.IsShown) == "function" and texture:IsShown() and true or false
