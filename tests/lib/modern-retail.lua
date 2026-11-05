@@ -52,6 +52,7 @@ function R.minimap(opts)
     parts.container = container
     parts.dial = CreateFrame("Frame", nil, container)
     parts.dial:SetSize(42, 42)
+    parts.dial:SetScale(1.111)   -- the dial's own scale, as dumped in game
     parts.dial:SetPoint("CENTER", container, "CENTER", 49.5, 77.4)
     local dayCycle = parts.dial:CreateTexture(nil, "BACKGROUND")
     dayCycle._atlas = night and "UI-HUD-Minimap-NightCycle" or "UI-HUD-Minimap-DayCycle"
