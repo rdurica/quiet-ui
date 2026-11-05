@@ -100,6 +100,7 @@ function S.gear()
         [2] = { r = 0.12, g = 1, b = 0 }, [3] = { r = 0, g = 0.44, b = 0.87 },
     }
     GetInventoryItemQuality = function(unit, id) return unit == "player" and worn[id] and worn[id].quality or nil end
+    GetInventoryItemTexture = function(unit, id) return unit == "player" and worn[id] and worn[id].texture or nil end
     PaperDollItemSlotButton_Update = function(slot)
         local item = worn[slot:GetID()]
         if item then slot.icon:SetTexture(item.texture) else slot.icon:SetAtlas("bags-item-slot64") end
