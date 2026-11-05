@@ -199,7 +199,7 @@ end
 
 -- One physical pixel at the line's scale, off the pixel grid: a 1-unit line at a fractional position (a 25.99-unit
 -- settings checkbox) or in a scaled-down window can otherwise snap to nothing.
-local function Hairline(line)
+function Modern.Hairline(line)
     local size = 1
     if type(PixelUtil) == "table" and type(PixelUtil.GetNearestPixelSize) == "function"
         and type(line.GetEffectiveScale) == "function" then
@@ -236,7 +236,11 @@ function Skin:Border(frame, color, anchor)
     end)
     for index, line in ipairs(edges) do
         local edge = EDGES[index]
-        if edge == "TOP" or edge == "BOTTOM" then line:SetHeight(Hairline(line)) else line:SetWidth(Hairline(line)) end
+        if edge == "TOP" or edge == "BOTTOM" then
+            line:SetHeight(Modern.Hairline(line))
+        else
+            line:SetWidth(Modern.Hairline(line))
+        end
         line:SetColorTexture(unpack(color or theme.border))
         line:Show()
     end
