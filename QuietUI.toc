@@ -91,6 +91,7 @@ Features\Modern\Areas\Spellbook.lua
 Features\Modern\Areas\Talents.lua
 Features\Modern\Areas\Professions.lua
 Features\Modern\Areas\Auction.lua
+Features\Modern\Areas\Calendar.lua
 Features\Modern\Areas\Merchant.lua
 Features\Modern\Areas\Loot.lua
 Features\Modern\Areas\Npc.lua
