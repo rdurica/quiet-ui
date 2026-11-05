@@ -40,6 +40,7 @@ local function Apply(skin)
     FirstWindow(skin, "QuestLogFrame")
     Modern.Professions.Apply(skin, _G.ProfessionsFrame)
     Modern.Auction.Apply(skin, _G.AuctionHouseFrame)
+    Modern.Calendar.Apply(skin)
     Modern.Merchant.Apply(skin, _G.MerchantFrame)
     Modern.Loot.Apply(skin, _G.LootFrame)
     Modern.Bags.Apply(skin)
@@ -60,7 +61,7 @@ Modern.Register{
         "Blizzard_RaidFrame", "Blizzard_Communities", "Blizzard_GroupFinder_VanillaStyle", "Blizzard_TrainerUI",
         "Blizzard_MacroUI", "Blizzard_InspectUI", "Blizzard_FlightMap", "Blizzard_StableUI", "Blizzard_AddOnList",
         "Blizzard_TimeManager", "Blizzard_LegacySystem", "Blizzard_GameMenu", "Blizzard_ColorPickerFrame",
-        "Blizzard_CompactRaidFrames" },
+        "Blizzard_CompactRaidFrames", "Blizzard_Calendar" },
     events = { "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "ITEM_TEXT_READY",
         "LOOT_OPENED", "BAG_UPDATE_DELAYED", "BAG_NEW_ITEMS_UPDATED", "PLAYER_EQUIPMENT_CHANGED" },
     onEvent = function(skin, event)
