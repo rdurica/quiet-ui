@@ -89,10 +89,23 @@ end
 -- 12.0 paints an empty slot by putting this atlas (the wing) on the item icon itself.
 local EMPTY_ATLAS = "bags-item-slot64"
 
+-- An equipment slot asks the server: Forever paints an empty one with a rounded placeholder texture, not the wing.
+-- nil when the slot is not worn or the client cannot tell.
+local function WornEmpty(button)
+    if not worn[button] or type(_G.GetInventoryItemTexture) ~= "function" or type(button.GetID) ~= "function" then
+        return nil
+    end
+    local id = Call(button.GetID, button)
+    if type(id) ~= "number" then return nil end
+    return Call(_G.GetInventoryItemTexture, "player", id) == nil
+end
+
 -- A slot without an item: the wing atlas on its icon, or (older clients) no icon texture at all.
 local function Vacant(button)
     local icon = IconOf(button)
     if not ns.Usable(icon) then return false end
+    local wornEmpty = WornEmpty(button)
+    if wornEmpty ~= nil then return wornEmpty end
     if empty[icon] then return true end
     if type(icon.GetTexture) ~= "function" then return false end
     local ok, texture = pcall(icon.GetTexture, icon)
@@ -149,7 +162,14 @@ end
 local function Paint(skin, button)
     local theme = Modern.Theme()
     local well, sheen, mark, gloss, glow = Look(skin, button)
+    local icon = IconOf(button)
+    local placeholder = worn[button] and ns.Usable(icon)
     if Vacant(button) then
+        -- The equipment placeholder is held like the wing; Empty releases it when the icon changes.
+        if placeholder and not empty[icon] then
+            empty[icon] = true
+            skin:Hold(icon)
+        end
         local top = theme.well
         skin:Border(button, theme.wellEdge)
         well:SetColorTexture(unpack(top))
@@ -162,6 +182,10 @@ local function Paint(skin, button)
         gloss:Hide()
         glow:Hide()
         return
+    end
+    if placeholder and empty[icon] then
+        empty[icon] = nil
+        ns.ReleaseAlpha(icon)
     end
     local color, rich = SlotColor(button)
     skin:Border(button, color)
