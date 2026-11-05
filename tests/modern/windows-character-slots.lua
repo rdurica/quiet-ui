@@ -184,3 +184,29 @@ h.test("A forbidden slot, slot child frame or model scene is skipped while the o
     A.ok(R.invisible(c.main.extras[1], c.main), "the usable art of the slot with a forbidden child is held")
     A.falsy(L.zoomed(forbiddenSlot.icon), "the forbidden slot is left alone")
 end)
+
+h.test("An empty slot with Blizzard's rounded placeholder art, not the wing atlas, is a square socket", function(t)
+    local A, ns = t.assert, t.ns
+    local c, gear = setup(ns)
+    -- Forever paints an empty equipment slot with a placeholder texture file (UI-PaperDoll-Slot-*).
+    PaperDollItemSlotButton_Update = function(slot)
+        local texture = GetInventoryItemTexture("player", slot:GetID())
+        slot.icon:SetTexture(texture or ("Interface\\PaperDoll\\UI-PaperDoll-Slot-" .. slot:GetID()))
+    end
+    for _, slot in ipairs(c.slots) do PaperDollItemSlotButton_Update(slot) end
+    gear.equip(c.off, 2)
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    A.ok(S.shown(c.main, "BACKGROUND", theme.well), "the empty main hand is a socket")
+    A.ok(B.same(B.border(c.main), theme.wellEdge), "with the well edge")
+    A.ok(R.invisible(c.main.icon, c.main), "and its rounded placeholder is held")
+    A.ok(not R.invisible(c.off.icon, c.off), "a filled slot shows its icon")
+    gear.remove(c.off)
+    A.ok(S.shown(c.off, "BACKGROUND", theme.well), "removing the item makes it a socket")
+    A.ok(R.invisible(c.off.icon, c.off), "and holds the placeholder")
+    gear.equip(c.main, 3)
+    A.ok(not R.invisible(c.main.icon, c.main), "equipping shows the item's icon again")
+    A.ok(B.same(B.border(c.main), BLUE), "framed in its quality colour")
+    ns.Modern.Restore()
+    A.ok(not R.invisible(c.off.icon, c.off), "restore gives the placeholder back")
+end)
