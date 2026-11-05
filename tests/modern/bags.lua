@@ -257,7 +257,7 @@ h.test("Bags colour the border from the item's own quality, uncommon and up; poo
     A.ok(B.same(B.border(green), GREEN), "an uncommon item is framed green without IconBorder")
     A.ok(B.same(B.border(common), theme), "a common item keeps the theme border, not white")
     A.ok(B.same(B.border(poor), theme), "a poor item keeps the theme border")
-    A.ok(B.same(B.border(empty), theme), "an empty slot keeps the theme border")
+    A.ok(B.same(B.border(empty), ns.Modern.Theme().wellEdge), "an empty slot is a socket with the well edge")
     quality[4] = 2
     B.refresh(mock, bag)
     A.ok(B.same(B.border(empty), GREEN), "an item put into the slot gets its colour on the next bag update")
@@ -288,4 +288,32 @@ h.test("An empty slot is a lit socket with a quiet edge; a filled slot drops the
     A.ok(shown(slot, "ARTWORK"), "a soft light lies over the icon")
     ns.Modern.Restore()
     A.ok(not shown(slot, "ARTWORK") and not shown(slot, "BACKGROUND", theme.well), "Restore hides the slot look")
+end)
+
+h.test("An empty bag slot with Blizzard's placeholder art, not the wing atlas, is a socket", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local bag = setup(ns)
+    local items = {}
+    -- Forever paints an empty bag slot with a placeholder texture; the server knows it holds nothing.
+    C_Container.GetContainerItemInfo = function(bagID, slot)
+        if bagID == 0 and items[slot] then return { iconFileID = items[slot], quality = 1 } end
+    end
+    local slot = B.item(bag, "ContainerFrame1Item1")
+    function slot:GetBagID() return 0 end
+    function slot:GetID() return 1 end
+    B.atlas(slot)
+    B.fill(slot, "Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    A.ok(B.same(B.border(slot), theme.wellEdge), "the empty slot has the well edge")
+    A.alpha(slot.icon, 0, "and its placeholder is held invisible")
+    items[1] = "Interface\\Icons\\INV_Misc_Bag"
+    B.fill(slot, items[1])
+    A.ok(B.same(B.border(slot), theme.border), "an item placed there drops the well edge")
+    A.alpha(slot.icon, 1, "and shows its icon")
+    items[1] = nil
+    B.fill(slot, "Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+    A.alpha(slot.icon, 0, "taking it out holds the placeholder again")
+    ns.Modern.Restore()
+    A.alpha(slot.icon, 1, "after Restore the placeholder is Blizzard's again")
 end)
