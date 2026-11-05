@@ -204,7 +204,9 @@ local function FindClose(frame)
     local name = type(frame.GetName) == "function" and frame:GetName()
     local border = ns.Usable(frame.BorderFrame) and frame.BorderFrame or nil
     local candidates = { frame.CloseButton or false, frame.ClosePanelButton or false, border and border.CloseButton or false,
-        type(name) == "string" and _G[name .. "CloseButton"] or false }
+        type(name) == "string" and _G[name .. "CloseButton"] or false,
+        -- The calendar dialogs drop "Frame": CalendarViewHolidayFrame closes through CalendarViewHolidayCloseButton.
+        type(name) == "string" and _G[(name:gsub("Frame$", "")) .. "CloseButton"] or false }
     for index = 1, #candidates do
         local close = candidates[index]
         if close and ns.Usable(close) and type(close.CreateTexture) == "function" and not Labelled(close) then
@@ -329,6 +331,13 @@ function Modern.Dialog(skin, frame)
     Modern.Window(skin, frame)
     Modern.Header(skin, frame)
     DialogTitle(skin, frame)
+    -- Its close cross moves into the header band beside the title.
+    local close = FindClose(frame)
+    if close and type(close.ClearAllPoints) == "function" then
+        skin:Set(close, "SetPoint", "CENTER", frame, "TOPRIGHT", -HEADER / 2, -HEADER / 2)
+        close:ClearAllPoints()
+        close:SetPoint("CENTER", frame, "TOPRIGHT", -HEADER / 2, -HEADER / 2)
+    end
 end
 
 -- A window: dark fill lit towards the top and a quiet outline, Blizzard chrome held, optionally a title drag

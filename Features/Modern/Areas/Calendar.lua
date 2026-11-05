@@ -113,6 +113,47 @@ local function Dialogs(skin)
     if ns.Usable(invite) then Hold(skin, invite.Background) end
 end
 
+-- The month name, its chevrons, the filter and the close cross sit centred in the header band; Blizzard hangs them lower, across the rule.
+local function Place(skin, region, ...)
+    if not ns.Usable(region) or type(region.ClearAllPoints) ~= "function" then return end
+    skin:Set(region, "SetPoint", ...)
+    region:ClearAllPoints()
+    region:SetPoint(...)
+end
+
+local function MonthRow(skin, frame)
+    local month = _G.CalendarMonthName
+    if not ns.Usable(month) or type(month.ClearAllPoints) ~= "function" then return end
+    Place(skin, month, "CENTER", frame, "TOP", 0, -12)
+    Place(skin, _G.CalendarPrevMonthButton, "RIGHT", month, "LEFT", -12, 0)
+    Place(skin, _G.CalendarNextMonthButton, "LEFT", month, "RIGHT", 12, 0)
+    -- The close cross and the filter dropdown share the band's right end.
+    local close = _G.CalendarCloseButton
+    Place(skin, close, "CENTER", frame, "TOPRIGHT", -12, -12)
+    local filter = _G.CalendarFilterButton or frame.FilterButton
+    if ns.Usable(close) then Place(skin, filter, "RIGHT", close, "LEFT", -6, 0) end
+end
+
+-- The holiday window's ornate frame art, on the window and its plain child frames; text, buttons and QuietUI's own
+-- regions stay.
+local function HolidayArt(skin)
+    local frame = _G.CalendarViewHolidayFrame
+    if not ns.Usable(frame) then return end
+    local function Each(owner)
+        if type(owner.GetRegions) ~= "function" then return end
+        for _, region in ipairs({ owner:GetRegions() }) do
+            if IsTexture(region) and not skin:Owns(owner, region) then Hold(skin, region) end
+        end
+    end
+    Each(frame)
+    if type(frame.GetChildren) ~= "function" then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if ns.Usable(child) and type(child.GetObjectType) == "function" and child:GetObjectType() == "Frame" then
+            Each(child)
+        end
+    end
+end
+
 local function InkNames(skin)
     local theme = Modern.Theme()
     for index = 1, COLUMNS do Modern.Ink(skin, _G["CalendarWeekday" .. index .. "Name"], theme.text) end
@@ -334,8 +375,10 @@ function Calendar.Apply(skin)
         return Chevron(button, "right")
     end, "text")
 
+    MonthRow(skin, frame)
     Filter(skin, frame)
     Dialogs(skin)
+    HolidayArt(skin)
     InkNames(skin)
     Grid(skin, frame)
     Repaint(skin)
