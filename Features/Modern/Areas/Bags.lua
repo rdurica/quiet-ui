@@ -89,23 +89,32 @@ end
 -- 12.0 paints an empty slot by putting this atlas (the wing) on the item icon itself.
 local EMPTY_ATLAS = "bags-item-slot64"
 
--- An equipment slot asks the server: Forever paints an empty one with a rounded placeholder texture, not the wing.
--- nil when the slot is not worn or the client cannot tell.
-local function WornEmpty(button)
-    if not worn[button] or type(_G.GetInventoryItemTexture) ~= "function" or type(button.GetID) ~= "function" then
-        return nil
-    end
+-- Asks the server whether the slot holds an item: Forever paints an empty equipment or bag slot with a placeholder
+-- texture, not the wing. nil when the button is neither or the client cannot tell.
+local function ServerEmpty(button)
+    if type(button.GetID) ~= "function" then return nil end
     local id = Call(button.GetID, button)
     if type(id) ~= "number" then return nil end
-    return Call(_G.GetInventoryItemTexture, "player", id) == nil
+    if worn[button] then
+        if type(_G.GetInventoryItemTexture) ~= "function" then return nil end
+        return Call(_G.GetInventoryItemTexture, "player", id) == nil
+    end
+    if type(button.GetBagID) ~= "function" then return nil end
+    local bag = Call(button.GetBagID, button)
+    if type(bag) ~= "number" then return nil end
+    if C_Container and type(C_Container.GetContainerItemInfo) == "function" then
+        return Call(C_Container.GetContainerItemInfo, bag, id) == nil
+    end
+    if type(_G.GetContainerItemInfo) ~= "function" then return nil end
+    return Call(_G.GetContainerItemInfo, bag, id) == nil
 end
 
 -- A slot without an item: the wing atlas on its icon, or (older clients) no icon texture at all.
 local function Vacant(button)
     local icon = IconOf(button)
     if not ns.Usable(icon) then return false end
-    local wornEmpty = WornEmpty(button)
-    if wornEmpty ~= nil then return wornEmpty end
+    local server = ServerEmpty(button)
+    if server ~= nil then return server end
     if empty[icon] then return true end
     if type(icon.GetTexture) ~= "function" then return false end
     local ok, texture = pcall(icon.GetTexture, icon)
@@ -163,9 +172,9 @@ local function Paint(skin, button)
     local theme = Modern.Theme()
     local well, sheen, mark, gloss, glow = Look(skin, button)
     local icon = IconOf(button)
-    local placeholder = worn[button] and ns.Usable(icon)
+    local placeholder = ns.Usable(icon) and ServerEmpty(button) ~= nil
     if Vacant(button) then
-        -- The equipment placeholder is held like the wing; Empty releases it when the icon changes.
+        -- The placeholder is held like the wing; Empty releases it when the icon changes.
         if placeholder and not empty[icon] then
             empty[icon] = true
             skin:Hold(icon)
