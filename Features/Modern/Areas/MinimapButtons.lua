@@ -11,8 +11,10 @@ local PLATE = 22
 local ICON = 16
 local INSIDE = 14      -- button centre inside the map's edge; Setup/Minimap.lua uses the same
 local RING_KEYS = { "border", "background" }
-local DAY_ATLAS = "UI-HUD-Minimap-DayCycle"     -- the sky with the sun or moon
-local RING_ATLAS = "UI-HUD-Minimap-FrameCycle"   -- the dial's gold ring
+-- the sky with the sun or moon, by day and by night
+local SKY_ATLAS = { ["UI-HUD-Minimap-DayCycle"] = true, ["UI-HUD-Minimap-NightCycle"] = true }
+-- the dial's gold ring, under both client names
+local RING_ATLAS = { ["UI-HUD-Minimap-FrameCycle"] = true, ["UI-HUD-Minimap-Frame-Cycle"] = true }
 
 local active           -- the skin while applied; LibDBIcon reports buttons created later
 local listening
@@ -91,7 +93,7 @@ local function DayDial(container)
             local sky, ring
             for _, region in ipairs({ child:GetRegions() }) do
                 local atlas = Atlas(region)
-                if atlas == DAY_ATLAS then sky = region elseif atlas == RING_ATLAS then ring = region end
+                if SKY_ATLAS[atlas] then sky = region elseif RING_ATLAS[atlas] then ring = region end
             end
             if sky then return child, sky, ring end
         end
