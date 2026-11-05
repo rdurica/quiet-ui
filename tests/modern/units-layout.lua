@@ -151,6 +151,172 @@ h.test("target and focus show the level in the name's font, then the name, above
     for _, f in ipairs(frames) do A.deep(U.points(f.Name), before[f], f:GetName() .. " name restored") end
 end)
 
+-- Horizontal and vertical extent of a region, relative to the level text's bottom left corner, found by
+-- following the first point of each region up to the level (the fixture has no layout engine).
+local function box(region, level)
+    if region == level then
+        return { l = 0, b = 0, w = level:GetStringWidth(), h = level:GetStringHeight() }
+    end
+    local point, rel, relPoint, dx, dy = region:GetPoint(1)
+    assert(rel == level or rel and rel ~= region, "anchored to something we can follow")
+    local base = box(rel, level)
+    local w = region:GetWidth() or (region.GetStringWidth and region:GetStringWidth()) or 0
+    local hgt = region:GetHeight() or (region.GetStringHeight and region:GetStringHeight()) or 0
+    local function frac(p, lowA, lowB, highA, highB)
+        if p:find(lowA) or p:find(lowB) then return 0 end
+        if p:find(highA) or p:find(highB) then return 1 end
+        return 0.5
+    end
+    local ax = base.l + base.w * frac(relPoint, "LEFT", "LEFT", "RIGHT", "RIGHT") + dx
+    local ay = base.b + base.h * frac(relPoint, "BOTTOM", "BOTTOM", "TOP", "TOP") + dy
+    return { l = ax - w * frac(point, "LEFT", "LEFT", "RIGHT", "RIGHT"), b = ay - hgt * frac(point, "BOTTOM", "BOTTOM", "TOP", "TOP"),
+        w = w, h = hgt }
+end
+
+local function sides(region, level)
+    local r = box(region, level)
+    return { left = r.l, right = r.l + r.w, bottom = r.b, mid = r.b + r.h / 2 }
+end
+
+h.test("target and focus put the high-level skull's drawn art on the box's left edge and the name 4 px after the skull frame", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = U.frames()
+    mock:setUnit("target", { exists = true, player = false })
+    mock:setUnit("focus", { exists = true, player = false })
+    for _, keepText in ipairs({ false, true }) do
+        for _, i in ipairs({ 3, 5 }) do
+            local f = frames[i]
+            local p = U.parts(f)
+            A.eq(f.TargetFrameContent.TargetFrameContentContextual.HighLevelTexture, p.skull, f:GetName() .. " skull is the contextual one")
+            local label = f:GetName() .. (keepText and " (level text kept)" or " (level text empty)")
+            U.blizzardSkull(f, false)
+            f.Name:ClearAllPoints()
+            f.Name:SetPoint("TOP", f, "TOP", 0, -5)
+            enable(ns)
+            local level = sides(p.level, p.level)
+            local name = sides(f.Name, p.level)
+            A.eq(name.left - level.right, 3, label .. " no skull: name 3 px after the level")
+            ns.Modern.Restore()
+            U.blizzardSkull(f, true, nil, keepText)
+            enable(ns)
+            A.eq(select(2, p.skull:GetPoint(1)), p.level, label .. " skull anchored to the level")
+            local skull = sides(p.skull, p.level)
+            name = sides(f.Name, p.level)
+            A.eq(skull.left, -5, label .. " skull frame 5 px left of the level's start (1 px border, 4 px transparent art edge)")
+            A.eq(skull.right - skull.left, 14, label .. " skull keeps its own width")
+            A.eq(skull.mid, sides(p.level, p.level).mid, label .. " skull centred on the level line")
+            A.eq(name.left - skull.right, 4, label .. " name 4 px after the skull")
+            A.ok(name.left >= skull.right, label .. " name does not overlap the skull")
+            A.eq(name.bottom, 0, label .. " name keeps the level's line")
+            A.eq(f.Name:GetNumPoints(), 2, label .. " name still reaches the bar's right end")
+            A.eq(select(2, f.Name:GetPoint(2)), p.health, label .. " name's right end stays on the bar")
+            ns.Modern.Restore()
+            U.blizzardSkull(f, false)
+        end
+    end
+end)
+
+h.test("target and focus keep level then name when the skull is hidden", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = U.frames()
+    mock:setUnit("target", { exists = true, player = false })
+    mock:setUnit("focus", { exists = true, player = false })
+    for _, i in ipairs({ 3, 5 }) do
+        local f = frames[i]
+        local p = U.parts(f)
+        enable(ns)
+        A.deep(U.points(p.level), { { "BOTTOMLEFT", p.health, "TOPLEFT", 0, 4 } }, f:GetName() .. " level at the bar's left end")
+        A.deep(U.points(f.Name), { { "BOTTOMLEFT", p.level, "BOTTOMRIGHT", 3, 0 },
+            { "BOTTOMRIGHT", p.health, "TOPRIGHT", 0, 4 } }, f:GetName() .. " name 3 px after the level")
+        ns.Modern.Restore()
+    end
+end)
+
+h.test("target and focus: the name follows the skull when Blizzard shows or hides it while applied", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = U.frames()
+    mock:setUnit("target", { exists = true, player = false })
+    mock:setUnit("focus", { exists = true, player = false })
+    for _, via in ipairs({ "Show", "SetShown" }) do
+        for _, i in ipairs({ 3, 5 }) do
+            local f = frames[i]
+            local p = U.parts(f)
+            local label = f:GetName() .. " via " .. via
+            enable(ns)
+            local plain = U.points(f.Name)
+            U.blizzardSkull(f, true, via)
+            A.eq(select(2, p.skull:GetPoint(1)), p.level, label .. " skull anchored to the level once shown")
+            local skull, name = sides(p.skull, p.level), sides(f.Name, p.level)
+            A.eq(skull.left, -5, label .. " skull frame 5 px left of the level's start once shown")
+            A.eq(name.left - skull.right, 4, label .. " name moved 4 px behind the shown skull")
+            U.blizzardSkull(f, false, via)
+            A.deep(U.points(f.Name), plain, label .. " name back after the level once the skull is hidden")
+            U.blizzardSkull(f, true, via)
+            name = sides(f.Name, p.level)
+            A.eq(name.left - sides(p.skull, p.level).right, 4, label .. " and 4 px behind the skull again")
+            ns.Modern.Restore()
+            U.blizzardSkull(f, false, via)
+        end
+    end
+end)
+
+h.test("restore puts the skull and the name back, and a later skull toggle moves nothing", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = U.frames()
+    mock:setUnit("target", { exists = true, player = false })
+    mock:setUnit("focus", { exists = true, player = false })
+    for _, i in ipairs({ 3, 5 }) do
+        local f = frames[i]
+        local p = U.parts(f)
+        f.Name:ClearAllPoints()
+        f.Name:SetPoint("TOP", f, "TOP", 0, -5)
+        local skullBefore, nameBefore, levelBefore = U.points(p.skull), U.points(f.Name), U.points(p.level)
+        U.blizzardSkull(f, true)
+        enable(ns)
+        ns.Modern.Restore()
+        A.deep(U.points(p.skull), skullBefore, f:GetName() .. " skull points back")
+        A.deep(U.points(f.Name), nameBefore, f:GetName() .. " name points back")
+        A.deep(U.points(p.level), levelBefore, f:GetName() .. " level points back")
+        U.blizzardSkull(f, false)
+        U.blizzardSkull(f, true, "SetShown")
+        U.blizzardSkull(f, false, "SetShown")
+        U.blizzardSkull(f, true)
+        A.deep(U.points(p.skull), skullBefore, f:GetName() .. " skull stays after later toggles")
+        A.deep(U.points(f.Name), nameBefore, f:GetName() .. " name stays after later toggles")
+        A.deep(U.points(p.level), levelBefore, f:GetName() .. " level stays after later toggles")
+        U.blizzardSkull(f, false)
+    end
+end)
+
+h.test("applying again after a restore does not stack skull hooks, one toggle still places the name once", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = U.frames()
+    mock:setUnit("target", { exists = true, player = false })
+    mock:setUnit("focus", { exists = true, player = false })
+    for _, i in ipairs({ 3, 5 }) do
+        local f = frames[i]
+        local p = U.parts(f)
+        local label = f:GetName()
+        enable(ns)
+        ns.Modern.Restore()
+        enable(ns)
+        local hooked = {}
+        for _, hook in ipairs(mock.hooks) do
+            if hook.obj == p.skull then hooked[hook.method] = (hooked[hook.method] or 0) + 1 end
+        end
+        for method, n in pairs(hooked) do A.eq(n, 1, label .. " skull " .. method .. " hooked once across applies") end
+        U.blizzardSkull(f, true)
+        local skull, name = sides(p.skull, p.level), sides(f.Name, p.level)
+        A.eq(skull.left, -5, label .. " skull frame 5 px left of the level's start after the second apply")
+        A.eq(name.left - skull.right, 4, label .. " name 4 px behind the skull after the second apply")
+        A.eq(name.bottom, 0, label .. " name keeps the level's line")
+        U.blizzardSkull(f, false)
+        A.eq(sides(f.Name, p.level).left - sides(p.level, p.level).right, 3, label .. " name 3 px after the level once the skull is hidden")
+        ns.Modern.Restore()
+        U.blizzardSkull(f, false)
+    end
+end)
+
 h.test("pet and target of target get a smaller box over the portrait space, the name above it", function(t)
     local A, ns = t.assert, t.ns
     local frames = U.frames()

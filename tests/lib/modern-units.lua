@@ -8,6 +8,8 @@
 -- The level text sits in a ring texture anchored to it (WoW Forever art, name unknown).
 -- The player's combat swords and resting "zzz": PlayerFrameContent.PlayerFrameContentContextual.AttackIcon
 --   and .PlayerRestLoop.
+-- The target's high-level skull (boss / ?? level) sits far right:
+--   TargetFrameContent.TargetFrameContentContextual.HighLevelTexture (WoW Forever /fstack).
 --   TargetFrameToT: Portrait, PortraitMask, FrameTexture, HealthBar, ManaBar directly on the frame
 --   PetFrame: Portrait / PortraitMask keys; PetFrameTexture, PetFrameFlash, PetFrameHealthBar,
 --     PetFrameManaBar as named globals
@@ -151,7 +153,18 @@ local function target(name, unit)
     local hb = sub(main); main.HealthBarsContainer = hb
     hb.HealthBar = bar(hb, ATLAS .. "Target-PortraitOn-Bar-Health", { 0, 1, 0, 1 })
     main.ManaBar = bar(main, ATLAS .. "Target-PortraitOn-Bar-Mana", { 1, 1, 1, 1 })
-    return finish(f, unit, "Target", { portrait = icon, mask = mask, health = hb.HealthBar, mana = main.ManaBar,
+    local contextual = sub(content); content.TargetFrameContentContextual = contextual
+    local skull = texture(contextual, ATLAS .. "Target-PortraitOn-Skull", true)
+    skull:SetSize(14, 14) -- not the usual 16: the layout must read the skull's real width
+    skull:SetPoint("TOPRIGHT", contextual, "TOPRIGHT", -24, -6)
+    -- The client's Show, Hide and SetShown are separate calls: SetShown does not go through Show or Hide,
+    -- and none of them fires an OnShow / OnHide script on a texture.
+    function skull:Show() self._shown = true end
+    function skull:Hide() self._shown = false end
+    function skull:SetShown(shown) self._shown = shown and true or false end
+    function skull:IsShown() return self._shown == true end
+    contextual.HighLevelTexture = skull
+    return finish(f, unit, "Target", { skull = skull, portrait = icon, mask = mask, health = hb.HealthBar, mana = main.ManaBar,
         art = { c.FrameTexture, c.Flash, c.BossPortraitFrameTexture, main.ReputationColor },
         flash = c.Flash, boss = c.BossPortraitFrameTexture, level = lvl, ring = ring })
 end
@@ -210,6 +223,21 @@ end
 function U.blizzardBossFrame(frame, kind)
     local art = U.parts(frame).boss
     if kind == "elite" or kind == "rareelite" or kind == "worldboss" then art:Show() else art:Hide() end
+end
+
+-- Blizzard's level check on a target change: the skull replaces the level text (hidden, and empty for ??).
+-- via: "Show" / "Hide" (default) or "SetShown", the call Blizzard happens to use; keepText leaves the level text.
+function U.blizzardSkull(frame, on, via, keepText)
+    local p = U.parts(frame)
+    if via == "SetShown" then p.skull:SetShown(on)
+    elseif on then p.skull:Show() else p.skull:Hide() end
+    if on then
+        if not keepText then p.level:SetText("") end
+        p.level:Hide()
+    else
+        p.level:SetText("21")
+        p.level:Show()
+    end
 end
 
 function U.hidden(frame)
