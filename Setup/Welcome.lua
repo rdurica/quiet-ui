@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- The first-run welcome: choose Classic or Modern. Same flat window as setup, without a close:
+-- The welcome: choose Classic or Modern, once per character. Same flat window as setup, without a close:
 -- a card selects, Choose answers.
 
 local Setup = ns.Setup
@@ -21,14 +21,18 @@ local CHOICES = {
     },
     {
         key = "modern",
-        title = "Modern",
-        text = "Flat graphite windows and slim unit frames. One clean, dark look across every panel.",
+        title = "Modern (experimental)",
+        text = "Flat graphite windows and slim unit frames, one dark look across every panel. Still experimental.",
         image = "Interface\\AddOns\\QuietUI\\Media\\welcome-modern.tga",
     },
 }
 
+local function Current()
+    return ns.Settings.Modernize() and "modern" or "classic"
+end
+
 local function Choose(key)
-    ns.DB().welcomed = true
+    ns.Settings.CharDB().welcomed = true
     local settings = ns.Settings.Effective()
     local stored = type(settings.modernize) == "table" and settings.modernize or nil
     if key == "modern" then
@@ -41,27 +45,46 @@ local function Choose(key)
     end
 end
 
--- Either choice reloads, so the look is complete at once and the layout prompt follows. ReloadUI from addon code
--- is blocked on this client, so Choose is a secure button running /reload; PreClick saves the choice first.
+-- A changed look reloads, so it is complete at once; the same look only closes, and the layout prompt follows.
+-- ReloadUI from addon code is blocked on this client, so Choose is a secure button running /reload while the
+-- selection changes the look; PreClick saves the choice first.
+local function Answered(frame, reloads)
+    frame:Hide()
+    if frame.changes and not reloads then
+        ns.Print("type /reload to finish the new look")
+    end
+    if not frame.changes then ns.Layout.Ensure() end
+end
+
 local function ChooseButton(frame)
     local button = Setup.Button(frame, "Choose", nil, "SecureActionButtonTemplate")
     if type(button.SetAttribute) ~= "function" then
         button:SetScript("OnClick", function()
             if not frame.selected then return end
             Choose(frame.selected)
-            frame:Hide()
-            if type(ReloadUI) == "function" then ReloadUI() end
+            local reloads = frame.changes and type(ReloadUI) == "function"
+            Answered(frame, reloads)
+            if reloads then ReloadUI() end
         end)
         return button
     end
-    button:SetAttribute("type", "macro")
-    button:SetAttribute("macrotext", "/reload")
     if type(button.RegisterForClicks) == "function" then button:RegisterForClicks("AnyUp", "AnyDown") end
     button:SetScript("PreClick", function()
         if frame.selected then Choose(frame.selected) end
     end)
-    button:SetScript("PostClick", function() frame:Hide() end)
+    button:SetScript("PostClick", function()
+        Answered(frame, button:GetAttribute("type") == "macro")
+    end)
     return button
+end
+
+-- Only a look that changes runs /reload. Attributes are locked in combat; then chat asks for /reload.
+local function ArmReload(frame)
+    frame.changes = frame.selected ~= nil and frame.selected ~= Current()
+    local button = frame.choose
+    if type(button.SetAttribute) ~= "function" or InCombatLockdown() then return end
+    button:SetAttribute("macrotext", "/reload")
+    button:SetAttribute("type", frame.changes and "macro" or nil)
 end
 
 -- The chosen card keeps the accent edge; Choose waits for one.
@@ -71,6 +94,7 @@ local function Select(frame, key)
         Setup.EdgeColor(card, cardKey == key and Setup.Colors().accent or Setup.Colors().border)
     end
     if key then frame.choose:Enable() else frame.choose:Disable() end
+    ArmReload(frame)
 end
 
 local function Card(frame, choice, x)
@@ -115,8 +139,7 @@ local function CreateWelcome()
     frame.choose = ChooseButton(frame)
     frame.choose:SetWidth(200)
     frame.choose:SetPoint("TOP", 0, -(CARD_TOP + CARD_H + 16))
-    Select(frame, nil)
-    frame.note = Setup.Note(frame, "Everything can be changed later in /quiet setup.")
+    frame.note = Setup.Note(frame, "")
     frame.note:SetWidth(WIDTH - SIDE * 2)
     frame.note:SetJustifyH("CENTER")
     frame.note:SetPoint("BOTTOM", 0, 18)
@@ -128,15 +151,25 @@ function Setup.WelcomeOpen()
     return S.welcome ~= nil and S.welcome:IsShown()
 end
 
--- Once per account, on a fresh install only: an account that already answered the layout prompt has used QuietUI.
+local NOTE = "Everything can be changed later in /quiet setup."
+
+-- The choice goes into the effective settings, so a shared preset changes for every character that uses it.
+local function Note()
+    local preset = ns.Settings.ActivePreset()
+    if not preset then return NOTE end
+    return 'This changes preset "' .. preset.name .. '" for every character that uses it.\n' .. NOTE
+end
+
+-- Once per character, also after an update. Known players see their current look selected.
 function Setup.Welcome()
     local db = ns.DB()
-    if db.welcomed then return end
-    if db.layoutHash ~= nil then
-        db.welcomed = true
-        return
-    end
+    -- An earlier build kept the answer on the account.
+    db.welcomed = nil
+    if ns.Settings.CharDB().welcomed then return end
     S.welcome = S.welcome or CreateWelcome()
+    local known = ns.Settings.Modernize() or db.layoutHash ~= nil or ns.Settings.ActivePreset() ~= nil
+    S.welcome.note:SetText(Note())
+    Select(S.welcome, known and Current() or nil)
     S.welcome:Show()
     ns.RaiseDialog(S.welcome)
 end

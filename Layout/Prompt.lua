@@ -36,7 +36,7 @@ local function CreatePrompt()
             ns.Print("layout can not change in combat, /reload after combat to try again")
             return
         end
-        local okWrite, err = pcall(Layout.Write)
+        local okWrite, err = pcall(frame.action)
         if okWrite then
             Layout.MarkAnswered()
         else
@@ -56,25 +56,41 @@ local function CreatePrompt()
     return frame
 end
 
-local function Ask(text, yesLabel)
+local function Ask(text, yesLabel, action)
     local prompt = S.prompt or CreatePrompt()
     S.prompt = prompt
     prompt.text:SetText(text)
+    prompt.action = action
     SetButtonLabel(prompt.yes, yesLabel)
     prompt:Show()
     ns.RaiseDialog(prompt)
 end
 
+-- The layout is on the account, the active layout per character.
+local function Switch()
+    local info = Layout.Load()
+    local index = info and Layout.Find(info.layouts)
+    if not index then error("the " .. Layout.NAME .. " layout is missing") end
+    C_EditMode.SetActiveLayout(Layout.PresetCount() + index)
+end
+
+-- A new layout version asks once per account; a character that has not answered yet asks for itself.
 -- Returns true once the check could run, so it is not repeated this session.
 function Layout.Check()
-    if ns.DB().layoutHash == Layout.ShippedHash() then return true end
+    local hash = Layout.ShippedHash()
+    if ns.Settings.CharDB().layoutHash == hash then return true end
     local info = Layout.Load()
     if not info then return false end
     Layout.ReadShipped()
-    if Layout.Find(info.layouts) then
-        Ask("The " .. Layout.NAME .. " layout has changed. Update yours?", "Update")
+    local index = Layout.Find(info.layouts)
+    if not index then
+        Ask("Add the " .. Layout.NAME .. " layout and switch to it?", "Add", Layout.Write)
+    elseif ns.DB().layoutHash ~= hash then
+        Ask("The " .. Layout.NAME .. " layout has changed. Update yours?", "Update", Layout.Write)
+    elseif info.activeLayout == Layout.PresetCount() + index then
+        Layout.MarkAnswered()
     else
-        Ask("Add the " .. Layout.NAME .. " layout and switch to it?", "Add")
+        Ask("Switch to the " .. Layout.NAME .. " layout?", "Switch", Switch)
     end
     return true
 end

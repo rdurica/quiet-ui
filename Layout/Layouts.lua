@@ -133,8 +133,11 @@ function Layout.ShippedHash()
     return Hash(Layout.STRING or "")
 end
 
+-- The account remembers the version offered, the character that it answered for itself.
 function Layout.MarkAnswered()
-    ns.DB().layoutHash = Layout.ShippedHash()
+    local hash = Layout.ShippedHash()
+    ns.DB().layoutHash = hash
+    ns.Settings.CharDB().layoutHash = hash
 end
 
 function Layout.Load()
