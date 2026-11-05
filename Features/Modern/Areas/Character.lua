@@ -1,7 +1,8 @@
 local _, ns = ...
 
 -- The 12.0 character window (Forever): pane backgrounds, equipment slots, the stats list and its
--- scroll bar, the vertical mode tabs and the stats sidebar tabs. The model scene backdrop is content and stays.
+-- scroll bar, the vertical mode tabs and the stats sidebar tabs. The model scene's backdrop art is held; the model, its
+-- actor and its controls are content and stay.
 -- Stat rows come from a ScrollBox pool, so they are skinned again whenever the list updates.
 
 local Modern = ns.Modern
@@ -68,15 +69,45 @@ local function SlotList()
             list[#list + 1] = slot
         end
     end
-    for _, slot in ipairs(Character.Children(_G.PaperDollItemsFrame)) do Add(slot) end
+    -- A layout may nest the weapon slots one level below a child frame.
+    for _, child in ipairs(Character.Children(_G.PaperDollItemsFrame)) do
+        Add(child)
+        for _, nested in ipairs(Character.Children(child)) do Add(nested) end
+    end
     for _, name in ipairs(SLOT_NAMES) do Add(_G["Character" .. name .. "Slot"]) end
     return list
+end
+
+-- Every texture of the slot and of its child frames except the icon and the quality border the bag skin paints.
+local function SlotArt(skin, slot)
+    local keep = {}
+    for _, region in ipairs({ slot.icon or false, slot.Icon or false, slot.IconBorder or false }) do keep[region] = true end
+    local function Hold(frame)
+        for _, region in ipairs(Regions(frame)) do
+            if IsTexture(region) and not keep[region] and not skin:Owns(frame, region) then skin:Hold(region) end
+        end
+    end
+    Hold(slot)
+    for _, child in ipairs(Character.Children(slot)) do Hold(child) end
 end
 
 function Character.Slots(skin)
     for _, slot in ipairs(SlotList()) do
         Modern.Bags.Item(skin, slot, true)
-        Character.HoldArt(skin, slot.BorderFrame)
+        SlotArt(skin, slot)
+    end
+end
+
+-- The scene's backdrop and background frames; the scene itself, its actor and its controls stay.
+local function Backdrop(skin)
+    local scene = _G.CharacterModelScene
+    if not ns.Usable(scene) then return end
+    Character.HoldArt(skin, scene)
+    for _, child in ipairs(Character.Children(scene)) do
+        if child ~= scene.Actor and child ~= scene.ControlFrame and ns.Usable(child)
+            and type(child.GetObjectType) == "function" and child:GetObjectType() == "Frame" then
+            Character.HoldArt(skin, child)
+        end
     end
 end
 
@@ -244,6 +275,7 @@ function Character.Apply(skin, frame)
     styled[frame] = skin
     skin:Remember(frame, "modern character", function() styled[frame] = nil end)
     Panes(skin, frame)
+    Backdrop(skin)
     Character.Controls(skin, frame)
     for _, tab in ipairs(Character.Children(frame.ModeTabs)) do
         if ns.Usable(tab) and tab.SelectedTexture then Character.IconTab(skin, tab) end
