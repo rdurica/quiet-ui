@@ -1,5 +1,6 @@
 -- The Modern calendar (Blizzard_Calendar, Windows area): window chrome, the bare month grid, the today accent border,
--- the selected day wash, out-of-month dimming, untouched event art, the event windows and the saved, movable point.
+-- the selected day wash, the quiet day hover, out-of-month dimming, untouched event art, the event windows and day
+-- menu, and the saved, movable point.
 local h = ...
 local L = h.lib("modern")
 local W = h.lib("modern-windows")
@@ -42,6 +43,32 @@ local function hasWash(button)
         end
     end
     return false
+end
+
+-- An own faint light wash Modernize added to `button` after the `before` snapshot, whatever its layer.
+local function ownWash(button, before)
+    for _, region in ipairs(C.added(button, before)) do
+        local color = region._color
+        if region._shown ~= false and color and color[4] and color[4] <= 0.3
+            and color[1] >= 0.5 and color[2] >= 0.5 and color[3] >= 0.5 then
+            return true
+        end
+    end
+    return false
+end
+
+-- The Modern title band (a vertical strip gradient) and the accent hairline under it.
+local function headerBand(frame, theme)
+    local band, hairline = false, false
+    for _, region in ipairs(frame._regions) do
+        if region._shown ~= false then
+            if region._gradient and region._gradient[1] == "VERTICAL" and region._gradient[2][1] == theme.strip[1] then
+                band = true
+            end
+            if region._h == 1 and same(region._color, theme.accent) then hairline = true end
+        end
+    end
+    return band, hairline
 end
 
 -- An own dimming overlay, or dimmed date ink, on a day outside the month. Blizzard's own shadings are excluded.
@@ -160,6 +187,47 @@ h.test("the selected day gets a faint light wash and Blizzard's selection textur
     A.falsy(hasWash(selected), "restore removes the wash")
 end)
 
+h.test("a day button under the mouse gets a quiet own wash, removed on leave and restore", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = C.build()
+    local button = c.days[21]    -- a plain day, neither today nor selected
+    local before = L.snapshot(C.all(button))
+    W.enable(ns)
+
+    A.falsy(ownWash(button, before), "a plain day gets no wash before the mouse")
+    local enter = button:GetScript("OnEnter")
+    A.ok(enter, "a day button listens for the mouse entering")
+    if enter then enter(button) end
+    A.ok(ownWash(button, before), "a faint own wash follows the mouse")
+
+    local leave = button:GetScript("OnLeave")
+    A.ok(leave, "a day button listens for the mouse leaving")
+    if leave then leave(button) end
+    A.falsy(ownWash(button, before), "the wash leaves with the mouse")
+
+    if enter then enter(button) end
+    A.ok(ownWash(button, before), "the wash is back under the mouse")
+    ns.Modern.Restore()
+    A.falsy(ownWash(button, before), "restore hides the hover wash")
+end)
+
+h.test("clicking a day moves the selected wash without the Blizzard selection setter", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = C.build()
+    local first = C.select(c, 20)    -- day 18, selected before Modernize
+    _G.CalendarFrame_SetSelectedDay = nil
+    W.enable(ns)
+
+    A.ok(hasWash(first), "the day selected before Modernize keeps its wash")
+    local second = c.days[25]
+    second:Click()
+    A.eq(c.frame.selectedDayButton, second, "the click marks the day selected")
+    A.ok(hasWash(second), "the wash moves to the clicked day")
+    A.falsy(hasWash(first), "the day selected before loses the wash")
+end)
+
 h.test("days outside the shown month are dimmed without changing the day button's alpha", function(t)
     local A, ns = t.assert, t.ns
     W.area(ns, "windows")
@@ -212,6 +280,31 @@ h.test("the event windows, the invite list and the day menu take the Modern dial
     A.ok(R.invisible(c.invite.Background, c.invite), "the invite list stands bare")
     A.ok(not R.invisible(c.inviteRow.Name, c.invite), "invite names stay")
     A.eq(#t.mock.printed, 0, "nothing reported")
+end)
+
+h.test("the day menu takes the Modern panel but no title band or accent hairline", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c = C.build()
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+
+    A.ok(_G.CalendarDayContextMenu, "the day menu exists")
+    local seen = {}
+    for _, name in ipairs({ "CalendarDayContextMenu", "CalendarContextMenu" }) do
+        local menu = _G[name]
+        if menu and not seen[menu] then
+            seen[menu] = true
+            A.ok(W.isDark(menu), name .. " is a dark panel")
+            local band, hairline = headerBand(menu, theme)
+            A.falsy(band, name .. " gets no title header band")
+            A.falsy(hairline, name .. " gets no accent hairline")
+        end
+    end
+
+    local band, hairline = headerBand(_G.CalendarViewEventFrame, theme)
+    A.ok(band, "an event window keeps its title band")
+    A.ok(hairline, "an event window keeps the accent hairline")
 end)
 
 h.test("dragging the calendar title saves windowPoints.CalendarFrame and the point returns on the next show", function(t)
