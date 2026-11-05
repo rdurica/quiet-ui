@@ -406,3 +406,27 @@ h.test("a client without one of the calendar frames skips it without reporting",
     A.ok(W.isDark(c.frame), "the window still skins")
     A.eq(#mock.printed, 0, "missing day buttons, event windows and the day menu are skipped quietly")
 end)
+
+h.test("a client without CalendarFrame_Update or CalendarFrame_SetSelectedDay reports each missing hook once", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    W.area(ns, "windows")
+    local c = C.build()
+    _G.CalendarFrame_Update = nil
+    _G.CalendarFrame_SetSelectedDay = nil
+
+    A.noThrow(function() W.enable(ns) end)
+    A.ok(W.isDark(c.frame), "the calendar still skins without the hooks")
+
+    local update, selected = 0, 0
+    for _, line in ipairs(mock.printed) do
+        if line:find("CalendarFrame_Update", 1, true) then update = update + 1 end
+        if line:find("CalendarFrame_SetSelectedDay", 1, true) then selected = selected + 1 end
+    end
+    A.eq(#mock.printed, 2, "one message per missing hook: " .. table.concat(mock.printed, "; "))
+    A.eq(L.errors(mock), 2, "both missing hooks are reported")
+    A.eq(update, 1, "CalendarFrame_Update is reported once")
+    A.eq(selected, 1, "CalendarFrame_SetSelectedDay is reported once")
+
+    A.noThrow(ns.Modern.Apply)
+    A.eq(#mock.printed, 2, "a second apply does not report the missing hooks again")
+end)
