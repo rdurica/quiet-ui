@@ -13,8 +13,8 @@ end
 -- Look and XP on the left, one checkbox per registered area on the right.
 Setup.Pages.modern = function(widget, modern)
     local left = Setup.Column(modern, 0, Setup.COLUMN_W)
-    widget.modernHeader = left:Add(Setup.Section(modern, "Modern",
-        "Modernize gives Blizzard's windows and frames a quiet dark look. Theme sets the colours, names show their class colour, and each area can be turned off on its own. Turning Modernize off restores the original look."), 30)
+    widget.modernHeader = left:Add(Setup.Section(modern, "Modern (experimental)",
+        "Modernize gives Blizzard's windows and frames a quiet dark look. Theme sets the colours, names show their class colour, and each area can be turned off on its own. Modernize is experimental: some windows may still look unfinished. Turning Modernize off restores the original look."), 30)
     widget.modernize = left:Add(Setup.Choice(modern, "Modernize", Toggle("modernize")))
     widget.modernTheme = left:Add(Setup.Stepper(modern, "Theme", function(sign)
         Setup.NudgeModernTheme(sign)

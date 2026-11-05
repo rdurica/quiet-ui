@@ -1,6 +1,6 @@
 # Modern: Modernize
 
-The Modern tab of `/quiet setup`. Modernize reskins Blizzard's frames in place into a light, modern, dark look. Exact colours, sizes and frame names live in the code (`Theme`, the area files); this file holds the direction and the rules.
+The Modern tab of `/quiet setup`. Modernize reskins Blizzard's frames in place into a light, modern, dark look. Exact colours, sizes and frame names live in the code (`Theme`, the area files); this file holds the direction and the rules. Modernize is marked experimental in the welcome and on the Modern tab: the card and the section title say "(experimental)" and their text says some windows may still look unfinished.
 
 ## Direction
 
