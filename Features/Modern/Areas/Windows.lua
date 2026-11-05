@@ -1,7 +1,7 @@
 local _, ns = ...
 
--- Character, spellbook / talents, professions, auction house, merchant, loot, quest log, bags, the NPC quest,
--- gossip and item text windows, mail, the social windows, the trainer, the plainer panels and small dialogs. Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
+-- Character, spellbook / talents, professions, auction house, the calendar, merchant, loot, quest log, bags, the NPC
+-- quest, gossip and item text windows, mail, the social windows, the trainer, the plainer panels and small dialogs. Named runtime lookups support both Forever's classic and newer window variants; an absent one is skipped.
 -- QuestMapFrame lives inside WorldMapFrame and is never made movable or panelled.
 local Modern = ns.Modern
 

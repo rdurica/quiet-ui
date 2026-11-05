@@ -100,11 +100,12 @@ local function Dialogs(skin)
             themed[window] = true
         end
     end
-    -- Older clients name the day menu CalendarContextMenu; the same frame answers to both.
+    -- A menu is a panel, not a titled window. Older clients name the day menu CalendarContextMenu; the same frame
+    -- answers to both.
     for _, name in ipairs(MENUS) do
         local menu = _G[name]
         if ns.Usable(menu) and not themed[menu] then
-            Modern.Dialog(skin, menu)
+            Modern.Window(skin, menu)
             themed[menu] = true
         end
     end
@@ -118,6 +119,17 @@ local function InkNames(skin)
     for _, name in ipairs(HEADER_TEXT) do Modern.Ink(skin, _G[name], theme.text) end
 end
 
+-- One physical pixel at the line's scale, as Modern.Hairline does for borders.
+local function PixelSize(line)
+    local size = 1
+    if type(PixelUtil) == "table" and type(PixelUtil.GetNearestPixelSize) == "function"
+        and type(line.GetEffectiveScale) == "function" then
+        local ok, scaled = pcall(PixelUtil.GetNearestPixelSize, 1, line:GetEffectiveScale(), 1)
+        if ok and type(scaled) == "number" and scaled > 0 then size = scaled end
+    end
+    return size
+end
+
 -- Quiet rules between the columns and rows, anchored to the grid's own day buttons.
 local function Grid(skin, frame)
     if not ns.Usable(DayButton(1)) then return end
@@ -127,7 +139,7 @@ local function Grid(skin, frame)
         local function Vertical(top, bottom)
             if not ns.Usable(top) or not ns.Usable(bottom) then return end
             local line = frame:CreateTexture(nil, "OVERLAY")
-            line:SetWidth(1)
+            line:SetWidth(PixelSize(line))
             line:SetPoint("TOPRIGHT", top, "TOPRIGHT", 0, 0)
             line:SetPoint("BOTTOMRIGHT", bottom, "BOTTOMRIGHT", 0, 0)
             list[#list + 1] = line
@@ -135,7 +147,7 @@ local function Grid(skin, frame)
         local function Horizontal(left, right)
             if not ns.Usable(left) or not ns.Usable(right) then return end
             local line = frame:CreateTexture(nil, "OVERLAY")
-            line:SetHeight(1)
+            line:SetHeight(PixelSize(line))
             line:SetPoint("BOTTOMLEFT", left, "BOTTOMLEFT", 0, 0)
             line:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", 0, 0)
             list[#list + 1] = line
@@ -159,30 +171,31 @@ local function TodayButton()
     return today:GetParent()
 end
 
--- A thin accent border inside today's day button; none while today is not in the shown month.
+-- A thin accent border inside today's day button, drawn by a small child frame so Skin:Border makes the hairlines;
+-- none while today is not in the shown month.
+local function TodayBorder(skin, button)
+    if type(CreateFrame) ~= "function" then return end
+    local frame = skin:Own(button, "today border", function()
+        local child = CreateFrame("Frame", nil, button)
+        child:SetAllPoints(button)
+        return child
+    end)
+    if not ns.Usable(frame) then return end
+    skin:Border(frame, Modern.Theme().accent)
+    return frame
+end
+
 local function PaintToday(skin)
-    local theme = Modern.Theme()
     local today = TodayButton()
     EachDay(function(button)
-        local parts = skin:Own(button, "today border", function()
-            local list = {}
-            local function Line(vertical, pointA, xA, yA, pointB, xB, yB)
-                local line = button:CreateTexture(nil, "OVERLAY")
-                if vertical then line:SetWidth(1) else line:SetHeight(1) end
-                line:SetPoint(pointA, button, pointA, xA, yA)
-                line:SetPoint(pointB, button, pointB, xB, yB)
-                list[#list + 1] = line
-            end
-            Line(false, "TOPLEFT", 2, -2, "TOPRIGHT", -2, -2)
-            Line(false, "BOTTOMLEFT", 2, 2, "BOTTOMRIGHT", -2, 2)
-            Line(true, "TOPLEFT", 2, -2, "BOTTOMLEFT", 2, 2)
-            Line(true, "TOPRIGHT", -2, -2, "BOTTOMRIGHT", -2, 2)
-            return list
-        end)
+        local frame = TodayBorder(skin, button)
+        if not frame then return end
         local on = button == today
-        for _, line in ipairs(parts) do
-            line:SetColorTexture(unpack(theme.accent))
-            line:SetShown(on)
+        frame:SetShown(on)
+        if type(frame.GetRegions) == "function" then
+            for _, line in ipairs({ frame:GetRegions() }) do
+                if type(line.SetShown) == "function" then line:SetShown(on) end
+            end
         end
     end)
 end
@@ -201,10 +214,6 @@ local function PaintSelection(skin)
         if on then
             wash:SetColorTexture(unpack(WASH))
             wash:Show()
-            if type(button.GetHighlightTexture) == "function" then
-                local ok, texture = pcall(button.GetHighlightTexture, button)
-                if ok then Hold(skin, texture) end
-            end
         else
             wash:Hide()
         end
@@ -225,6 +234,11 @@ local function PaintDays(skin)
     end)
 end
 
+-- Blizzard marks a clicked day through the optional setter; the click itself is the fallback.
+local function Selection()
+    if state.skin then ns.Profiler.Run("modern calendar", PaintSelection, state.skin) end
+end
+
 local function Repaint(skin)
     if not skin then return end
     PaintDays(skin)
@@ -232,21 +246,65 @@ local function Repaint(skin)
     PaintToday(skin)
 end
 
+local function Update(skin)
+    PaintDays(skin)
+    PaintToday(skin)
+end
+
+local hoverHooked = setmetatable({}, { __mode = "k" })
+local clickHooked = setmetatable({}, { __mode = "k" })
+
+-- A quiet own wash under the mouse, and the click fallback above. Set once per day button.
+local function FollowDay(skin, button)
+    if type(button.CreateTexture) == "function" then
+        local wash = skin:Own(button, "hover wash", function()
+            local texture = button:CreateTexture(nil, "BACKGROUND", nil, -5)
+            texture:SetAllPoints(button)
+            texture:SetColorTexture(unpack(WASH))
+            texture:Hide()
+            return texture
+        end)
+        if wash and not hoverHooked[button] and type(button.HookScript) == "function" then
+            local function Paint(on)
+                if not state.skin then return end
+                if on then
+                    wash:SetColorTexture(unpack(WASH))
+                    wash:Show()
+                else
+                    wash:Hide()
+                end
+            end
+            hoverHooked[button] = pcall(button.HookScript, button, "OnEnter", function() Paint(true) end)
+            pcall(button.HookScript, button, "OnLeave", function() Paint(false) end)
+        end
+    end
+    if not clickHooked[button] and type(button.HookScript) == "function" then
+        clickHooked[button] = pcall(button.HookScript, button, "OnClick", Selection)
+    end
+end
+
 -- Blizzard refills the grid on a month change and marks the selected day; the calendar re-applies its own marks
 -- then and whenever the window shows. Set once; inert while the area is off.
 local function Follow(skin)
     local frame = _G.CalendarFrame
     if not hooked.frame and ns.Usable(frame) and type(frame.HookScript) == "function" then
-        hooked.frame = true
-        pcall(frame.HookScript, frame, "OnShow", function()
+        hooked.frame = pcall(frame.HookScript, frame, "OnShow", function()
             if state.skin then ns.Profiler.Run("modern calendar", Repaint, state.skin) end
         end)
     end
-    local function Again()
-        if state.skin then ns.Profiler.Run("modern calendar", Repaint, state.skin) end
+    if hooked.update == nil then
+        hooked.update = pcall(hooksecurefunc, "CalendarFrame_Update", function()
+            if state.skin then ns.Profiler.Run("modern calendar", Update, state.skin) end
+        end)
+        if not hooked.update then ns.Report("modern calendar", "CalendarFrame_Update is missing") end
     end
-    if not hooked.update then hooked.update = pcall(hooksecurefunc, "CalendarFrame_Update", Again) end
-    if not hooked.selected then hooked.selected = pcall(hooksecurefunc, "CalendarFrame_SetSelectedDay", Again) end
+    if hooked.selected == nil then
+        hooked.selected = pcall(hooksecurefunc, "CalendarFrame_SetSelectedDay", function()
+            if state.skin then ns.Profiler.Run("modern calendar", PaintSelection, state.skin) end
+        end)
+        if not hooked.selected then ns.Report("modern calendar", "CalendarFrame_SetSelectedDay is missing") end
+    end
+    EachDay(function(button) FollowDay(skin, button) end)
 end
 
 function Calendar.Apply(skin)
