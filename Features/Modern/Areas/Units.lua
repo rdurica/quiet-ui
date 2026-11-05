@@ -37,7 +37,8 @@ local LEVEL_PATHS = { "PlayerFrameContent.PlayerFrameContentMain.PlayerLevelText
     "TargetFrameContent.TargetFrameContentMain.LevelText", "levelText", "LevelText" }
 local NAME_PATHS = { "name", "Name", "TargetFrameContent.TargetFrameContentMain.Name" }
 local COMBAT_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.AttackIcon" }
-local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
+local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentContextual.HighLevelTexture",
+    "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
 -- The player's resting "zzz" and its glow.
 local REST_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.PlayerRestLoop" }
 local REST_GLOBALS = { "PlayerRestLoop", "PlayerRestIcon", "PlayerRestGlow" }

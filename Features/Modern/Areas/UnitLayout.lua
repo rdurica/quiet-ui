@@ -16,8 +16,10 @@ local POWER_HEIGHT = 4    -- a thin line, too small for its value text
 local POWER_GAP = 1       -- dark line between health and power
 local BAR_TEXT = 12       -- value text size; Blizzard's is too small to read
 local TEXT_POINTS = { TextString = { "CENTER", 0 }, LeftText = { "LEFT", 4 }, RightText = { "RIGHT", -4 } }
-local NAME_GAP = 3        -- between the health bar's top and the name
+local NAME_GAP = 3        -- between the health bar's top and the name, and between the level or skull and the name
 local COMBAT_ICON = 16
+local SKULL_GAP = 4       -- between the boss skull and the name after it
+local SKULL_PAD = 4       -- the skull art's transparent edge, so the drawn skull starts on the box edge
 local CLASS_ICON = 14     -- the class icon before a player target's level
 
 local rects = setmetatable({}, { __mode = "k" })  -- bar -> Blizzard rect relative to the frame, this cycle
@@ -178,6 +180,40 @@ local function Icon(skin, frame, parts)
     return icon
 end
 
+local followed = setmetatable({}, { __mode = "k" }) -- skull -> { level, name }, while applied
+local skullHooked = setmetatable({}, { __mode = "k" })
+
+local function SkullShown(skull)
+    return type(skull.IsShown) == "function" and skull:IsShown() and true or false
+end
+
+local function After(skull, level)
+    -- The skull starts on the box's left edge; the name follows it after a clear gap.
+    if SkullShown(skull) then
+        local ok, width = pcall(skull.GetWidth, skull)
+        if not ok or type(width) ~= "number" then width = 16 end
+        return { "BOTTOMLEFT", level, "BOTTOMLEFT", width - INSET - SKULL_PAD + SKULL_GAP, 0 }
+    end
+    return { "BOTTOMLEFT", level, "BOTTOMRIGHT", NAME_GAP, 0 }
+end
+
+-- Blizzard shows the skull in place of the level text: the name follows it. Show, Hide and SetShown are
+-- separate calls on the client, so each is hooked; inert once restored.
+local function Follow(skull)
+    local f = followed[skull]
+    if not f or not laid[f.name] then return end
+    laid[f.name] = { After(skull, f.level), laid[f.name][2] }
+    Place(f.name)
+end
+
+local function HookSkull(skull)
+    if skullHooked[skull] or type(hooksecurefunc) ~= "function" then return end
+    skullHooked[skull] = true
+    for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+        if type(skull[method]) == "function" then pcall(hooksecurefunc, skull, method, function() Follow(skull) end) end
+    end
+end
+
 -- Target and focus: a player's class icon, the level in the name's font, then the name, above the health
 -- bar's left end. The high-level skull takes the level's place. Without a level (pet, target of target) the
 -- name starts there.
@@ -193,8 +229,17 @@ local function Labels(skin, frame, parts)
         local base = BaseFont(skin, level)
         if nameFont and base then Font(skin, level, nameFont[1], nameFont[2], base[3]) end
         Anchor(skin, level, start)
-        if Movable(parts.skull) then Anchor(skin, parts.skull, { "CENTER", level, "CENTER", 0, 0 }) end
-        after = { "BOTTOMLEFT", level, "BOTTOMRIGHT", 3, 0 }
+        after = { "BOTTOMLEFT", level, "BOTTOMRIGHT", NAME_GAP, 0 }
+        local skull = parts.skull
+        if Movable(skull) and Movable(name) then
+            Anchor(skin, skull, { "LEFT", level, "LEFT", -INSET - SKULL_PAD, 0 })
+            followed[skull] = { level = level, name = name }
+            skin:Remember(skull, "skull follow", function() followed[skull] = nil end)
+            HookSkull(skull)
+            after = After(skull, level)
+        elseif Movable(skull) then
+            Anchor(skin, skull, { "LEFT", level, "LEFT", -INSET - SKULL_PAD, 0 })
+        end
     end
     if not Movable(name) then return end
     if type(name.SetJustifyH) == "function" then skin:Set(name, "SetJustifyH", "LEFT") end
