@@ -1,9 +1,9 @@
 local _, ns = ...
 
 -- NPC quest, gossip and item text windows take the dark window template without a sunken inset: chrome,
--- parchment backgrounds and panel materials are held, action buttons become flat fields, and the dark ink of their
--- text becomes light: neutral body text, gold headings and greetings, in the standard UI face with a shadow. Their
--- minimal scroll bars get the flat track and knob. Text, rewards, gossip options and scripts stay Blizzard's. Gossip
+-- parchment backgrounds and panel materials are held, action buttons become flat fields, the book's page buttons
+-- bare chevrons, and the dark ink of their text becomes light: neutral body text, gold headings and greetings, in
+-- the standard UI face with a shadow. Their minimal scroll bars get the flat track and knob. Text, rewards, gossip options and scripts stay Blizzard's. Gossip
 -- options and quest rewards are pooled, so the ink is scanned again when a window shows, on its events and when its
 -- content is rebuilt.
 
@@ -48,7 +48,8 @@ local WINDOWS = {
         panels = {},
         art = { "ItemTextMaterialTopLeft", "ItemTextMaterialTopRight", "ItemTextMaterialBotLeft",
             "ItemTextMaterialBotRight" },
-        buttons = { "ItemTextPrevPageButton", "ItemTextNextPageButton" },
+        buttons = {},
+        pages = { "ItemTextPrevPageButton", "ItemTextNextPageButton" },
     },
 }
 local ORDER = { "QuestFrame", "GossipFrame", "ItemTextFrame" }
@@ -128,6 +129,7 @@ local function Skin(skin, name)
         local button = Resolve(win, ref)
         if button then Button(skin, button) end
     end
+    if def.pages then Modern.PageArrows(skin, _G[def.pages[1]], _G[def.pages[2]]) end
     ScrollBars(skin, win, 0)
     Modern.InkTree(skin, win, { tone = Modern.Theme().text, heading = Npc.Heading, plain = true })
 end
