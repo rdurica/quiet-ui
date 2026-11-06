@@ -352,3 +352,15 @@ h.test("12.0 restore in the middle of a gain stops the animation", function(t)
     A.falsy(xp:GetScript("OnUpdate"), "restore stops it")
     A.eq(L.errors(mock), 0)
 end)
+
+h.test("12.0 Blizzard's XP text is drawn above the own bars and its level comes back on restore", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    data(mock)
+    local overlay = blizzardBar().OverlayFrame
+    overlay:SetFrameLevel(MainStatusTrackingBarContainer:GetFrameLevel() + 1)
+    local before = overlay:GetFrameLevel()
+    enable(); ns.Modern.Apply()
+    A.ok(overlay:GetFrameLevel() > direct(mock, 12):GetFrameLevel(), "the text frame is drawn above the XP fill")
+    ns.Modern.Restore()
+    A.eq(overlay:GetFrameLevel(), before, "the text frame's level comes back")
+end)

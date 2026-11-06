@@ -232,9 +232,18 @@ end
 -- refresh looks again; holding is idempotent. Returns true when some art was still showing.
 local function HoldArt(skin, container)
     local showing = false
+    local top = state.xp and state.xp:GetFrameLevel()
     local function walk(frame, depth)
         if frame.GetRegions then
+            local lifted = frame == container
             for _, region in ipairs({ frame:GetRegions() }) do
+                -- Blizzard's XP text is drawn above our bars.
+                if not lifted and ns.Usable(region) and type(region.GetObjectType) == "function"
+                    and region:GetObjectType() == "FontString" and Plain(top) then
+                    lifted = true
+                    local level = frame:GetFrameLevel()
+                    if Plain(level) and level <= top then skin:Set(frame, "SetFrameLevel", top + 1) end
+                end
                 if ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture" then
                     local shown = Showing(region)
                     skin:Hold(region)
