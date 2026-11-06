@@ -53,6 +53,11 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 - New tests go in `tests/<area>/` and use only the public `ns.*`, never internals or production file names.
 - `tests/measure/` holds direct scripts, not run by `run.lua`, for example `lua tests/measure/performance.lua --measure`.
 
+## Release
+
+- Bump `## Version:` in `QuietUI.toc` to the new tag and commit it before tagging.
+- Every GitHub release carries the English changelog as its body and `QuietUI-<version>.zip` as an asset. The zip holds one top-level `QuietUI/` folder with only the shipped addon files: `QuietUI.toc`, `QuietUI.lua`, `Bindings.xml`, `Core/`, `Features/`, `Layout/`, `Media/`, `Settings/`, `Setup/` (no docs, tests, `.claude`, `curseforge`, `AGENTS.md`, `README.md`).
+
 ## Agent skills
 
 Issue tracker: GitHub. See `docs/agents/config/issue-tracker.md`.
