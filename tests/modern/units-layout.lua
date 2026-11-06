@@ -129,6 +129,8 @@ h.test("target and focus show the level in the name's font, then the name, above
     local before = {}
     for _, f in ipairs(frames) do
         f.Name:SetPoint("TOP", f, "TOP", 0, -5)
+        f.Name:SetJustifyV("MIDDLE")
+        if U.parts(f).level then U.parts(f).level:SetJustifyV("MIDDLE") end
         before[f] = U.points(f.Name)
     end
     enable(ns)
@@ -142,6 +144,9 @@ h.test("target and focus show the level in the name's font, then the name, above
         A.deep(U.points(f.Name), { { "BOTTOMLEFT", p.level, "BOTTOMRIGHT", 3, 0 },
             { "BOTTOMRIGHT", p.health, "TOPRIGHT", 0, 4 } }, f:GetName() .. " name after the level")
         A.eq(f.Name:GetJustifyH(), "LEFT", f:GetName() .. " name left-aligned")
+        -- Blizzard's name box is taller than its text: both texts sit on their bottom edge to share a line.
+        A.eq(f.Name:GetJustifyV(), "BOTTOM", f:GetName() .. " name on its bottom edge")
+        A.eq(p.level:GetJustifyV(), "BOTTOM", f:GetName() .. " level on its bottom edge")
     end
     ns.Modern.Apply()
     A.eq(select(2, U.parts(frames[3]).level:GetFont()), 10, "applying again keeps the size")
@@ -149,6 +154,8 @@ h.test("target and focus show the level in the name's font, then the name, above
     A.eq(select(2, U.parts(frames[3]).level:GetFont()), 14, "level font back")
     A.alpha(U.parts(frames[3]).ring, 1, "ring released")
     for _, f in ipairs(frames) do A.deep(U.points(f.Name), before[f], f:GetName() .. " name restored") end
+    A.eq(frames[3].Name:GetJustifyV(), "MIDDLE", "name justify back")
+    A.eq(U.parts(frames[3]).level:GetJustifyV(), "MIDDLE", "level justify back")
 end)
 
 -- Horizontal and vertical extent of a region, relative to the level text's bottom left corner, found by

@@ -274,6 +274,7 @@ end
 function Frame:SetJustifyH(v) self._justifyH = v end
 function Frame:GetJustifyH() return self._justifyH end
 function Frame:SetJustifyV(v) self._justifyV = v end
+function Frame:GetJustifyV() return self._justifyV end
 -- Deterministic text: width = chars * CHAR_W, one fixed line, no wrapping.
 function Frame:GetStringWidth()
     return #tostring(self._text or "") * CHAR_W
