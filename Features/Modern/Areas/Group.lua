@@ -12,8 +12,8 @@ local Modern = ns.Modern
 local Group = {}
 Modern.Group = Group
 
-local FILL = { 0.141, 0.149, 0.161 }     -- the unit frames' health colour
-local TRACK = { 0.06, 0.065, 0.07, 0.92 } -- the missing health shows as this darker track
+local FILL = { 0.2, 0.21, 0.23 }           -- the unit frames' health colour
+local TRACK = { 0.02, 0.02, 0.03, 0.95 }   -- the missing health shows as this darker track
 local OFFLINE = TRACK                     -- an offline member keeps a full bar; it must not read as full health
 local EDGE = { 0, 0, 0, 1 }
 local POWER_HEIGHT = 3 -- Blizzard's power bar is as loud as the health fill

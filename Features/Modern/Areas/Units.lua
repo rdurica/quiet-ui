@@ -39,12 +39,17 @@ local NAME_PATHS = { "name", "Name", "TargetFrameContent.TargetFrameContentMain.
 local COMBAT_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.AttackIcon" }
 local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentContextual.HighLevelTexture",
     "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
+-- The faction or prestige mark of a PvP-flagged target; Blizzard places it beside the portrait, far from the box.
+local PVP_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PvpIcon", "pvpIcon" }
+local PRESTIGE_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PrestigePortrait", "prestigePortrait" }
+local PVP_CIRCLE_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PvpBackgroundIcon" }
+local PET_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PetBattleIcon", "petBattleIcon" }
 -- The player's resting "zzz" and its glow.
 local REST_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.PlayerRestLoop" }
 local REST_GLOBALS = { "PlayerRestLoop", "PlayerRestIcon", "PlayerRestGlow" }
 
-local HEALTH = { 0.14, 0.15, 0.16 } -- a quiet near-black fill; the white value text reads on it
-local EDGE = { 0, 0, 0, 1 }          -- the box border sinks into the box instead of outlining it
+local HEALTH = { 0.2, 0.21, 0.23 } -- a quiet dark fill; the missing health shows as the near-black box behind it
+local EDGE = { 0.3, 0.315, 0.34, 1 } -- a quiet light edge around the box
 local MANA = { 0.2, 0.45, 0.9 } -- Blizzard's pure blue is the loudest colour on the frame
 local RARE = { 0.85, 0.85, 0.85, 1 }
 local BOSS = { 0.9, 0.15, 0.15, 1 }
@@ -246,6 +251,10 @@ local function Unit(skin, spec)
         combat = spec[4] and Find(frame, COMBAT_PATHS, "PlayerAttackIcon") or nil,
         level = Find(frame, LEVEL_PATHS, name == "PlayerFrame" and "PlayerLevelText" or name .. "TextureFrameLevelText"),
         skull = Find(frame, SKULL_PATHS, name .. "TextureFrameHighLevelTexture"),
+        pvp = not spec[4] and Find(frame, PVP_PATHS, name .. "TextureFramePVPIcon") or nil,
+        prestige = not spec[4] and Find(frame, PRESTIGE_PATHS) or nil,
+        pet = not spec[4] and Find(frame, PET_PATHS) or nil,
+        pvpCircle = not spec[4] and Find(frame, PVP_CIRCLE_PATHS) or nil,
         name = label })
 end
 

@@ -20,6 +20,7 @@ local NAME_GAP = 3        -- between the health bar's top and the name, and betw
 local COMBAT_ICON = 16
 local SKULL_GAP = 4       -- between the boss skull and the name after it
 local SKULL_PAD = 4       -- the skull art's transparent edge, so the drawn skull starts on the box edge
+local PVP_OFFSET = 2      -- the PvP mark's centre sits just outside the box's bottom-right corner
 local CLASS_ICON = 14     -- the class icon before a player target's level
 
 local rects = setmetatable({}, { __mode = "k" })  -- bar -> Blizzard rect relative to the frame, this cycle
@@ -260,12 +261,37 @@ end
 
 -- The dark box behind both bars, with the 1 px border in the theme or the target's rarity colour. Box and
 -- power bar hang on the health bar, so they stay with it wherever Blizzard puts it.
+local boxes = setmetatable({}, { __mode = "k" }) -- power bar -> { box, health } while applied
+
+-- A unit without power (most NPCs) has its power bar hidden by Blizzard; the box then ends under the health bar
+-- instead of leaving an empty strip.
+local function Fit(mana)
+    local entry = boxes[mana]
+    if not entry then return end
+    local box, health = entry[1], entry[2]
+    local shown = type(mana.IsShown) ~= "function" or mana:IsShown()
+    box:ClearAllPoints()
+    box:SetPoint("TOPLEFT", health, "TOPLEFT", -INSET, INSET)
+    box:SetPoint("BOTTOMRIGHT", health, "BOTTOMRIGHT", INSET, -(INSET + (shown and POWER_HEIGHT + POWER_GAP or 0)))
+end
+
+local hooked = setmetatable({}, { __mode = "k" })
+local function Track(skin, box, parts)
+    local mana = parts.mana
+    boxes[mana] = { box, parts.health }
+    skin:Remember(mana, "bar box fit", function() boxes[mana] = nil end)
+    if not hooked[mana] and type(mana.HookScript) == "function" then
+        hooked[mana] = true
+        pcall(mana.HookScript, mana, "OnShow", Fit)
+        pcall(mana.HookScript, mana, "OnHide", Fit)
+    end
+    Fit(mana)
+end
+
 local function Box(skin, frame, parts)
     local box = skin:Own(frame, "bar box", function() return frame:CreateTexture(nil, "BACKGROUND") end)
     if not box then return end
-    box:ClearAllPoints()
-    box:SetPoint("TOPLEFT", parts.health, "TOPLEFT", -INSET, INSET)
-    box:SetPoint("BOTTOMRIGHT", parts.health, "BOTTOMRIGHT", INSET, -(INSET + POWER_HEIGHT + POWER_GAP))
+    Track(skin, box, parts)
     box:SetColorTexture(unpack(Modern.Theme().bg))
     box:Show()
     skin:Border(frame, parts.border, box)
@@ -297,4 +323,14 @@ function Modern.UnitLayout(skin, frame, parts)
     Contents(skin, health)
     Contents(skin, mana, true)
     if parts.player then PlayerLabels(skin, parts) else Labels(skin, frame, parts) end
+    -- The PvP and pet battle marks sit on the box's bottom-right corner.
+    -- The faction circle carries the visible mark; the PvP icon stays centred on it.
+    local circle = Movable(parts.pvpCircle) and parts.pvpCircle or nil
+    for _, mark in ipairs({ circle, parts.prestige, parts.pet }) do
+        if Movable(mark) then Anchor(skin, mark, { "CENTER", health, "BOTTOMRIGHT", INSET + PVP_OFFSET, -INSET }) end
+    end
+    if Movable(parts.pvp) then
+        if circle then Anchor(skin, parts.pvp, { "CENTER", circle, "CENTER", 0, 0 })
+        else Anchor(skin, parts.pvp, { "CENTER", health, "BOTTOMRIGHT", INSET + PVP_OFFSET, -INSET }) end
+    end
 end
