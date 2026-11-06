@@ -8,7 +8,7 @@ local L = h.lib("modern")
 local R = h.lib("modern-windows-retail")
 local U = h.lib("modern-units")
 
-local FILL = 0.141
+local FILL = 0.2
 
 local function bar(parent)
     local value = CreateFrame("StatusBar", nil, parent)

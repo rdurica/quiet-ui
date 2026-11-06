@@ -69,7 +69,7 @@ h.test("target box border is gold for elite, silver for rare, red for bosses and
         { "rareelite", { 0.85, 0.85, 0.85 } },
         { "worldboss", { 0.9, 0.15, 0.15 } },
         { "boss", { 0.9, 0.15, 0.15 } },
-        { "normal", { 0, 0, 0 } },
+        { "normal", { 0.3, 0.315, 0.34 } },
     }) do
         mock:setUnit("target", { exists = true, player = false, classification = spec[1] })
         mock:fire("PLAYER_TARGET_CHANGED")
@@ -88,6 +88,6 @@ h.test("other units keep the dark box border whatever the target is", function(t
     for _, i in ipairs({ 1, 2, 4, 5 }) do
         local c = U.boxBorderColor(frames[i])
         A.ok(c, frames[i]:GetName() .. " border")
-        A.deep({ c[1], c[2], c[3] }, { 0, 0, 0 }, frames[i]:GetName() .. " dark border")
+        A.deep({ c[1], c[2], c[3] }, { 0.3, 0.315, 0.34 }, frames[i]:GetName() .. " grey border")
     end
 end)

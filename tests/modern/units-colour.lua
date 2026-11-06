@@ -3,7 +3,7 @@
 local h = ...
 local U = h.lib("modern-units")
 
-local GREY = { 0.14, 0.15, 0.16 }
+local GREY = { 0.2, 0.21, 0.23 }
 
 local function enable(ns, extra)
     extra = extra or {}

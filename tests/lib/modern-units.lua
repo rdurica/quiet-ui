@@ -164,7 +164,11 @@ local function target(name, unit)
     function skull:SetShown(shown) self._shown = shown and true or false end
     function skull:IsShown() return self._shown == true end
     contextual.HighLevelTexture = skull
-    return finish(f, unit, "Target", { skull = skull, portrait = icon, mask = mask, health = hb.HealthBar, mana = main.ManaBar,
+    -- The faction mark of a PvP-flagged target (WoW Forever /fstack): Blizzard puts it beside the portrait.
+    local faction = texture(contextual, ATLAS .. "SmallCircle-Alliance")
+    faction:SetPoint("TOPRIGHT", contextual, "TOPRIGHT", -8, -40)
+    contextual.PvpBackgroundIcon = faction
+    return finish(f, unit, "Target", { skull = skull, faction = faction, portrait = icon, mask = mask, health = hb.HealthBar, mana = main.ManaBar,
         art = { c.FrameTexture, c.Flash, c.BossPortraitFrameTexture, main.ReputationColor },
         flash = c.Flash, boss = c.BossPortraitFrameTexture, level = lvl, ring = ring })
 end
