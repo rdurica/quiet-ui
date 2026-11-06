@@ -135,6 +135,28 @@ h.test("12.0 minimap moves the addon compartment and the clock under the map and
     A.eq(back, p.zoneButton, "the clock is back in the header")
 end)
 
+h.test("12.0 minimap sets the clock time flush right on the footer line and back", function(t)
+    local A, ns = t.assert, t.ns
+    F.area(ns, "minimap")
+    local _, p = R.minimap()
+    TimeManagerClockButton = CreateFrame("Button", "TimeManagerClockButton", p.cluster)
+    TimeManagerClockButton:SetPoint("RIGHT", p.zoneButton, "RIGHT", -3, -1)
+    TimeManagerClockTicker = TimeManagerClockButton:CreateFontString(nil, "OVERLAY")
+    TimeManagerClockTicker:SetPoint("CENTER", TimeManagerClockButton, "CENTER", 3, -1)
+    TimeManagerClockTicker:SetJustifyH("CENTER")
+    F.enable(ns)
+    local point, relative, relativePoint, x, y = TimeManagerClockTicker:GetPoint(1)
+    A.eq(TimeManagerClockTicker:GetNumPoints(), 1)
+    A.eq(point, "RIGHT"); A.eq(relative, TimeManagerClockButton); A.eq(relativePoint, "RIGHT")
+    A.eq(x, 0); A.eq(y, 0, "the time sits on the button's centre line, like the addon count")
+    A.eq(TimeManagerClockTicker:GetJustifyH(), "RIGHT", "a longer time grows to the left")
+    ns.Modern.Restore()
+    point, _, _, x, y = TimeManagerClockTicker:GetPoint(1)
+    A.eq(point, "CENTER"); A.eq(x, 3); A.eq(y, -1, "Blizzard's point returns")
+    A.eq(TimeManagerClockTicker:GetJustifyH(), "CENTER")
+    TimeManagerClockTicker = nil
+end)
+
 h.test("12.0 minimap turns the day dial into a flat plate in the map's top-right corner and back", function(t)
     local A, ns = t.assert, t.ns
     F.area(ns, "minimap")

@@ -12,7 +12,8 @@ local Modern = ns.Modern
 local BAND = 25
 local INSET = 4
 local FOOTER = -13     -- centre of the coordinates row under the map
-local PAGE = 15        -- calendar page
+local CLOCK_INSET = -5-- the time's right edge as far inside the map as the addon count's left edge
+local PAGE = 15       -- calendar page
 local DAY_EVERY = 60   -- seconds between checks of today's date
 -- The art Blizzard's minimap header buttons draw: the button atlas and its hover copy.
 local STATE_KEYS = { "StateTexture", "AddTexture" }
@@ -186,5 +187,13 @@ function Modern.MinimapHeader(skin, cluster, map)
     local compartment = _G.AddonCompartmentFrame
     Hold(skin, compartment, STATE_KEYS)
     Move(skin, compartment, "LEFT", map, "BOTTOMLEFT", -4, FOOTER)
-    Move(skin, _G.TimeManagerClockButton, "RIGHT", map, "BOTTOMRIGHT", 3, FOOTER)
+    local clock = _G.TimeManagerClockButton
+    Move(skin, clock, "RIGHT", map, "BOTTOMRIGHT", CLOCK_INSET, FOOTER)
+    -- Blizzard centres the time a little off the button's middle, so it sat low and its right edge moved with
+    -- its width; flush right on the button's centre line it mirrors the addon count.
+    local ticker = _G.TimeManagerClockTicker
+    if ns.Usable(clock) and ns.Usable(ticker) then
+        Move(skin, ticker, "RIGHT", clock, "RIGHT", 0, 0)
+        if type(ticker.GetJustifyH) == "function" then skin:Set(ticker, "SetJustifyH", "RIGHT") end
+    end
 end
