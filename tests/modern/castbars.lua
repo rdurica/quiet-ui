@@ -37,6 +37,23 @@ h.test("Cast bars holds the frame art and spark, flattens the fill, makes the ba
     A.deep(L.diff(before), {}, "the cast bar restores exactly")
 end)
 
+h.test("Blizzard's spark stays held when the interrupt animation left it visible and a new cast shows it", function(t)
+    local A, ns = t.assert, t.ns
+    local bar = C.castbar("PlayerCastingBarFrame")
+    L.enable()
+    ns.Modern.Apply()
+    C.animateAlpha(bar.Spark, 1)
+    bar:ShowSpark()
+    A.alpha(bar.Spark, 0, "the spark is held again for the new cast")
+    bar:ShowSpark()
+    bar:StopInterruptAnims()
+    A.alpha(bar.Spark, 0, "a new cast right after an interrupt stops the animation and the spark stays held")
+    ns.Modern.Restore()
+    C.animateAlpha(bar.Spark, 0.5)
+    bar:ShowSpark()
+    A.alpha(bar.Spark, 0.5, "the hook is inert after restore")
+end)
+
 h.test("an own square icon left of the bar mirrors Blizzard's spell icon, which is held", function(t)
     local A, ns = t.assert, t.ns
     local bar = C.castbar("PlayerCastingBarFrame")

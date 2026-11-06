@@ -60,6 +60,11 @@ function ns.EnsureAlphaHook(frame)
     end
 end
 
+-- Animations with setToFinalAlpha write alpha past the hooks; this puts a held value back.
+function ns.ReapplyAlpha(frame)
+    if ns.Usable(frame) and frame._quietAlphaHook then Reapply(frame, nil) end
+end
+
 function ns.PushAlpha(frame, alpha)
     if not frame or not frame.SetAlpha then return end
     -- The SetAlpha hook already puts back overwrites. Skip the read when nothing changed.

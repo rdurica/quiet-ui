@@ -33,8 +33,16 @@ function C.castbar(name)
     bar.Icon:SetPoint("RIGHT", bar, "LEFT", -5, 0)
     bar.Icon:SetAlpha(1)
     function bar:SetLook() end
+    function bar:ShowSpark() self.Spark:Show() end
+    -- Stopping the interrupt animation applies its final alpha to the spark.
+    function bar:StopInterruptAnims() C.animateAlpha(self.Spark, 1) end
     bar.barType = "standard"
     return bar, fill
+end
+
+-- An animation group with setToFinalAlpha: the alpha changes without SetAlpha, so no hook sees it.
+function C.animateAlpha(region, alpha)
+    region._alpha = alpha
 end
 
 -- The own spell icon: a texture of the bar anchored left of it, not Blizzard's Icon.

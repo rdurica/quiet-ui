@@ -43,6 +43,7 @@ local hooked = setmetatable({}, { __mode = "k" })
 local mirrors = setmetatable({}, { __mode = "k" })  -- Blizzard icon -> own icon while applied
 local laid = setmetatable({}, { __mode = "k" })     -- bar -> journal while laid out
 local looks = setmetatable({}, { __mode = "k" })    -- bars whose SetLook is hooked
+local sparks = setmetatable({}, { __mode = "k" })   -- bars whose spark methods are hooked
 
 local function Part(bar, key)
     local part = bar[key]
@@ -230,6 +231,13 @@ local function Relayout(bar)
     if skin then ns.Profiler.Run("modern castbars", Layout, skin, bar) end
 end
 
+-- Blizzard's interrupt animation sets the spark to alpha 1 past the SetAlpha hook (setToFinalAlpha) when it
+-- finishes or is stopped by a new cast, so the held art is put back after both.
+local function Rehold(bar)
+    if not laid[bar] then return end
+    for _, key in ipairs(ART) do ns.ReapplyAlpha(Part(bar, key)) end
+end
+
 local function Bar(skin, bar)
     if not ns.Usable(bar) then return end
     for _, key in ipairs(ART) do
@@ -245,6 +253,12 @@ local function Bar(skin, bar)
     if not looks[bar] and type(bar.SetLook) == "function" then
         looks[bar] = true
         pcall(hooksecurefunc, bar, "SetLook", Relayout)
+    end
+    if not sparks[bar] then
+        sparks[bar] = true
+        for _, method in ipairs({ "ShowSpark", "StopInterruptAnims" }) do
+            if type(bar[method]) == "function" then pcall(hooksecurefunc, bar, method, Rehold) end
+        end
     end
 end
 

@@ -25,6 +25,7 @@ local BASELINE = {
     "Print",
     "PushAlpha",
     "RaiseDialog",
+    "ReapplyAlpha",
     "RefreshMouse",
     "ReleaseAlpha",
     "ReleaseChatHold",
