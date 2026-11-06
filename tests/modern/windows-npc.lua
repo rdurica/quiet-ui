@@ -201,3 +201,28 @@ h.test("dark colour codes inside gossip quest titles become light, also when Bli
     ns.Modern.Restore()
     A.eq(title:GetText(), "|cff000000Report to Goldshire|r", "Blizzard's text returns on restore")
 end)
+
+h.test("the item text page buttons become bare accent chevrons and restore their art", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local f = fixture()
+    local buttons = {}
+    for _, name in ipairs({ "ItemTextPrevPageButton", "ItemTextNextPageButton" }) do
+        local button = CreateFrame("Button", name, f.itemText)
+        local normal = W.texture(button, name .. "Normal", 1)
+        function button:GetNormalTexture() return normal end
+        buttons[name] = button
+    end
+    W.enable(ns)
+    local accent = ns.Modern.Theme().accent
+    for name, button in pairs(buttons) do
+        local strokes = 0
+        for _, region in ipairs(button._regions) do
+            if region._shown ~= false and region._color and region._color[1] == accent[1] then strokes = strokes + 1 end
+        end
+        A.eq(strokes, 2, name .. " is a bare accent chevron")
+        A.eq(button:GetNormalTexture():GetAlpha(), 0, name .. " page art is held")
+    end
+    ns.Modern.Restore()
+    A.eq(buttons.ItemTextNextPageButton:GetNormalTexture():GetAlpha(), 1, "the page art comes back")
+end)
