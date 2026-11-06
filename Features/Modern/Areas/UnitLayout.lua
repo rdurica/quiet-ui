@@ -215,6 +215,12 @@ local function HookSkull(skull)
     end
 end
 
+-- Blizzard's name box is taller than its text and centres it; level and name are anchored by their bottom
+-- edges, so both texts sit on that edge to share one line.
+local function Bottom(skin, text)
+    if type(text.SetJustifyV) == "function" then skin:Set(text, "SetJustifyV", "BOTTOM") end
+end
+
 -- Target and focus: a player's class icon, the level in the name's font, then the name, above the health
 -- bar's left end. The high-level skull takes the level's place. Without a level (pet, target of target) the
 -- name starts there.
@@ -229,6 +235,7 @@ local function Labels(skin, frame, parts)
         local nameFont = ns.Usable(name) and BaseFont(skin, name)
         local base = BaseFont(skin, level)
         if nameFont and base then Font(skin, level, nameFont[1], nameFont[2], base[3]) end
+        Bottom(skin, level)
         Anchor(skin, level, start)
         after = { "BOTTOMLEFT", level, "BOTTOMRIGHT", NAME_GAP, 0 }
         local skull = parts.skull
@@ -244,6 +251,7 @@ local function Labels(skin, frame, parts)
     end
     if not Movable(name) then return end
     if type(name.SetJustifyH) == "function" then skin:Set(name, "SetJustifyH", "LEFT") end
+    Bottom(skin, name)
     Anchor(skin, name, after, { "BOTTOMRIGHT", health, "TOPRIGHT", 0, NAME_GAP + INSET })
 end
 
