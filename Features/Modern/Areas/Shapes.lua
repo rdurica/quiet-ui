@@ -19,6 +19,7 @@ local Shapes = {}
 Modern.Shapes = Shapes
 
 local MAX_DEPTH = 12
+local CHEVRON = 7
 local PIECES = { "Left", "Middle", "Center", "Right", "left", "middle", "right" }
 -- The nine pieces of an input scroll frame (InputScrollFrameTemplate) and of the friends broadcast box.
 local INPUT_KEYS = { "TopLeftTex", "TopRightTex", "TopTex", "BottomLeftTex", "BottomRightTex", "BottomTex", "LeftTex",
@@ -99,6 +100,18 @@ function Shapes.Hover(skin, button)
     if wash then
         wash:SetColorTexture(unpack(HOVER))
         wash:Show()
+    end
+end
+
+-- A bare chevron pointing down where the dropdown's gold arrow box was (the arrow is held, the field stays).
+local function Chevron(arrow)
+    return function(button)
+        local lines = { Modern.GlyphLine(button, CHEVRON, 2, -2.5, 0, -45), Modern.GlyphLine(button, CHEVRON, 2, 2.5, 0, 45) }
+        for index, line in ipairs(lines) do
+            line:ClearAllPoints()
+            line:SetPoint("CENTER", arrow, "CENTER", index == 1 and -2.5 or 2.5, 0)
+        end
+        return lines
     end
 end
 
@@ -237,10 +250,15 @@ function Shapes.One(skin, frame, opts)
         and not frame.NineSlice and not IsTexture(rawget(frame, "SelectedTexture")) then
         skin:Hold(frame.Background)
         if (FileOf(frame.Background) or ""):find(ROW_ART, 1, true) then return false end
-        -- A dropdown: its text holder goes behind a dark field, the arrow and the reset button stay.
+        -- A dropdown: its text holder goes behind a dark field, the arrow becomes a chevron, the reset button stays.
         skin:Panel(frame)
         skin:Border(frame)
         Shapes.Hover(skin, frame)
+        local arrow = rawget(frame, "Arrow")
+        if IsTexture(arrow) then
+            skin:Hold(arrow)
+            Modern.GlyphButton(skin, frame, "dropdown chevron", Chevron(arrow), "text")
+        end
         return true
     elseif kind == "Button" and IsSquare(frame) then
         Shapes.Square(skin, frame)

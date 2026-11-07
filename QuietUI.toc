@@ -97,6 +97,7 @@ Features\Modern\Areas\Loot.lua
 Features\Modern\Areas\Npc.lua
 Features\Modern\Areas\Mail.lua
 Features\Modern\Areas\Social.lua
+Features\Modern\Areas\Finder.lua
 Features\Modern\Areas\Trainer.lua
 Features\Modern\Areas\Panels.lua
 Features\Modern\Areas\Dialogs.lua

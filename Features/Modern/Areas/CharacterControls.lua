@@ -29,7 +29,8 @@ local function Desaturate(skin, icon)
     icon:SetDesaturated(true)
 end
 
-local function ModelButton(skin, button)
+-- Shared: any button with a keyed Icon (the group finder's refresh and search buttons too).
+function Modern.IconButton(skin, button)
     local icon = button.Icon
     if not ns.Usable(icon) or type(icon.SetVertexColor) ~= "function" then return end
     for _, key in ipairs(BOX) do
@@ -90,7 +91,7 @@ function Character.Controls(skin, frame)
     local scene = _G.CharacterModelScene
     local controls = ns.Usable(scene) and scene.ControlFrame
     for _, button in ipairs(Character.Children(controls)) do
-        if ns.Usable(button) and button.Icon then ModelButton(skin, button) end
+        if ns.Usable(button) and button.Icon then Modern.IconButton(skin, button) end
     end
     local toggle = frame.RightPaneToggleButton or _G.CharacterFrameRightPaneToggleButton
     if ns.Usable(toggle) then PaneToggle(skin, frame, toggle) end
