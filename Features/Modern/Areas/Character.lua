@@ -111,8 +111,8 @@ local function Backdrop(skin)
     end
 end
 
-local function SlotSize()
-    local slot = _G.CharacterHeadSlot
+local function SlotSize(slotName)
+    local slot = _G[slotName or "CharacterHeadSlot"]
     if ns.Usable(slot) and type(slot.GetSize) == "function" then
         local width = slot:GetSize()
         if type(width) == "number" and not ns.IsSecret(width) and width > 0 then return width end
@@ -121,11 +121,11 @@ local function SlotSize()
 end
 
 -- A vertical side tab (character modes, professions) shrinks to an equipment slot's size; its icon, cropped square and
--- unmasked, fills it inside the border.
-function Character.IconTab(skin, tab)
+-- unmasked, fills it inside the border. `slotName` picks the slot to size by (default CharacterHeadSlot).
+function Character.IconTab(skin, tab, slotName)
     if not ns.Usable(tab) then return end
     Modern.TabChrome(skin, tab)
-    local size = SlotSize()
+    local size = SlotSize(slotName)
     skin:Set(tab, "SetSize", size, size)
     local icon = tab.Icon
     if not ns.Usable(icon) or type(icon.ClearAllPoints) ~= "function" then return end

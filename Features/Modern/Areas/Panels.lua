@@ -53,6 +53,22 @@ local function Settings(skin, frame)
     Modern.ListControls(skin, frame)
 end
 
+-- Inspect: the right-edge mode tabs are icon tabs sized to an inspect slot, and the PvP page's rank title hangs below
+-- the season label (Blizzard draws both at the same point).
+local function Inspect(skin, frame)
+    for _, tab in ipairs(Modern.Character.Children(frame.ModeTabs)) do
+        if ns.Usable(tab) and tab.SelectedTexture then Modern.Character.IconTab(skin, tab, "InspectHeadSlot") end
+    end
+    local pvp = frame.PVPFrame or _G.InspectPVPFrame
+    if not ns.Usable(pvp) then return end
+    local season, rank = pvp.SeasonLabel, pvp.RankLabel
+    if ns.Usable(season) and ns.Usable(rank) and type(rank.ClearAllPoints) == "function" then
+        skin:Set(rank, "SetPoint", "TOP", season, "BOTTOM", 0, -4)
+        rank:ClearAllPoints()
+        rank:SetPoint("TOP", season, "BOTTOM", 0, -4)
+    end
+end
+
 local WINDOWS = {
     { name = "TradeFrame", extra = Trade,
         art = { "TradeRecipientBotLeftCorner", "TradeRecipientLeftBorder", "TradeRecipientBG" } },
@@ -61,7 +77,7 @@ local WINDOWS = {
     { name = "FlightMapFrame", map = true, walk = false },
     { name = "MacroFrame", art = { "MacroFramePortrait", "MacroFrameSelectedMacroBackground" },
         needles = { "ui-classtrainer-horizontalbar" } },
-    { name = "InspectFrame", needles = { "char-corner", "char-inner" } },
+    { name = "InspectFrame", extra = Inspect, needles = { "char-corner", "char-inner" } },
     { name = "DressUpFrame" },
     { name = "TabardFrame", art = { "TabardFramePortrait" }, needles = { "tabardframeouterframe" } },
     { name = "PetitionFrame", art = { "PetitionFramePortrait" }, ink = true },
