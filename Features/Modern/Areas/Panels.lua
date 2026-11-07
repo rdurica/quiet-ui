@@ -15,6 +15,7 @@ Modern.Panels = Panels
 -- A pet stable slot (PetStableSlotTemplate): its frame art goes, the pet icon is cropped inside a thin border.
 local STABLE_SLOT = { "unlockedBackground", "currentBackground", "lockedBackground" }
 local RANK_GAP = -4
+local bare = setmetatable({}, { __mode = "k" })    -- inner panels: art held, no border
 
 local function IsTexture(obj)
     return ns.Usable(obj) and type(obj.GetObjectType) == "function" and obj:GetObjectType() == "Texture"
@@ -70,6 +71,13 @@ local function Inspect(skin, frame)
     rank:SetPoint("TOP", season, "BOTTOM", 0, RANK_GAP)
 end
 
+-- Inspect's inset and pages stand bare on the window like the character window's, so the model and slots are not
+-- boxed in.
+local function InnerBare(_, frame)
+    if ns.Usable(rawget(frame, "NineSlice")) and not Modern.Shapes.IsField(frame) then bare[frame] = true end
+    return false
+end
+
 local WINDOWS = {
     { name = "TradeFrame", extra = Trade,
         art = { "TradeRecipientBotLeftCorner", "TradeRecipientLeftBorder", "TradeRecipientBG" } },
@@ -78,7 +86,7 @@ local WINDOWS = {
     { name = "FlightMapFrame", map = true, walk = false },
     { name = "MacroFrame", art = { "MacroFramePortrait", "MacroFrameSelectedMacroBackground" },
         needles = { "ui-classtrainer-horizontalbar" } },
-    { name = "InspectFrame", extra = Inspect, needles = { "char-corner", "char-inner" } },
+    { name = "InspectFrame", extra = Inspect, shape = InnerBare, needles = { "char-corner", "char-inner" } },
     { name = "DressUpFrame" },
     { name = "TabardFrame", art = { "TabardFramePortrait" }, needles = { "tabardframeouterframe" } },
     { name = "PetitionFrame", art = { "PetitionFramePortrait" }, ink = true },
@@ -102,7 +110,7 @@ local function Skin(def)
         for _, name in ipairs(def.art or {}) do Hold(skin, _G[name]) end
         if def.needles then Modern.Shapes.HoldArt(skin, frame, def.needles) end
         if def.extra then def.extra(skin, frame) end
-        if def.walk ~= false then Modern.Shapes.Walk(skin, frame, { shape = def.shape }) end
+        if def.walk ~= false then Modern.Shapes.Walk(skin, frame, { shape = def.shape, bare = bare }) end
         if def.ink then Modern.InkTree(skin, frame, { tone = Modern.Theme().text, plain = true }) end
     end
 end
@@ -110,7 +118,7 @@ end
 local function Window(skin, def)
     local frame = _G[def.name]
     local Again = Modern.Shapes.Keep(skin, frame, "panels", Skin(def),
-        { shape = def.shape, walk = def.walk, list = def.list })
+        { shape = def.shape, walk = def.walk, list = def.list, bare = bare })
     local child = Again and def.refresh and frame[def.refresh[1]]
     if ns.Usable(child) and not hooked[child] and type(child[def.refresh[2]]) == "function" then
         hooked[child] = true
