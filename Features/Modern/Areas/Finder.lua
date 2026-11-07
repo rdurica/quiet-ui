@@ -46,19 +46,6 @@ local function KindOf(frame)
     return type(frame.GetObjectType) == "function" and frame:GetObjectType() or nil
 end
 
--- Lower-case atlas or file of a button's normal texture.
-local function PlateOf(button)
-    if type(button.GetNormalTexture) ~= "function" then return nil end
-    local ok, texture = pcall(button.GetNormalTexture, button)
-    if not ok or not ns.Usable(texture) then return nil end
-    for _, read in ipairs({ "GetAtlas", "GetTexture" }) do
-        if type(texture[read]) == "function" then
-            local okRead, value = pcall(texture[read], texture)
-            if okRead and type(value) == "string" then return value:lower() end
-        end
-    end
-end
-
 local function PaintSign(row)
     local skin = signs[row]
     if not skin then return end
@@ -117,8 +104,8 @@ end
 -- A role button (its NormalTexture is the role icon): the round plate goes, the icon and its dim cover stay, and
 -- its checkbox is walked on its own so the button itself is never taken for a dropdown.
 local function RoleButton(skin, button)
-    local icon = PlateOf(button)
-    if not icon or icon:find("ui-lfg-roleicon", 1, true) ~= 1 then return false end
+    local icon = Modern.ArtName(button, "GetNormalTexture")
+    if type(icon) ~= "string" or icon:find("ui-lfg-roleicon", 1, true) ~= 1 then return false end
     Hold(skin, rawget(button, "Background"))
     Modern.Shapes.Walk(skin, button, Finder.opts)
     return true
