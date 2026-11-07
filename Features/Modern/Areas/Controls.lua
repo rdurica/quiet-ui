@@ -13,6 +13,8 @@ local BOX, INSET = 16, 4
 local STROKE = 6
 -- Descendant depth of a checkbox scan: deep enough for detail panes inside a window's sub-panels.
 local DEPTH = 5
+-- Interface\Buttons\UI-CheckBox-Up by file ID: templates that set the file, not an atlas.
+local CHECKBOX_UP = 130755
 
 local SIGN = 10
 
@@ -95,17 +97,19 @@ local function ArtName(button, getter)
         if type(texture[read]) == "function" then
             local okName, name = pcall(texture[read], texture)
             if okName and type(name) == "string" then return name:lower() end
+            if okName and type(name) == "number" then return name end
         end
     end
 end
 
--- A CheckButton with a label, or one wearing Blizzard's checkbox art (the group finder's role and activity boxes);
--- icon toggles (the character sidebar tabs, side tabs) are CheckButtons with neither.
+-- A CheckButton with a label, or one wearing Blizzard's checkbox art by name or by the file ID of
+-- Interface\Buttons\UI-CheckBox-Up (the group finder's label-less role boxes); icon toggles (the character sidebar
+-- tabs, side tabs) are CheckButtons with neither.
 function Modern.IsCheckbox(frame)
     if type(frame.GetObjectType) ~= "function" or frame:GetObjectType() ~= "CheckButton" then return false end
     if (frame.Text or frame.text or frame.Label) ~= nil then return true end
     local name = ArtName(frame, "GetNormalTexture")
-    return name ~= nil and name:find("checkbox", 1, true) ~= nil
+    return name == CHECKBOX_UP or type(name) == "string" and name:find("checkbox", 1, true) ~= nil
 end
 
 -- Every checkbox under a window, scanned once per apply.

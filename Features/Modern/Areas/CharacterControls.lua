@@ -9,6 +9,7 @@ local Modern = ns.Modern
 local Character = Modern.Character
 
 local BOX = { "NormalTexture", "PushedTexture", "HighlightTexture" }
+local PLATE = { "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }
 local CHEVRON = 8
 
 local tinted = setmetatable({}, { __mode = "k" })  -- icon -> true while applied
@@ -35,6 +36,15 @@ function Modern.IconButton(skin, button)
     if not ns.Usable(icon) or type(icon.SetVertexColor) ~= "function" then return end
     for _, key in ipairs(BOX) do
         if ns.Usable(button[key]) then skin:Hold(button[key]) end
+    end
+    -- Plates set by file and reached only through the getters (the group finder's refresh button).
+    for _, getter in ipairs(PLATE) do
+        if type(button[getter]) == "function" then
+            local ok, texture = pcall(button[getter], button)
+            if ok and ns.Usable(texture) and texture ~= icon and type(texture.SetAlpha) == "function" then
+                skin:Hold(texture)
+            end
+        end
     end
     Desaturate(skin, icon)
     skin:Set(icon, "SetVertexColor", unpack(Modern.Theme().glyph))
