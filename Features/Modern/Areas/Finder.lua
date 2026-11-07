@@ -5,7 +5,8 @@ local _, ns = ...
 -- backdrops, the round portrait and its ring. Side tabs become icon tabs, role buttons keep their icon without box
 -- or border, refresh and search are bare grey icons, delist a thin cross, results stand bare and their groupings
 -- become section strips. Role and party icons and the minimap eye (outside the frame) stay Blizzard's. Frames are
--- recognised by their keys and art, never by name; the walk runs again when the finder shows or a list updates.
+-- recognised by their keys and art (only the pages are looked up by name); the walk runs again when the finder
+-- shows or a list updates.
 
 local Modern = ns.Modern
 local Finder = {}

@@ -106,7 +106,8 @@ end
 -- A bare chevron pointing down where the dropdown's gold arrow box was (the arrow is held, the field stays).
 local function Chevron(arrow)
     return function(button)
-        local lines = { Modern.GlyphLine(button, CHEVRON, 2, -2.5, 0, -45), Modern.GlyphLine(button, CHEVRON, 2, 2.5, 0, 45) }
+        local lines = { Modern.GlyphLine(button, CHEVRON, 2, 0, 0, -45), Modern.GlyphLine(button, CHEVRON, 2, 0, 0, 45) }
+        -- Anchored on the arrow, not the button centre.
         for index, line in ipairs(lines) do
             line:ClearAllPoints()
             line:SetPoint("CENTER", arrow, "CENTER", index == 1 and -2.5 or 2.5, 0)
