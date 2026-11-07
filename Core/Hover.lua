@@ -127,7 +127,7 @@ function ns.Hit(frame)
     if frame then hoverFrames[frame] = true end
     if not frame or not frame.IsShown or not frame:IsShown() then return false end
     if focusFallback or not focusReady then
-        return frame.IsMouseOver and frame:IsMouseOver() and true or false
+        return ns.MouseOver(frame)
     end
     return focusHit[frame] and true or false
 end
