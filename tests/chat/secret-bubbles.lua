@@ -79,6 +79,17 @@ local function dependsOn(frame, target, seen)
     return false
 end
 
+-- Like the client, SetPoint refuses a relative region that already depends on the anchored one.
+local function guardAnchors(region)
+    local set = region.SetPoint
+    region.SetPoint = function(self, point, rel, ...)
+        if type(rel) == "table" and (rel == self or dependsOn(rel, self)) then
+            error("Cannot anchor to a region dependent on it", 2)
+        end
+        return set(self, point, rel, ...)
+    end
+end
+
 -- Window with a secret line text and secret measurements. Any arithmetic or comparison on a
 -- secret measurement is counted.
 local function chatWith(t, height)
@@ -109,8 +120,10 @@ local function chatWith(t, height)
             function fs:GetNumLines() if secret(self) then return measure end return 1 end
             function fs:GetLineHeight() if secret(self) then return measure end return LINE end
             function fs:GetSpacing() return 0 end
+            guardAnchors(fs)
             return fs
         end
+        guardAnchors(frame)
         if parent == ChatFrame1 then
             function frame:SetHyperlinksEnabled(value) self.hyperlinks = value end
         end
@@ -330,4 +343,20 @@ h.test("A secret bubble leaves the native chat untouched when Modern chat is off
     A.alpha(native, 1, "native text was hidden with Modern chat off")
     A.eq(#chat._points, chatPoints, "the native chat frame was re-anchored")
     A.eq(#native._points, nativePoints, "the native text was re-anchored")
+end)
+
+h.test("Releasing a secret bubble re-anchors its text without an anchor cycle", function(t)
+    local ns, A = t.ns, t.assert
+    local chat = chatWith(t)
+    chat:AddMessage("plain below")
+    chat:AddMessage(SECRET)
+    settle(ns)
+    A.ok(bubbleFor(chat, SECRET), "no bubble was laid out for the secret line")
+    chat:Clear()
+    settle(ns)
+    A.eq(#t.mock.printed, 0, "releasing the secret bubble reported an error")
+    chat:AddMessage("after release")
+    settle(ns)
+    A.eq(#t.mock.printed, 0, "reusing the released bubble reported an error")
+    A.ok(bubbleFor(chat, "after release"), "the line after the release did not show")
 end)
