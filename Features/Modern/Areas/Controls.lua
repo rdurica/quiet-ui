@@ -89,7 +89,8 @@ function Modern.Checkbox(skin, button)
     Follow(button, { "SetChecked", "Enable", "Disable", "SetEnabled" }, PaintCheck)
 end
 
-local function ArtName(button, getter)
+-- Lower-case atlas or file name of a button's art, or its numeric file ID when it was set by ID.
+function Modern.ArtName(button, getter)
     if type(button[getter]) ~= "function" then return nil end
     local ok, texture = pcall(button[getter], button)
     if not ok or not ns.Usable(texture) then return nil end
@@ -108,7 +109,7 @@ end
 function Modern.IsCheckbox(frame)
     if type(frame.GetObjectType) ~= "function" or frame:GetObjectType() ~= "CheckButton" then return false end
     if (frame.Text or frame.text or frame.Label) ~= nil then return true end
-    local name = ArtName(frame, "GetNormalTexture")
+    local name = Modern.ArtName(frame, "GetNormalTexture")
     return name == CHECKBOX_UP or type(name) == "string" and name:find("checkbox", 1, true) ~= nil
 end
 
