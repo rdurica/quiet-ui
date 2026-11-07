@@ -5,11 +5,22 @@ local _, ns = ...
 local Chat = ns.Chat
 local state = Chat.state
 
+-- A secret line cannot be measured, so its text anchors to the stack and the bubble
+-- stretches between the text and the stack.
+local function RestoreText(bubble)
+    if not bubble._quietSecretAnchors then return end
+    bubble._quietSecretAnchors = nil
+    bubble.text:ClearAllPoints()
+    bubble.text:SetPoint("TOPLEFT", bubble, "TOPLEFT", Chat.PAD, -Chat.PAD)
+end
+
 local function ReleaseBubble(frame, bubble)
     if state.copyBox and state.copyBox.anchor == bubble then
         Chat.HideCopyBox()
     end
     bubble._quietHot = false
+    RestoreText(bubble)
+    bubble._quietBelow, bubble._quietAbsX, bubble._quietPB, bubble._quietPS, bubble._quietPR = nil, nil, nil, nil, nil
     Chat.ShowCopy(bubble, false)
     bubble:Hide()
     bubble:SetAlpha(1)
@@ -77,11 +88,38 @@ local function BubbleAlpha(known, msg, fading, reveal, life, now, elapsed)
 end
 
 local function PaintBubble(frame, bubble, x, y, alpha)
-    if bubble._quietPX ~= x or bubble._quietPY ~= y then
+    local below = bubble._quietBelow
+    if below and not (below.msg and below:IsShown()) then below = nil end
+    local secret = bubble.msg and bubble.msg.secret and true or false
+    local rel = below and below._quietAbsX and x - below._quietAbsX or nil
+    if not rel then below = nil end
+    local PAD, GAP = Chat.PAD, Chat.GAP
+    if bubble._quietPX ~= x or bubble._quietPY ~= y or bubble._quietPB ~= below
+        or bubble._quietPS ~= secret or bubble._quietPR ~= rel then
         bubble:ClearAllPoints()
-        bubble:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
-        bubble._quietPX, bubble._quietPY = x, y
+        if below then
+            bubble:SetPoint("BOTTOMLEFT", below, "TOPLEFT", rel, GAP)
+        else
+            bubble:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
+        end
+        if secret then
+            local text = bubble.text
+            text:ClearAllPoints()
+            if below then
+                text:SetPoint("BOTTOMLEFT", below, "TOPLEFT", rel + PAD, GAP + PAD)
+            else
+                text:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x + PAD, y + PAD)
+            end
+            bubble:SetPoint("TOPLEFT", text, "TOPLEFT", -PAD, PAD)
+            bubble:SetPoint("TOPRIGHT", text, "TOPRIGHT", PAD, PAD)
+            bubble._quietSecretAnchors = true
+        else
+            RestoreText(bubble)
+        end
+        bubble._quietPX, bubble._quietPY, bubble._quietPB = x, y, below
+        bubble._quietPS, bubble._quietPR = secret, rel
     end
+    bubble._quietAbsX = x
     if bubble._quietPA ~= alpha then
         bubble:SetAlpha(alpha)
         bubble._quietPA = alpha
@@ -190,6 +228,7 @@ local function LayoutFrame(frame, elapsed)
         frame._quietStack = stack
     end
     local stackN = 0
+    local chained = false
     local fontStamp = frame._quietFont
     if restack or not fontStamp then
         fontStamp = FontStamp(frame)
@@ -230,11 +269,14 @@ local function LayoutFrame(frame, elapsed)
             end
             byMsg[msg] = bubble
             seen[msg] = true
+            -- Above a secret line the height is unknown: stack on its top edge, not by offset.
+            if msg.secret then chained = true end
+            bubble._quietBelow = chained and stack[stackN] or nil
             stackN = stackN + 1
             stack[stackN] = bubble
             local target = y
             bubble._quietTargetY = target
-            if bubble.msg ~= msg or bubble._y == nil then
+            if bubble.msg ~= msg or bubble._y == nil or bubble._quietBelow then
                 bubble._y = target
             else
                 bubble._y = Chat.Ease(bubble._y, target, elapsed)

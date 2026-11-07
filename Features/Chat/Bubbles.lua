@@ -5,6 +5,7 @@ local _, ns = ...
 local Chat = ns.Chat
 
 local PAD = 5
+Chat.PAD = PAD
 local GAP = 3
 Chat.GAP = GAP
 local SLIDE_X = 18
@@ -69,6 +70,8 @@ local function SizeBubble(bubble, msg, maxW)
             local spacing = bubble.text:GetSpacing()
             if type(spacing) == "number" and spacing > 0 then lineH = lineH + spacing end
         end
+        -- The height of a secret string is secret too: the bubble follows its text
+        -- through anchors (see PaintBubble). A readable height only sizes the budget.
         local canRead = bubble:IsShown() and bubble._quietLaid == key
         bubble.text:SetWidth(innerMax)
         bubble.text:SetText(msg.text)
@@ -81,7 +84,7 @@ local function SizeBubble(bubble, msg, maxW)
                 measured = h
             end
         end
-        local th = measured > 0 and measured or lineH * 4
+        local th = measured > 0 and measured or lineH
         if canRead and measured > 0 then
             bubble._quietSizeKey = key
         end
