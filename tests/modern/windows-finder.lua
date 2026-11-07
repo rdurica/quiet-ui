@@ -104,6 +104,23 @@ h.test("Windows flattens category buttons the listing page adds when its categor
     A.eq(edges(button, theme), 4, "and it gets the thin border")
 end)
 
+h.test("Windows gives the group finder's pages one even panel, without a sunken inset", function(t)
+    local A = t.assert
+    local ns, c, f = setup(t)
+    W.enable(ns)
+    local sunk = ns.Modern.Theme().sunk
+    for name, page in pairs(f.pages) do
+        A.ok(W.isDark(page), name .. " page is a dark window")
+        local inset = page.Inset
+        A.ok(inset ~= nil, name .. " page has an inset in the fixture")
+        for _, region in ipairs(inset._regions) do
+            local col = region._shown and region._color
+            A.ok(not (col and col[1] == sunk[1] and col[2] == sunk[2] and col[3] == sunk[3]),
+                name .. " inset gets no darker fill")
+        end
+    end
+end)
+
 -- The round portrait sits on LFGParentFrame, whichever page is open.
 for _, page in ipairs({ "listing", "browse", "who" }) do
     h.test("Windows holds the group finder's round portrait with the " .. page .. " page open and restores it", function(t)
