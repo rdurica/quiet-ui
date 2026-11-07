@@ -180,6 +180,20 @@ local function Skin(skin, frame)
     Modern.Shapes.Walk(skin, frame, OPTS)
 end
 
+local function Apply(skin)
+    local parent = _G.LFGParentFrame
+    local again = Modern.Shapes.Keep(skin, parent, "finder", Skin, OPTS)
+    if not again then return end
+    -- A page fills its views (the listing categories) in its own OnShow, after the finder's: walk again then.
+    for _, name in ipairs(PAGES) do
+        local page = rawget(_G, name)
+        if ns.Usable(page) then
+            Modern.Shapes.Watch(page, "finder", again)
+            Modern.Shapes.Watch(rawget(page, "CategoryView"), "finder", again)
+        end
+    end
+end
+
 function Finder.Apply(skin)
-    ns.Profiler.Run("modern finder", Modern.Shapes.Keep, skin, _G.LFGParentFrame, "finder", Skin, OPTS)
+    ns.Profiler.Run("modern finder", Apply, skin)
 end
