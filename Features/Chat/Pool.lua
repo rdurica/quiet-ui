@@ -19,6 +19,8 @@ local function ReleaseBubble(frame, bubble)
         Chat.HideCopyBox()
     end
     bubble._quietHot = false
+    -- A secret bubble hangs on its text: let go first, or the text cannot anchor back to it.
+    bubble:ClearAllPoints()
     RestoreText(bubble)
     bubble._quietBelow, bubble._quietAbsX, bubble._quietPB, bubble._quietPS, bubble._quietPR = nil, nil, nil, nil, nil
     Chat.ShowCopy(bubble, false)
