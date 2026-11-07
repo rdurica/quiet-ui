@@ -149,8 +149,22 @@ local function Category(skin, button)
     return true
 end
 
+-- A page is a flat window: one even panel, its inset gets no sunken fill; its children are walked here.
+local function Page(skin, frame)
+    local name = type(frame.GetName) == "function" and frame:GetName()
+    for _, page in ipairs(PAGES) do
+        if name == page then
+            Modern.Window(skin, frame, nil, nil, true)
+            Modern.Header(skin, frame)
+            Modern.Shapes.Walk(skin, frame, Finder.opts)
+            return true
+        end
+    end
+    return false
+end
+
 local function Shape(skin, frame)
-    if Result(skin, frame) then return true end
+    if Page(skin, frame) or Result(skin, frame) then return true end
     -- A side tab (ListingTab, BrowsingTab, WhoListingTab).
     if IsTexture(rawget(frame, "SelectedTexture")) and IsTexture(rawget(frame, "Icon")) and not Modern.IsCheckbox(frame) then
         Modern.Character.IconTab(skin, frame)
