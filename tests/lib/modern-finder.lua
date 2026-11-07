@@ -22,6 +22,10 @@ local K = {
     checkFiles = { up = 130755, down = 130752, highlight = 130753, check = 130751 },
     dungeons = "Dungeons", rows = { "Deadmines", "Wailing Caverns", "Shadowfang Keep" },
     levelRanges = "Show All Level Ranges",
+    -- CategoryView: four unkeyed Buttons with a picture (Icon), a rounded gold Cover, a pushed cover and a hover cover.
+    categories = { "Dungeons", "Quests & Zones", "Battlegrounds", "Custom" },
+    -- The rock backdrop (file 374155) every page wears as <page>Bg; on the browse page the key Bg is its stone header.
+    rock = 374155,
     -- RefreshButton (browse): plate by file ID through the getters only, a keyed Icon. WhoSearch (who): a tertiary
     -- square plate. DelistButton (own listing row): a nine-piece stretch button with the red X Icon.
     refreshFiles = { normal = 796424, pushed = 796423, highlight = 130757 }, refreshIcon = 851904,
@@ -144,6 +148,21 @@ local function listing(c, f)
     levels.Checkbox = f.levels
     f.levels:SetChecked(true)
     page.ActivityDropdown = P.dropdown(c, page)
+    local view = CreateFrame("Frame", "LFGListingFrameCategoryView", page)
+    page.CategoryView = view
+    f.categories = {}
+    for _, label in ipairs(K.categories) do
+        local button = CreateFrame("Button", nil, view)
+        button:SetSize(418, 67)
+        button.Icon = atlas(c, button, "keep", "groupfinder-button-" .. label:lower(), "BACKGROUND")
+        button.Cover = atlas(c, button, "art", "groupfinder-button-cover")
+        local art = { GetPushedTexture = atlas(c, button, "art", "groupfinder-button-cover-down"),
+            GetHighlightTexture = atlas(c, button, "art", "groupfinder-button-cover-hover", "HIGHLIGHT") }
+        for getter, region in pairs(art) do button[getter] = function() return region end end
+        button.HighlightTexture = art.GetHighlightTexture
+        button.Label = P.text(c, button, label)
+        f.categories[#f.categories + 1] = button
+    end
 end
 
 -- Pooled browse results (Blizzard_LFGVanilla_Browse.xml): a grouping header (common-button-list-collapseExpand with
@@ -177,6 +196,9 @@ local function browse(c, f)
     local page = P.window(c, "LFGBrowseFrame", f.parent)
     f.browse = page
     f.backdrop = atlas(c, page, "art", K.browseBackdropAtlas, "BACKGROUND")
+    f.rock = file(c, page, "art", K.rock, "BACKGROUND")
+    _G.LFGBrowseFrameBg = f.rock
+    function f.rock:GetName() return "LFGBrowseFrameBg" end
     page[K.browseBackdrop] = f.backdrop
     f.refresh = refreshButton(c, page)
     page.RefreshButton = f.refresh
