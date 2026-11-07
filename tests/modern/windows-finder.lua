@@ -88,6 +88,22 @@ h.test("Windows makes the listing page's category buttons flat: picture in a thi
     A.eq(edges(first, theme), 0, "and the border is gone")
 end)
 
+h.test("Windows flattens category buttons the listing page adds when its category view shows", function(t)
+    local A = t.assert
+    local ns, c, f = setup(t)
+    local view = f.listing.CategoryView
+    view:Hide()
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    local late = P.new()
+    local button = CreateFrame("Button", nil, view)
+    button.Icon = P.texture(late, button, "keep", "groupfinder-button-custom", "BACKGROUND", { atlas = true })
+    button.Cover = P.texture(late, button, "art", "groupfinder-button-cover", "ARTWORK", { atlas = true })
+    view:Show()
+    A.alpha(button.Cover, 0, "the later button's rounded cover is held")
+    A.eq(edges(button, theme), 4, "and it gets the thin border")
+end)
+
 -- The round portrait sits on LFGParentFrame, whichever page is open.
 for _, page in ipairs({ "listing", "browse", "who" }) do
     h.test("Windows holds the group finder's round portrait with the " .. page .. " page open and restores it", function(t)
