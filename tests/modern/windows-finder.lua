@@ -48,6 +48,46 @@ h.test("Windows holds the browse page's stone backdrop at alpha 0 without hiding
     A.alpha(f.backdrop, 0.9, "the stone is back on restore")
 end)
 
+h.test("Windows holds the browse page's rock backdrop, which only its name reaches", function(t)
+    local A = t.assert
+    local ns, c, f = setup(t)
+    W.enable(ns)
+    A.alpha(f.rock, 0, "LFGBrowseFrameBg is held")
+    ns.Modern.Restore()
+    A.alpha(f.rock, 0.9, "and back on restore")
+end)
+
+-- Shown regions of a frame in the theme's border colour.
+local function edges(frame, theme)
+    local count = 0
+    for _, region in ipairs(frame._regions) do
+        local col = region._shown and region._color
+        if col and col[1] == theme.border[1] and col[3] == theme.border[3] then count = count + 1 end
+    end
+    return count
+end
+
+h.test("Windows makes the listing page's category buttons flat: picture in a thin border, no rounded cover", function(t)
+    local A = t.assert
+    local ns, c, f = setup(t)
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    for _, button in ipairs(f.categories) do
+        local name = button.Label:GetText()
+        A.alpha(button.Cover, 0, name .. " rounded gold cover is held")
+        A.alpha(button:GetPushedTexture(), 0, name .. " pushed cover is held")
+        A.alpha(button:GetHighlightTexture(), 0, name .. " gold hover cover is held")
+        A.ok(not R.invisible(button.Icon, f.parent), name .. " picture stays")
+        A.ok(not R.invisible(button.Label, f.parent), name .. " label stays")
+        A.eq(edges(button, theme), 4, name .. " gets a thin square border")
+        A.ok(P.hasHover(button), name .. " lights up under the mouse")
+    end
+    ns.Modern.Restore()
+    local first = f.categories[1]
+    A.alpha(first.Cover, 0.9, "the cover is back on restore")
+    A.eq(edges(first, theme), 0, "and the border is gone")
+end)
+
 -- The round portrait sits on LFGParentFrame, whichever page is open.
 for _, page in ipairs({ "listing", "browse", "who" }) do
     h.test("Windows holds the group finder's round portrait with the " .. page .. " page open and restores it", function(t)
