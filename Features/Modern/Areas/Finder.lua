@@ -19,6 +19,10 @@ local FINDER_ART = { "groupfinder-background", "groupfinder-stat-stonebg", "comm
 -- UIMenuButtonStretchTemplate pieces of the delist button.
 local STRETCH_KEYS = { "TopLeft", "TopRight", "BottomLeft", "BottomRight", "TopMiddle", "MiddleLeft", "MiddleRight",
     "BottomMiddle", "MiddleMiddle" }
+-- The pages whose rock backdrop (<page>Bg) is reached only by name: on the browse page the key Bg is its stone header.
+local PAGES = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }
+-- A category button lights up under the mouse: the same faint wash as flat buttons, over its picture only.
+local CATEGORY_HOVER = { 1, 1, 1, 0.07 }
 -- The plus / minus sign of a grouping, and its strip: the art fills the lower 28 px of a 36 px row.
 local SIGN = 10
 local GROUPING_DROP = 4
@@ -120,6 +124,31 @@ local function RoleButton(skin, button)
     return true
 end
 
+-- A listing category (Dungeons, Quests & Zones, ...): the rounded gold cover goes, the picture stands flat in a thin
+-- square border that fits it, with a faint wash under the mouse.
+local function Category(skin, button)
+    local cover, picture = rawget(button, "Cover"), rawget(button, "Icon")
+    if not IsTexture(cover) or not IsTexture(picture) then return false end
+    Hold(skin, cover)
+    for _, getter in ipairs({ "GetPushedTexture", "GetHighlightTexture" }) do
+        if type(button[getter]) == "function" then
+            local ok, texture = pcall(button[getter], button)
+            if ok and texture ~= picture then Hold(skin, texture) end
+        end
+    end
+    skin:Border(button, nil, picture)
+    local wash = skin:Own(button, "category hover", function()
+        local texture = button:CreateTexture(nil, "HIGHLIGHT")
+        texture:SetAllPoints(picture)
+        return texture
+    end)
+    if wash then
+        wash:SetColorTexture(unpack(CATEGORY_HOVER))
+        wash:Show()
+    end
+    return true
+end
+
 local function Shape(skin, frame)
     if Result(skin, frame) then return true end
     -- A side tab (ListingTab, BrowsingTab, WhoListingTab).
@@ -136,7 +165,7 @@ local function Shape(skin, frame)
         Delist(skin, frame)
         return true
     end
-    return RoleButton(skin, frame)
+    return Category(skin, frame) or RoleButton(skin, frame)
 end
 
 local OPTS = { shape = Shape }
@@ -147,6 +176,7 @@ local function Skin(skin, frame)
     -- The whole portrait button: its flipbook frames show and hide the eye art inside it.
     Hold(skin, rawget(_G, "LFGParentFramePortrait"))
     Modern.Shapes.HoldArt(skin, frame, FINDER_ART)
+    for _, name in ipairs(PAGES) do Hold(skin, rawget(_G, name .. "Bg")) end
     Modern.Shapes.Walk(skin, frame, OPTS)
 end
 
