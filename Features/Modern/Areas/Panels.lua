@@ -14,6 +14,7 @@ Modern.Panels = Panels
 
 -- A pet stable slot (PetStableSlotTemplate): its frame art goes, the pet icon is cropped inside a thin border.
 local STABLE_SLOT = { "unlockedBackground", "currentBackground", "lockedBackground" }
+local RANK_GAP = -4
 
 local function IsTexture(obj)
     return ns.Usable(obj) and type(obj.GetObjectType) == "function" and obj:GetObjectType() == "Texture"
@@ -62,11 +63,11 @@ local function Inspect(skin, frame)
     local pvp = frame.PVPFrame or _G.InspectPVPFrame
     if not ns.Usable(pvp) then return end
     local season, rank = pvp.SeasonLabel, pvp.RankLabel
-    if ns.Usable(season) and ns.Usable(rank) and type(rank.ClearAllPoints) == "function" then
-        skin:Set(rank, "SetPoint", "TOP", season, "BOTTOM", 0, -4)
-        rank:ClearAllPoints()
-        rank:SetPoint("TOP", season, "BOTTOM", 0, -4)
-    end
+    -- Unreadable points could not be journaled, so the rank title stays where Blizzard put it.
+    if not (ns.Usable(season) and ns.Usable(rank) and Modern.Points(rank)) then return end
+    skin:Set(rank, "SetPoint", "TOP", season, "BOTTOM", 0, RANK_GAP)
+    rank:ClearAllPoints()
+    rank:SetPoint("TOP", season, "BOTTOM", 0, RANK_GAP)
 end
 
 local WINDOWS = {
