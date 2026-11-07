@@ -65,5 +65,8 @@ end
 function ns.MouseOver(frame)
     if not frame or not frame.IsShown or not frame.IsMouseOver then return false end
     if not frame:IsShown() then return false end
-    return frame:IsMouseOver() and true or false
+    -- A rect that follows secret text answers with a secret boolean, which cannot be tested.
+    local over = frame:IsMouseOver()
+    if ns.IsSecret(over) then return false end
+    return over and true or false
 end
