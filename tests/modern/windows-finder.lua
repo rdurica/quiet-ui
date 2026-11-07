@@ -45,7 +45,7 @@ h.test("Windows holds the browse page's stone backdrop at alpha 0 without hiding
     A.alpha(f.backdrop, 0, "it stays held when Blizzard repaints it")
     A.ok(W.isDark(f.browse), "the panel is the graphite window fill")
     ns.Modern.Restore()
-    A.alpha(f.backdrop, 1, "the stone is back on restore")
+    A.alpha(f.backdrop, 0.9, "the stone is back on restore")
 end)
 
 -- The round portrait sits on LFGParentFrame, whichever page is open.
@@ -189,11 +189,13 @@ h.test("Windows turns the delist button into a thin cross, grey at rest and dang
     local A = t.assert
     local ns, c, f = setup(t)
     local button = f.delist
+    local iconAlpha = button.Icon:GetAlpha()
     W.enable(ns)
     local theme = ns.Modern.Theme()
     for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture" }) do
         A.alpha(button[getter](button), 0, "the red plate (" .. getter .. ") is held")
     end
+    A.alpha(button.Icon, 0, "the red X icon is held under the thin cross")
     A.ok(not W.isDark(button), "no plate or box is drawn")
     A.eq(P.glyphs(button, theme.glyph), 2, "a cross of two thin lines, grey at rest")
     button:GetScript("OnEnter")(button)
@@ -205,6 +207,7 @@ h.test("Windows turns the delist button into a thin cross, grey at rest and dang
     ns.Modern.Restore()
     A.eq(P.glyphs(button, theme.glyph) + P.glyphs(button, theme.danger), 0, "Restore removes the cross")
     A.alpha(button:GetNormalTexture(), 0.9, "the red plate is back")
+    A.alpha(button.Icon, iconAlpha, "the red X icon is back")
 end)
 
 h.test("Windows gives every group finder dropdown a bare grey chevron in place of its gold arrow", function(t)

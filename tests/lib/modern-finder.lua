@@ -42,10 +42,11 @@ local function atlas(c, parent, list, name, layer)
 end
 
 -- A Button wearing gold (or red) square plates: keyed and answered by the getters, over a kept Icon.
-local function plateButton(c, parent, name, plate, iconAtlas)
+-- `iconList`: where the icon belongs (kept, or held when a glyph replaces it).
+local function plateButton(c, parent, name, plate, iconAtlas, iconList)
     local button = CreateFrame("Button", name, parent)
     button:SetSize(24, 24)
-    button.Icon = atlas(c, button, "keep", iconAtlas, "ARTWORK")
+    button.Icon = atlas(c, button, iconList or "keep", iconAtlas, "ARTWORK")
     button.Icon:SetVertexColor(1, 1, 1, 1)
     button.Icon:SetDesaturated(false)
     local art = P.buttonArt(c, button, { GetNormalTexture = plate .. "-up", GetPushedTexture = plate .. "-down",
@@ -91,7 +92,7 @@ local function listing(c, f)
     f.levels = labelled(c, page, K.levelRanges)
     f.levels:SetChecked(true)
     page.ActivityDropdown = P.dropdown(c, page)
-    f.delist = plateButton(c, page, K.listing .. K.delist, K.redAtlas, "common-icon-redx")
+    f.delist = plateButton(c, page, K.listing .. K.delist, K.redAtlas, "common-icon-redx", "art")
     page[K.delist] = f.delist
 end
 
