@@ -1,23 +1,24 @@
 local _, ns = ...
 
--- The vanilla-style group finder (LFGParentFrame with its listing, browse and who pages). The pages are the visible
--- windows inside the bare frame: they take the dark window and the shared shapes. Held: the stone and parchment
--- backdrops, the round portrait and its ring. Side tabs become icon tabs, role buttons keep their icon without box
--- or border, refresh and search are bare grey icons, delist a thin cross, results stand bare and their groupings
--- become section strips. Role and party icons and the minimap eye (outside the frame) stay Blizzard's. Frames are
--- recognised by their keys and art (only the pages are looked up by name); the walk runs again when the finder
--- shows or a list updates.
+-- The vanilla-style group finder (LFGParentFrame with its listing, browse and who pages; keys as the Forever client
+-- has them). The pages are the visible windows inside the bare frame: they take the dark window and the shared
+-- shapes. Held: the stone and parchment backdrops and the round eye portrait (LFGParentFramePortrait, a button with
+-- its flipbooks). The side tabs (ListingTab, BrowsingTab, WhoListingTab) become icon tabs, role buttons keep their
+-- icon without plate or box, refresh (RefreshButton) and search (WhoSearch) are bare grey icons, delist
+-- (DelistButton) a thin cross, results stand bare and their groupings become section strips. Role and party icons
+-- and the minimap eye (outside the frame) stay Blizzard's. The walk runs again when the finder shows or a list
+-- updates.
 
 local Modern = ns.Modern
 local Finder = {}
 Modern.Finder = Finder
 
--- Page art by atlas: stone and parchment backdrops, inner frames, divider lines, the portrait and its ring.
+-- Page art by atlas: stone and parchment backdrops, inner frames and divider lines.
 local FINDER_ART = { "groupfinder-background", "groupfinder-stat-stonebg", "common-insideframe",
-    "groupfinder-scrollline", "groupfinder-roles-background", "common-framedivider", "groupfinder-browse-stone",
-    "eye-portrait" }
-local PORTRAIT_KEYS = { "Portrait", "portrait", "PortraitFrame" }
-local BACKDROP_KEYS = { "BackgroundArt" }
+    "groupfinder-scrollline", "groupfinder-roles-background", "common-framedivider" }
+-- UIMenuButtonStretchTemplate pieces of the delist button.
+local STRETCH_KEYS = { "TopLeft", "TopRight", "BottomLeft", "BottomRight", "TopMiddle", "MiddleLeft", "MiddleRight",
+    "BottomMiddle", "MiddleMiddle" }
 -- The plus / minus sign of a grouping, and its strip: the art fills the lower 28 px of a 36 px row.
 local SIGN = 10
 local GROUPING_DROP = 4
@@ -96,55 +97,56 @@ local function Result(skin, row)
     return false
 end
 
--- A Button with a keyed Icon over a gold or red square plate (refresh, search, delist).
-local function PlateButton(skin, button)
-    local plate = PlateOf(button)
-    if not plate or not plate:find("iconbutton", 1, true) then return false end
-    if plate:find("iconbutton-red", 1, true) then
-        -- The red X icon goes with its plate; the thin cross replaces both.
-        Hold(skin, rawget(button, "Icon"))
-        Modern.GlyphButton(skin, button, "delist", Modern.CrossParts, "danger")
-    else
-        Modern.IconButton(skin, button)
-    end
-    return true
+-- The key a frame has on its parent (the finder's buttons are pooled or unnamed).
+local function KeyOf(frame, key)
+    local parent = type(frame.GetParent) == "function" and frame:GetParent()
+    return parent and type(parent) == "table" and rawget(parent, key) == frame
 end
 
--- A role button: round border and box art held, the role icon stays; its checkbox child is walked on.
+-- The own listing's delist button: its stretch plate and red X go, a thin cross turns red under the mouse.
+local function Delist(skin, button)
+    HoldKeys(skin, button, STRETCH_KEYS)
+    Hold(skin, rawget(button, "Icon"))
+    Modern.GlyphButton(skin, button, "delist", Modern.CrossParts, "danger")
+end
+
+-- A role button (its NormalTexture is the role icon): the round plate goes, the icon and its dim cover stay, and
+-- its checkbox is walked on its own so the button itself is never taken for a dropdown.
 local function RoleButton(skin, button)
-    Hold(skin, rawget(button, "Border"))
-    for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture" }) do
-        if type(button[getter]) == "function" then
-            local ok, texture = pcall(button[getter], button)
-            if ok then Hold(skin, texture) end
-        end
-    end
+    local icon = PlateOf(button)
+    if not icon or icon:find("ui-lfg-roleicon", 1, true) ~= 1 then return false end
+    Hold(skin, rawget(button, "Background"))
+    Modern.Shapes.Walk(skin, button, Finder.opts)
+    return true
 end
 
 local function Shape(skin, frame)
     if Result(skin, frame) then return true end
-    local kind = KindOf(frame)
-    if kind == "CheckButton" and IsTexture(rawget(frame, "SelectedTexture")) and IsTexture(rawget(frame, "Icon"))
-        and not Modern.IsCheckbox(frame) then
+    -- A side tab (ListingTab, BrowsingTab, WhoListingTab).
+    if IsTexture(rawget(frame, "SelectedTexture")) and IsTexture(rawget(frame, "Icon")) and not Modern.IsCheckbox(frame) then
         Modern.Character.IconTab(skin, frame)
         return true
     end
-    if kind ~= "Button" then return false end
-    if IsTexture(rawget(frame, "Icon")) and PlateButton(skin, frame) then return true end
-    if IsTexture(rawget(frame, "icon")) and IsTexture(rawget(frame, "Border")) then RoleButton(skin, frame) end
-    return false
+    if KindOf(frame) ~= "Button" then return false end
+    if KeyOf(frame, "RefreshButton") or KeyOf(frame, "WhoSearch") then
+        Modern.IconButton(skin, frame)
+        return true
+    end
+    if KeyOf(frame, "DelistButton") then
+        Delist(skin, frame)
+        return true
+    end
+    return RoleButton(skin, frame)
 end
 
 local OPTS = { shape = Shape }
+Finder.opts = OPTS
 
 local function Skin(skin, frame)
     Modern.CloseButton(skin, frame)
-    HoldKeys(skin, frame, PORTRAIT_KEYS)
+    -- The whole portrait button: its flipbook frames show and hide the eye art inside it.
+    Hold(skin, rawget(_G, "LFGParentFramePortrait"))
     Modern.Shapes.HoldArt(skin, frame, FINDER_ART)
-    for _, key in ipairs({ "LFGBrowseFrame", "LFGListingFrame", "LFGWhoListFrame" }) do
-        local page = rawget(_G, key)
-        if ns.Usable(page) then HoldKeys(skin, page, BACKDROP_KEYS) end
-    end
     Modern.Shapes.Walk(skin, frame, OPTS)
 end
 
