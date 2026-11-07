@@ -90,7 +90,7 @@ function Modern.UnitColour(unit)
     if player then
         local token
         if type(UnitClass) == "function" then token = select(2, UnitClass(unit)) end
-        if ns.IsSecret(token) then return end
+        if type(token) ~= "string" or ns.IsSecret(token) then return end -- class data not loaded yet, or secret
         local c = type(C_ClassColor) == "table" and type(C_ClassColor.GetClassColor) == "function"
             and C_ClassColor.GetClassColor(token)
         r, g, b = Colours(c or (type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[token]))
