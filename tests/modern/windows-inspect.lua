@@ -210,3 +210,16 @@ h.test("Inspect fixes the PvP page when its regions are built only on the first 
     ns.Modern.Restore()
     A.deep({ c.rank:GetPoint(1) }, { "CENTER", c.pvp, "TOP", 0, -60 }, "undo returns the late rank title to Blizzard's point")
 end)
+
+h.test("Inspect inner panels stand bare on the window, without a border", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local B = h.lib("modern-bags")
+    W.area(ns, "windows")
+    local c = inspect({ slot = 34 })
+    local page = CreateFrame("Frame", "InspectPaperDollFrame", c.frame)
+    page.NineSlice = R.nineSlice(page, c.list)
+    W.enable(ns)
+    A.ok(B.border(c.frame.Inset) == nil, "the inset gets no border")
+    A.ok(B.border(page) == nil, "an inner page panel gets no border")
+    A.eq(#mock.printed, 0, "nothing reported")
+end)
