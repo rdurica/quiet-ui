@@ -196,7 +196,8 @@ local function SeedFromRegions(frame)
                 end
                 found[#found + 1] = {
                     text = text,
-                    y = type(y) == "number" and y or 0,
+                    -- The rect of a secret line can be secret too; sorting on it would throw.
+                    y = type(y) == "number" and not ns.IsSecret(y) and y or 0,
                     r = r, g = g, b = b,
                 }
             end
