@@ -39,7 +39,8 @@ h.test("Windows skins the shared shapes inside a window and restores them exactl
     local frame = c.frame
     A.ok(W.isDark(frame), "the trade window is a dark window")
     A.eq(P.visibleArt(c, R, frame), "", "every template's art is held")
-    A.eq(P.hiddenKeep(c, R, frame), "", "icons, arrows, names and texts stay")
+    A.eq(P.hiddenKeep(c, R, frame), "", "icons, names and texts stay")
+    A.eq(P.visibleArrows(c, R, frame), "", "a dropdown's gold arrow box is held")
     A.ok(W.isDark(c.button) and P.hasHover(c.button), "a panel button is a flat field that lights up under the mouse")
     A.ok(W.isDark(c.input), "a named input box is a flat field")
     A.ok(not W.isDark(c.money), "the money edge stays bare")
@@ -51,6 +52,55 @@ h.test("Windows skins the shared shapes inside a window and restores them exactl
     A.eq(#mock.printed, 0, "nothing reported")
     ns.Modern.Restore()
     A.deep(L.diff(before), {}, "the trade window restores exactly")
+end)
+
+-- A dropdown's gold arrow box (keyed Arrow) becomes a bare chevron of two glyph strokes, grey at rest and light under
+-- the mouse; its reset button stays Blizzard's.
+local function dropdownIn(opts)
+    local c = P.new()
+    local frame = P.window(c, "TradeFrame")
+    local dropdown = P.dropdown(c, frame, opts)
+    return c, frame, dropdown
+end
+
+h.test("Windows turns a dropdown's gold arrow into a bare grey chevron, light under the mouse, and keeps its reset button", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c, frame, dropdown = dropdownIn({ reset = true })
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    A.ok(W.isDark(dropdown) and P.hasHover(dropdown), "the dark field and its hover stay")
+    A.alpha(dropdown.Arrow, 0, "the gold arrow box is held")
+    A.ok(dropdown.Arrow._shown ~= false, "by alpha, not hidden")
+    dropdown.Arrow:SetAlpha(1)
+    A.alpha(dropdown.Arrow, 0, "it stays held when Blizzard repaints it")
+    A.eq(P.glyphs(dropdown, theme.glyph), 2, "a chevron of two strokes, grey at rest")
+    A.eq(P.glyphs(dropdown, theme.text), 0, "and not light yet")
+    dropdown:GetScript("OnEnter")(dropdown)
+    A.eq(P.glyphs(dropdown, theme.text), 2, "light under the mouse")
+    A.eq(P.glyphs(dropdown, theme.glyph), 0, "and no longer grey")
+    dropdown:GetScript("OnLeave")(dropdown)
+    A.eq(P.glyphs(dropdown, theme.glyph), 2, "grey again when the mouse leaves")
+    A.eq(P.hiddenKeep(c, R, frame), "", "the reset button's icon and the text stay")
+    A.eq(#dropdown.ResetButton._regions, 1, "the reset button gets nothing drawn on it")
+    A.falsy(W.isDark(dropdown.ResetButton), "and no field")
+end)
+
+h.test("Windows restores a dropdown's gold arrow and removes the chevron", function(t)
+    local A, ns = t.assert, t.ns
+    W.area(ns, "windows")
+    local c, frame, dropdown = dropdownIn({ reset = true })
+    local before = L.snapshot(R.all(frame))
+    W.enable(ns)
+    local theme = ns.Modern.Theme()
+    A.eq(P.glyphs(dropdown, theme.glyph), 2, "the chevron is drawn")
+    ns.Modern.Restore()
+    A.alpha(dropdown.Arrow, 0.9, "Blizzard's arrow is back")
+    A.eq(P.glyphs(dropdown, theme.glyph) + P.glyphs(dropdown, theme.text), 0, "the chevron is gone")
+    A.deep(L.diff(before), {}, "the dropdown restores exactly")
+    local enter = dropdown:GetScript("OnEnter")
+    if enter then enter(dropdown) end
+    A.eq(P.glyphs(dropdown, theme.text), 0, "the hover hook does nothing while the area is off")
 end)
 
 h.test("Windows keeps the taxi map when it flattens the taxi window", function(t)
