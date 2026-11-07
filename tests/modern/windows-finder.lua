@@ -55,14 +55,12 @@ for _, page in ipairs({ "listing", "browse", "who" }) do
         local ns, c, f = setup(t)
         for name, frame in pairs(f.pages) do frame:SetShown(name == page) end
         W.enable(ns)
-        A.alpha(f.portrait, 0, "the portrait is held")
-        A.alpha(f.portraitFrame, 0, "and its ring")
+        A.alpha(f.portrait, 0, "the portrait with its eye frame and flipbooks is held")
         A.ok(f.portrait._shown ~= false, "by alpha, not hidden")
         f.portrait:SetAlpha(1)
         A.alpha(f.portrait, 0, "it stays held when Blizzard repaints it")
         ns.Modern.Restore()
         A.alpha(f.portrait, 0.9, "the portrait is back after unchecking the area")
-        A.alpha(f.portraitFrame, 0.9, "with its ring")
     end)
 end
 
@@ -93,19 +91,19 @@ h.test("Windows turns the group finder's side tabs into small square icon tabs m
     A.deep(L.diff(before), {}, "the side tabs restore exactly")
 end)
 
-h.test("Windows keeps a role button's icon and holds its box and border", function(t)
+h.test("Windows keeps a role button's icon and holds its plate, without a box or border", function(t)
     local A = t.assert
     local ns, c, f = setup(t)
     W.enable(ns)
     for role, button in pairs(f.roles) do
-        A.ok(not R.invisible(button.icon, f.parent), role .. " icon stays")
-        A.alpha(button.Border, 0, role .. " round border is held")
-        A.alpha(button:GetNormalTexture(), 0, role .. " box art is held")
-        A.ok(not W.isDark(button), role .. " button gets no dark box")
+        A.ok(not R.invisible(button:GetNormalTexture(), f.parent), role .. " icon stays")
+        if button.Background then A.alpha(button.Background, 0, role .. " round plate is held") end
+        A.ok(not R.invisible(button.cover, f.parent), role .. " dim cover stays Blizzard's")
+        A.ok(not W.isDark(button), role .. " button gets no dark box or border")
+        A.ok(not P.hasHover(button), role .. " button gets no hover wash")
     end
     ns.Modern.Restore()
-    A.alpha(f.roles.Tank.Border, 0.9, "the border is back on restore")
-    A.alpha(f.roles.Tank:GetNormalTexture(), 0.9, "and the box art")
+    A.alpha(f.roles.Tank.Background, 0.9, "the plate is back on restore")
 end)
 
 h.test("Windows flattens a role button's label-less checkbox and it follows Blizzard's checked state", function(t)
@@ -114,21 +112,21 @@ h.test("Windows flattens a role button's label-less checkbox and it follows Bliz
     W.enable(ns)
     local theme = ns.Modern.Theme()
     for role, button in pairs(f.roles) do
-        local check = button.check
+        local check = button.CheckButton
         A.alpha(check:GetNormalTexture(), 0, role .. " Blizzard checkbox art is held")
         A.alpha(check:GetCheckedTexture(), 0, role .. " gold checkmark is held")
         A.ok(F.flat(check, theme), role .. " checkbox is a flat Modern checkbox")
         A.ok(check:GetSize() <= 24, role .. " checkbox keeps its small size")
     end
-    A.ok(F.mark(f.roles.Healer.check, theme), "a checked role shows the accent mark")
-    A.ok(not F.mark(f.roles.Tank.check, theme), "an unchecked one does not")
-    f.roles.Tank.check:SetChecked(true)
-    A.ok(F.mark(f.roles.Tank.check, theme), "the mark follows Blizzard's SetChecked")
-    f.roles.Tank.check:SetChecked(false)
-    A.ok(not F.mark(f.roles.Tank.check, theme), "and clears with it")
+    A.ok(F.mark(f.roles.Healer.CheckButton, theme), "a checked role shows the accent mark")
+    A.ok(not F.mark(f.roles.Tank.CheckButton, theme), "an unchecked one does not")
+    f.roles.Tank.CheckButton:SetChecked(true)
+    A.ok(F.mark(f.roles.Tank.CheckButton, theme), "the mark follows Blizzard's SetChecked")
+    f.roles.Tank.CheckButton:SetChecked(false)
+    A.ok(not F.mark(f.roles.Tank.CheckButton, theme), "and clears with it")
     ns.Modern.Restore()
-    A.ok(not F.flat(f.roles.Tank.check, theme) and not F.mark(f.roles.Healer.check, theme), "the flat box is gone")
-    A.alpha(f.roles.Tank.check:GetCheckedTexture(), 0.9, "Blizzard's checkmark art is back")
+    A.ok(not F.flat(f.roles.Tank.CheckButton, theme) and not F.mark(f.roles.Healer.CheckButton, theme), "the flat box is gone")
+    A.alpha(f.roles.Tank.CheckButton:GetCheckedTexture(), 0.9, "Blizzard's checkmark art is back")
 end)
 
 h.test("Windows gives the listing page's Dungeons, dungeon rows and level range boxes the flat look", function(t)
@@ -192,10 +190,9 @@ h.test("Windows turns the delist button into a thin cross, grey at rest and dang
     local iconAlpha = button.Icon:GetAlpha()
     W.enable(ns)
     local theme = ns.Modern.Theme()
-    for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture" }) do
-        A.alpha(button[getter](button), 0, "the red plate (" .. getter .. ") is held")
-    end
+    for _, key in ipairs(F.keys.stretch) do A.alpha(button[key], 0, "the stretch piece " .. key .. " is held") end
     A.alpha(button.Icon, 0, "the red X icon is held under the thin cross")
+    A.ok(not P.hasHover(button), "no hover wash")
     A.ok(not W.isDark(button), "no plate or box is drawn")
     A.eq(P.glyphs(button, theme.glyph), 2, "a cross of two thin lines, grey at rest")
     button:GetScript("OnEnter")(button)
@@ -206,7 +203,7 @@ h.test("Windows turns the delist button into a thin cross, grey at rest and dang
     A.eq(button.clicks, 1, "the click still works")
     ns.Modern.Restore()
     A.eq(P.glyphs(button, theme.glyph) + P.glyphs(button, theme.danger), 0, "Restore removes the cross")
-    A.alpha(button:GetNormalTexture(), 0.9, "the red plate is back")
+    A.alpha(button.TopLeft, 0.9, "the stretch plate is back")
     A.alpha(button.Icon, iconAlpha, "the red X icon is back")
 end)
 
