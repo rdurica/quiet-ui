@@ -4,7 +4,7 @@
 local P = {}
 
 function P.new()
-    return { art = {}, keep = {} }
+    return { art = {}, keep = {}, arrows = {} }
 end
 
 local function texture(c, parent, list, file, layer, opts)
@@ -161,12 +161,20 @@ function P.card(c, parent, name)
     return card
 end
 
--- WowStyle1DropdownTemplate: Background, Arrow, Text.
-function P.dropdown(c, parent)
+-- WowStyle1DropdownTemplate: keyed Background, Arrow and Text. `Arrow` is the gold arrow box (the same key the
+-- damage meter's dropdown uses); Blizzard swaps its atlas on hover. It is listed in `c.arrows`, not in `c.art` or
+-- `c.keep`: Modernize holds it and draws a bare chevron instead (P.visibleArrows, P.glyphs). `opts.reset` adds the
+-- reset button (ResetButton, a child Button with its own icon), which must stay untouched.
+function P.dropdown(c, parent, opts)
     local dropdown = CreateFrame("DropdownButton", nil, parent)
     dropdown.Background = texture(c, dropdown, "art", "common-dropdown-textholder", "BACKGROUND", { atlas = true })
-    dropdown.Arrow = texture(c, dropdown, "keep", "common-dropdown-a-button", "OVERLAY", { atlas = true })
+    dropdown.Arrow = texture(c, dropdown, "arrows", "common-dropdown-a-button", "OVERLAY", { atlas = true })
     dropdown.Text = text(c, dropdown, "All")
+    if opts and opts.reset then
+        dropdown.ResetButton = CreateFrame("Button", nil, dropdown)
+        dropdown.ResetButton.Icon = texture(c, dropdown.ResetButton, "keep", "common-dropdown-reset", "ARTWORK",
+            { atlas = true })
+    end
     return dropdown
 end
 
@@ -198,9 +206,11 @@ function P.stretchButton(c, parent, label)
     return button
 end
 
--- LargeSideTabButtonTemplate: Background, Icon, SelectedTexture, TabGlow, HighlightTexture.
-function P.sideTab(c, parent)
-    local tab = CreateFrame("Frame", nil, parent)
+-- LargeSideTabButtonTemplate: Background, Icon, SelectedTexture, TabGlow, HighlightTexture. `kind` (default Frame)
+-- and `name` let a CheckButton side tab (the group finder's) share it.
+function P.sideTab(c, parent, kind, name)
+    local tab = CreateFrame(kind or "Frame", name, parent)
+    tab:SetSize(44, 44)
     tab.Background = texture(c, tab, "art", "common-sidetab", "BACKGROUND", { atlas = true })
     tab.Icon = texture(c, tab, "keep", "Icons\\Tab")
     tab.SelectedTexture = texture(c, tab, "art", "common-sidetab-selected", "OVERLAY", { atlas = true })
@@ -273,6 +283,28 @@ function P.hiddenKeep(c, R, stop)
         if R.invisible(t, stop) then names[#names + 1] = t._label or tostring(t._text) end
     end
     return table.concat(names, ",")
+end
+
+-- Comma list of the dropdown arrows still visible ("" when all are held).
+function P.visibleArrows(c, R, stop)
+    local names = {}
+    for _, t in ipairs(c.arrows) do
+        if not R.invisible(t, stop) then names[#names + 1] = t._label end
+    end
+    return table.concat(names, ",")
+end
+
+-- Number of shown strokes (own OVERLAY regions with a colour) of `frame` in `color`: two make a chevron or a cross.
+function P.glyphs(frame, color)
+    local count = 0
+    for _, region in ipairs(frame._regions) do
+        local c = region._color
+        if region._layer == "OVERLAY" and region._shown ~= false and c and math.abs(c[1] - color[1]) < 1e-6
+            and math.abs(c[2] - color[2]) < 1e-6 and math.abs(c[3] - color[3]) < 1e-6 then
+            count = count + 1
+        end
+    end
+    return count
 end
 
 -- True when the button carries QuietUI's hover wash: an own HIGHLIGHT texture with a faint colour.
