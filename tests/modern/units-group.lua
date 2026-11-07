@@ -87,6 +87,22 @@ h.test("Unit frames turns raid-style party frames into dark boxes with a class-c
     A.eq(health(first)[1], 0.25, "after restore Blizzard's bar colour stays")
 end)
 
+h.test("Unit frames keeps a party member's name colour when UnitClass has no token yet, without an error", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    U.installColours(mock)
+    UnitIsPlayer = function() return true end
+    UnitClass = function() return nil end
+    U.strictClassColor()
+    blizzard()
+    local _, first = party()
+    QuietUICharDB = { modernize = { enabled = true } }
+    ns.Modern.Apply()
+    CompactUnitFrame_UpdateName(first)
+    A.eq(#mock.printed, 0, "nothing reported: " .. table.concat(mock.printed, " / "))
+    A.eq(first.name._vertex[1], 1, "the name keeps Blizzard's colour")
+    A.eq(first.healthBar.fill._texture, ns.Modern.Theme().bar, "the theme still applies")
+end)
+
 h.test("Unit frames skins a raid frame Blizzard sets up after the area was applied", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     U.installColours(mock)

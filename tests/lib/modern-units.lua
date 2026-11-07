@@ -387,6 +387,15 @@ function U.installColours(mock, powerTokens)
     return powerTokens
 end
 
+-- The client's GetClassColor raises on anything but a string (a token that is not loaded yet is nil).
+function U.strictClassColor()
+    local colours = { MAGE = { r = 0.25, g = 0.78, b = 0.92 } }
+    C_ClassColor = { GetClassColor = function(token)
+        if type(token) ~= "string" then error("Usage: local classColor = C_ClassColor.GetClassColor(className [, tintColor])", 2) end
+        return colours[token]
+    end }
+end
+
 -- Health and power are secret: any comparison or arithmetic raises.
 function U.secrets(mock)
     local function boom() error("secret value was inspected", 2) end

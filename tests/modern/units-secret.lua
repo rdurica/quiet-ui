@@ -61,3 +61,22 @@ h.test("a secret first UnitReaction result is never tested before the secret che
         end
     end)
 end)
+
+-- A player whose data is not loaded yet: UnitIsPlayer is true but UnitClass has no token.
+h.test("a player whose UnitClass has no token yet keeps Blizzard's name colour without an error", function(t)
+    run(t, function()
+        U.strictClassColor()
+        UnitClass = function() return nil end
+    end)
+end)
+
+h.test("a known class still takes its class colour with the strict GetClassColor", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    local frames = setup(t)
+    mock:setUnit("target", { exists = true, player = true })
+    U.strictClassColor()
+    QuietUICharDB = { modernize = { enabled = true } }
+    ns.Modern.Apply()
+    A.eq(L.errors(mock), 0, "no error reported")
+    A.deep({ frames[3].Name:GetTextColor() }, { 0.25, 0.78, 0.92, 1 }, "name takes the mage colour")
+end)
