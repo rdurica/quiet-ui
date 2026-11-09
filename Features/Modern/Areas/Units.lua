@@ -81,19 +81,41 @@ local function Colours(color)
     return color.r or color[1], color.g or color[2], color.b or color[3]
 end
 
--- The name's class or reaction colour. Identity can be secret on 12.0: it is never a branch or a table
--- key, and the name then keeps Blizzard's colour (nil).
+-- A player's class token; nil for an NPC, false while it is secret or not loaded yet. Identity can be secret
+-- on 12.0 and a secret token is still a string to type(): it is never a branch or a table key.
+local function ClassToken(unit)
+    if type(UnitIsPlayer) ~= "function" then return end
+    local player = UnitIsPlayer(unit)
+    if ns.IsSecret(player) then return false end
+    if not player then return end
+    local token
+    if type(UnitClass) == "function" then token = select(2, UnitClass(unit)) end
+    if ns.IsSecret(token) or type(token) ~= "string" then return false end
+    return token
+end
+
+-- GetClassColor raises on input it does not take; the colour table is the fallback.
+local function TokenColour(token)
+    local ok, c
+    if type(C_ClassColor) == "table" and type(C_ClassColor.GetClassColor) == "function" then
+        ok, c = pcall(C_ClassColor.GetClassColor, token)
+    end
+    return Colours(ok and c or (type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[token]))
+end
+
+-- A player's class colour; nil for an NPC or a class that is secret or not loaded yet.
+function Modern.ClassColour(unit)
+    local token = ClassToken(unit)
+    if token then return TokenColour(token) end
+end
+
+-- The name's class or reaction colour; nil keeps Blizzard's colour.
 function Modern.UnitColour(unit)
     local r, g, b
-    local player = type(UnitIsPlayer) == "function" and UnitIsPlayer(unit)
-    if ns.IsSecret(player) then return end
-    if player then
-        local token
-        if type(UnitClass) == "function" then token = select(2, UnitClass(unit)) end
-        if type(token) ~= "string" or ns.IsSecret(token) then return end -- class data not loaded yet, or secret
-        local c = type(C_ClassColor) == "table" and type(C_ClassColor.GetClassColor) == "function"
-            and C_ClassColor.GetClassColor(token)
-        r, g, b = Colours(c or (type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[token]))
+    local token = ClassToken(unit)
+    if token == false then return end
+    if token then
+        r, g, b = TokenColour(token)
     elseif type(UnitReaction) == "function" and type(FACTION_BAR_COLORS) == "table" then
         local reaction = UnitReaction(unit, "player")
         if ns.IsSecret(reaction) then return end
@@ -107,11 +129,8 @@ local ICON_INSET = 0.02 -- of the sheet, trims the icon's rounded corners
 
 -- A player's class icon from Blizzard's class sheet; nil for NPCs, a secret identity or a missing sheet.
 local function ClassIcon(unit)
-    if type(UnitIsPlayer) ~= "function" or type(UnitClass) ~= "function" or type(CLASS_ICON_TCOORDS) ~= "table" then return end
-    local player = UnitIsPlayer(unit)
-    if ns.IsSecret(player) or not player then return end
-    local token = select(2, UnitClass(unit))
-    if type(token) ~= "string" or ns.IsSecret(token) then return end
+    local token = ClassToken(unit)
+    if not token or type(CLASS_ICON_TCOORDS) ~= "table" then return end
     local c = CLASS_ICON_TCOORDS[token]
     if type(c) ~= "table" then return end
     return { CLASS_ICONS, c[1] + ICON_INSET, c[2] - ICON_INSET, c[3] + ICON_INSET, c[4] - ICON_INSET }
@@ -208,19 +227,30 @@ local function RarityColour(unit)
     return color
 end
 
--- The name takes its class or reaction colour; for a secret identity Blizzard's colour, read once per apply cycle.
+-- The name takes its class or reaction colour; for an unknown or secret identity Blizzard's colour. A colour
+-- that is no longer the one painted here is Blizzard's newer one and becomes the colour to go back to.
 local base = setmetatable({}, { __mode = "k" })
+local painted = setmetatable({}, { __mode = "k" }) -- label -> the colour as read back after painting
 local function Name(skin, label, unit)
     if not ns.Usable(label) or type(label.SetTextColor) ~= "function" or type(label.GetTextColor) ~= "function" then return end
+    local now, mine = { label:GetTextColor() }, painted[label]
     if not base[label] then
-        base[label] = { label:GetTextColor() }
+        base[label] = now
         skin:Remember(label, "name colour", function()
             pcall(label.SetTextColor, label, unpack(base[label]))
-            base[label] = nil
+            base[label], painted[label] = nil, nil
         end)
+    elseif not (mine and now[1] == mine[1] and now[2] == mine[2] and now[3] == mine[3]) then
+        base[label] = now
     end
     local r, g, b = Modern.UnitColour(unit)
-    if r and g and b then label:SetTextColor(r, g, b) else label:SetTextColor(unpack(base[label])) end
+    if r and g and b then
+        label:SetTextColor(r, g, b)
+        painted[label] = { label:GetTextColor() }
+    else
+        label:SetTextColor(unpack(base[label]))
+        painted[label] = nil
+    end
 end
 
 local function Rest(skin, frame)
@@ -288,7 +318,7 @@ local function Apply(skin)
     Modern.Group.Apply(skin)
 end
 
--- UNIT_FACTION and UNIT_CLASSIFICATION_CHANGED fire for every unit (nameplates, party): only the skinned
+-- UNIT_FACTION, UNIT_CLASSIFICATION_CHANGED and UNIT_NAME_UPDATE fire for every unit (nameplates, party): only the skinned
 -- ones matter. A secret token cannot be told apart, so it skins to be safe.
 local function OnEvent(skin, _, unit)
     if type(unit) == "string" and not ns.IsSecret(unit) then
@@ -302,8 +332,9 @@ end
 Modern.Register{
     key = "units", label = "Unit frames",
     -- Combat end and vehicle changes lay the bars out again (Blizzard re-anchors them for vehicles).
+    -- UNIT_NAME_UPDATE: a unit's class can arrive after the unit did.
     events = { "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "UNIT_FACTION", "UNIT_CLASSIFICATION_CHANGED",
-        "PLAYER_REGEN_ENABLED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "GROUP_ROSTER_UPDATE" },
+        "UNIT_NAME_UPDATE", "PLAYER_REGEN_ENABLED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "GROUP_ROSTER_UPDATE" },
     apply = Apply, onEvent = OnEvent,
     -- Untrack first: the journal's undo then restores texture and colour without the hooks answering.
     restore = function()

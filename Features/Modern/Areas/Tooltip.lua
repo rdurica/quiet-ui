@@ -81,13 +81,9 @@ local function Name(tip)
     if not skinned[tip] or not ns.Usable(tip) or type(tip.GetUnit) ~= "function" then return end
     local ok, _, unit = pcall(tip.GetUnit, tip)
     if not ok or type(unit) ~= "string" or ns.IsSecret(unit) then return end
-    local player = UnitIsPlayer and UnitIsPlayer(unit)
-    if ns.IsSecret(player) or not player then return end
-    local _, class = UnitClass(unit)
-    if ns.IsSecret(class) then return end
-    local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    local r, g, b = Modern.ClassColour(unit)
     local line = _G[(tip:GetName() or "") .. "TextLeft1"]
-    if color and ns.Usable(line) and line.SetTextColor then line:SetTextColor(color.r, color.g, color.b) end
+    if r and g and b and ns.Usable(line) and line.SetTextColor then line:SetTextColor(r, g, b) end
 end
 
 local function SafeName(tip)
