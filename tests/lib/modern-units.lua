@@ -372,10 +372,14 @@ function U.statusTexture(bar)
     return tex and tex:GetTexture()
 end
 
--- Retail unit API shapes used by the colour tests.
+-- Retail unit API shapes used by the colour tests. Like the client's, GetClassColor raises on anything but
+-- a string (a token that is not loaded yet is nil).
 function U.installColours(mock, powerTokens)
     RAID_CLASS_COLORS = { MAGE = { r = 0.25, g = 0.78, b = 0.92 } }
-    C_ClassColor = { GetClassColor = function(token) return RAID_CLASS_COLORS[token] end }
+    C_ClassColor = { GetClassColor = function(token)
+        if type(token) ~= "string" then error("Usage: local classColor = C_ClassColor.GetClassColor(className [, tintColor])", 2) end
+        return RAID_CLASS_COLORS[token]
+    end }
     UnitClass = function() return "Mage", "MAGE", 8 end
     -- UnitReaction needs two units on the real client; one argument gives nil.
     UnitReaction = function(a, b) if a and b then return 2 end end
@@ -385,15 +389,6 @@ function U.installColours(mock, powerTokens)
     powerTokens = powerTokens or {}
     UnitPowerType = function(unit) local token = powerTokens[unit] or "MANA"; return 0, token end
     return powerTokens
-end
-
--- The client's GetClassColor raises on anything but a string (a token that is not loaded yet is nil).
-function U.strictClassColor()
-    local colours = { MAGE = { r = 0.25, g = 0.78, b = 0.92 } }
-    C_ClassColor = { GetClassColor = function(token)
-        if type(token) ~= "string" then error("Usage: local classColor = C_ClassColor.GetClassColor(className [, tintColor])", 2) end
-        return colours[token]
-    end }
 end
 
 -- Health and power are secret: any comparison or arithmetic raises.

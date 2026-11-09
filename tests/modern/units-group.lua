@@ -92,7 +92,6 @@ h.test("Unit frames keeps a party member's name colour when UnitClass has no tok
     U.installColours(mock)
     UnitIsPlayer = function() return true end
     UnitClass = function() return nil end
-    U.strictClassColor()
     blizzard()
     local _, first = party()
     QuietUICharDB = { modernize = { enabled = true } }
@@ -101,6 +100,10 @@ h.test("Unit frames keeps a party member's name colour when UnitClass has no tok
     A.eq(#mock.printed, 0, "nothing reported: " .. table.concat(mock.printed, " / "))
     A.eq(first.name._vertex[1], 1, "the name keeps Blizzard's colour")
     A.eq(first.healthBar.fill._texture, ns.Modern.Theme().bar, "the theme still applies")
+    -- The class arrives: Blizzard renames the frame on UNIT_NAME_UPDATE.
+    UnitClass = function() return "Mage", "MAGE", 8 end
+    CompactUnitFrame_UpdateName(first)
+    A.eq(first.name._vertex[1], 0.25, "the name takes the mage colour once the class is known")
 end)
 
 h.test("Unit frames skins a raid frame Blizzard sets up after the area was applied", function(t)
