@@ -58,7 +58,7 @@ Area colours outside the theme: health bar dark grey `#33363B` over the darker b
 
 ## Movable windows
 
-Character, spellbook / talents, a standalone quest log, the combined bag, the calendar, the friends window (`SocialUIFrame`) and the map get a drag handle over their title. Dragging saves `windowPoints[key]` per character (not in presets; Reset default keeps it), and the point is put back on every show. No drag or point change in combat. Reset positions clears the saved points immediately, independently of Save, and returns windows to Blizzard's position (after combat if needed).
+Character, spellbook / talents, a standalone quest log, the combined bag, the calendar, the friends window (`SocialUIFrame`) and the map get a drag handle over their title. Dragging saves `windowPoints[key]` per character (not in presets; Reset default keeps it), and the point is put back on every show. A point that would put the window outside the screen, for example after a resolution change, is moved to the nearest fully visible position. No drag or point change in combat. Reset positions clears the saved points immediately, independently of Save, and returns windows to Blizzard's position (after combat if needed).
 
 ## Areas
 

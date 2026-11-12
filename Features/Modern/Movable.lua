@@ -24,6 +24,51 @@ local function RestorePoints(frame, points)
     for _, p in ipairs(points) do frame:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
 end
 
+-- A saved point from a wider or taller screen would open the window out of reach after a
+-- resolution change. The window is moved to the nearest fully visible point.
+local function PullOnScreen(frame)
+    if not ns.Usable(UIParent) or not ns.Usable(frame) then return false end
+    if type(frame.GetLeft) ~= "function" or type(frame.GetBottom) ~= "function"
+        or type(frame.GetRight) ~= "function" or type(frame.GetTop) ~= "function"
+        or type(UIParent.GetLeft) ~= "function" or type(UIParent.GetBottom) ~= "function"
+        or type(UIParent.GetRight) ~= "function" or type(UIParent.GetTop) ~= "function" then
+        return false
+    end
+    local ok, left, bottom, right, top, uiLeft, uiBottom, uiRight, uiTop = pcall(function()
+        return frame:GetLeft(), frame:GetBottom(), frame:GetRight(), frame:GetTop(),
+            UIParent:GetLeft(), UIParent:GetBottom(), UIParent:GetRight(), UIParent:GetTop()
+    end)
+    if not ok then return false end
+    local function Number(value)
+        return type(value) == "number" and not ns.IsSecret(value)
+    end
+    if not (Number(left) and Number(bottom) and Number(right) and Number(top)
+        and Number(uiLeft) and Number(uiBottom) and Number(uiRight) and Number(uiTop)) then
+        return false
+    end
+    local width, height = right - left, top - bottom
+    -- A window the client has not sized yet is left to Blizzard.
+    if width <= 0 or height <= 0 then return false end
+    -- Keep the whole window visible. A window bigger than the screen keeps its left edge and,
+    -- when taller, its top edge, so the title and the drag handle stay reachable.
+    local x
+    if width >= uiRight - uiLeft then
+        x = uiLeft
+    else
+        x = math.max(uiLeft, math.min(left, uiRight - width))
+    end
+    local y
+    if height >= uiTop - uiBottom then
+        y = uiTop - height
+    else
+        y = math.max(uiBottom, math.min(bottom, uiTop - height))
+    end
+    if x == left and y == bottom then return false end
+    frame:ClearAllPoints()
+    frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
+    return true
+end
+
 local function Place(frame, entry)
     if not entry.active or frame.IsMoving and frame:IsMoving() then return end
     local point, relativePoint, x, y = ns.Settings.WindowPoint(entry.key)
@@ -35,6 +80,7 @@ local function Place(frame, entry)
     pending[frame] = nil
     frame:ClearAllPoints()
     frame:SetPoint(point, UIParent, relativePoint, x, y)
+    PullOnScreen(frame)
 end
 
 local function RestoreOriginal(frame, entry)

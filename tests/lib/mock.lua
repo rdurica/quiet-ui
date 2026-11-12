@@ -359,6 +359,7 @@ function M:build()
         mock.printed[#mock.printed + 1] = table.concat(parts, " ")
     end
     G.UIParent = frame("Frame", "UIParent", nil)
+    G.UIParent:SetSize(1920, 1080)
     G.WorldFrame = frame("Frame", "WorldFrame", nil)
     G.CreateFrame = function(kind, name, parent, template)
         mock.createLog[#mock.createLog + 1] = { kind = kind, name = name, parent = parent, template = template }
