@@ -148,13 +148,41 @@ local function Refresh(skin, frame)
     if ns.Usable(frame.CraftingPage) then Crafting(skin, frame.CraftingPage) end
 end
 
--- Cards fill in and pages appear when the window opens, recipe rows are pooled; they are skinned again then.
+-- Opening a page can update its pooled recipe list several times. Defer those walks to one per frame;
+-- list updates only need the rows, while page shows also refresh cards and crafting chrome.
+local pending = {}
+local refresh = CreateFrame("Frame")
+refresh:Hide()
+refresh:SetScript("OnUpdate", function(self)
+    self:Hide()
+    local batch = pending
+    pending = {}
+    for frame, full in pairs(batch) do
+        local skin = styled[frame]
+        if skin then
+            if full then
+                ns.Profiler.Run("modern professions", Refresh, skin, frame)
+            else
+                local page = frame.CraftingPage
+                local list = ns.Usable(page) and page.RecipeList
+                if ns.Usable(list) then ns.Profiler.Run("modern professions recipes", Recipes, skin, list) end
+            end
+        end
+    end
+end)
+
+local function Queue(frame, full)
+    if not styled[frame] then return end
+    pending[frame] = pending[frame] or full or false
+    refresh:Show()
+end
+
+-- Cards fill in and pages appear when the window opens; recipe rows are pooled.
 local function Watch(frame)
     if hooked[frame] then return end
     hooked[frame] = true
     local function Again()
-        local skin = styled[frame]
-        if skin then ns.Profiler.Run("modern professions", Refresh, skin, frame) end
+        Queue(frame, true)
     end
     for _, target in ipairs({ frame, frame.BookPage, frame.CraftingPage }) do
         if ns.Usable(target) and type(target.HookScript) == "function" then
@@ -163,13 +191,18 @@ local function Watch(frame)
     end
     local list = ns.Usable(frame.CraftingPage) and frame.CraftingPage.RecipeList
     local box = ns.Usable(list) and list.ScrollBox
-    if ns.Usable(box) and type(box.Update) == "function" then pcall(hooksecurefunc, box, "Update", Again) end
+    if ns.Usable(box) and type(box.Update) == "function" then
+        pcall(hooksecurefunc, box, "Update", function() Queue(frame, false) end)
+    end
 end
 
 function Professions.Apply(skin, frame)
     if not ns.Usable(frame) then return end
     styled[frame] = skin
-    skin:Remember(frame, "modern professions", function() styled[frame] = nil end)
+    skin:Remember(frame, "modern professions", function()
+        styled[frame] = nil
+        pending[frame] = nil
+    end)
     Modern.Window(skin, frame)
     Modern.Header(skin, frame)
     Modern.Character.IconTab(skin, frame.ProfessionsOverviewTab)
