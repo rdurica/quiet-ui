@@ -100,10 +100,35 @@ h.test("pooled loot cards are skinned on LOOT_OPENED and scroll updates, and not
     A.alpha(late.NameFrame, 0, "a card built after apply is skinned on LOOT_OPENED")
     local later = card(target, {}, "Silk")
     c.frame.ScrollBox:Update()
+    t.mock:tick(0)
     A.alpha(later.BorderFrame, 0, "a card built after apply is skinned when the scroll box updates")
     ns.Modern.Restore()
     local after = card(target, {}, "Wool")
     c.frame.ScrollBox:Update()
+    t.mock:tick(0)
     mock:fire("LOOT_OPENED")
     A.alpha(after.NameFrame, 0.9, "nothing is skinned after restore")
+end)
+
+
+h.test("Loot list callbacks share one card walk and cancel on restore", function(t)
+    local ns, A = t.ns, t.assert
+    local c = loot()
+    W.enable(ns)
+    t.mock:tick(0)
+    local target = c.frame.ScrollBox.ScrollTarget
+    local children, walks = target.GetChildren, 0
+    target.GetChildren = function(self)
+        walks = walks + 1
+        return children(self)
+    end
+    for _ = 1, 100 do c.frame.ScrollBox:Update() end
+    c.frame:Hide(); c.frame:Show()
+    A.eq(walks, 0)
+    t.mock:tick(0)
+    A.eq(walks, 1)
+    c.frame.ScrollBox:Update()
+    ns.Modern.Restore()
+    t.mock:tick(0)
+    A.eq(walks, 1)
 end)

@@ -66,6 +66,7 @@ h.test("Windows skins bank slots the bank panel fills for a new page", function(
     local late = P.new()
     local item = P.itemButton(late, panel, "BankItem9")
     panel:RefreshBankPanel()
+    t.mock:tick(0)
     A.ok(L.zoomed(item.icon), "a slot added for the new page is square-cropped")
     A.eq(P.visibleArt(late, R), "", "its slot art is held")
 end)

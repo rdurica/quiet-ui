@@ -69,6 +69,7 @@ Features\QuestMobs\Scan.lua
 Features\Glance\Glance.lua
 Features\Glance\Binding.lua
 Features\Modern\Modern.lua
+Features\Modern\Refresh.lua
 Features\Modern\Theme.lua
 Features\Modern\Skin.lua
 Features\Modern\Movable.lua

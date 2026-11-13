@@ -140,7 +140,7 @@ local function Watch(win, name)
     hooked[win] = true
     local function Again()
         local skin = styled[win]
-        if skin then ns.Profiler.Run("modern npc", Skin, skin, name) end
+        if skin then Modern.Refresh.Queue(skin, win, "npc", "modern npc", Skin, skin, name) end
     end
     if type(win.HookScript) == "function" then pcall(win.HookScript, win, "OnShow", Again) end
     local panel = GossipPanel(win)
@@ -160,8 +160,10 @@ local function Window(skin, name)
     Watch(win, name)
 end
 
-function Npc.Apply(skin)
-    for _, name in ipairs(ORDER) do ns.Profiler.Run("modern npc", Window, skin, name) end
+function Npc.Apply(skin, only)
+    for _, name in ipairs(ORDER) do
+        if not only or name == only then ns.Profiler.Run("modern npc", Window, skin, name) end
+    end
 end
 
 function Npc.Event(skin, event)

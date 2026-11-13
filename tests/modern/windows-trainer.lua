@@ -78,6 +78,7 @@ h.test("Windows skins a trainer row the list adds after the window was skinned",
     local header = category(late, c.box.ScrollTarget, true)
     local row = skill(late, c.box.ScrollTarget)
     c.box:Update()
+    t.mock:tick(0)
     A.eq(P.visibleArt(late, R, c.frame), "", "the new header and row lose their art")
     A.ok(L.zoomed(row.icon) and header ~= nil, "the new skill icon is cropped")
 end)

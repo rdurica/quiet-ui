@@ -10,9 +10,9 @@ local _, ns = ...
 --   Shapes.Walk(skin, frame, opts)  opts: bare = { [frame] = true } (art held, no fill or border),
 --                                         shape(skin, frame) -> true when the area handled the frame itself
 --   Shapes.Watch(root, key, again, list)  again() on root's OnShow, list(box) on every list update under it
---   Shapes.Keep(skin, frame, key, fn, opts)  fn(skin, frame) now and on every show, a walk of a list when it
---                                           updates (opts.list(skin, box) instead, none with
---                                           opts.walk = false), while applied
+--   Shapes.Keep(skin, frame, key, fn, opts)  fn(skin, frame) now; shows and list updates batch per frame
+--                                           (opts.list(skin, box) instead of walking a refilled list,
+--                                           no list walk with opts.walk = false), while applied
 
 local Modern = ns.Modern
 local Shapes = {}
@@ -328,25 +328,39 @@ function Shapes.Watch(root, key, again, list)
     WatchLists(root, list and function(box) ns.Profiler.Run(label, list, box) end or Run, 0)
 end
 
--- A window skinned by `fn(skin, frame)` now and again whenever it shows or a list under it updates, until its area
--- is restored. Returns the function that skins it again, for an area's own refill hooks.
-function Shapes.Keep(skin, frame, key, fn, opts)
-    if not ns.Usable(frame) then return end
-    kept[frame] = { skin = skin, fn = fn, opts = opts }
-    skin:Remember(frame, "modern kept", function() kept[frame] = nil end)
-    fn(skin, frame)
-    local function Again()
-        local entry = kept[frame]
-        if entry then entry.fn(entry.skin, frame) end
+-- A show refresh includes all lists; otherwise walk only the lists that changed.
+local function Refresh(frame)
+    local entry = kept[frame]
+    if not entry then return end
+    local full, boxes = entry.full, entry.boxes
+    entry.full, entry.boxes = false, {}
+    if full then
+        entry.fn(entry.skin, frame)
+        return
     end
-    Shapes.Watch(frame, key, Again, function(box)
-        local entry = kept[frame]
-        local opts = entry and entry.opts or {}
+    local opts = entry.opts or {}
+    for box in pairs(boxes) do
         if opts.list then
             opts.list(entry.skin, box)
-        elseif entry and opts.walk ~= false then
+        elseif opts.walk ~= false then
             Shapes.Walk(entry.skin, box, opts)
         end
-    end)
+    end
+end
+
+-- Skin now; batch later shows and list updates. The returned callback also batches an area's refill hooks.
+function Shapes.Keep(skin, frame, key, fn, opts)
+    if not ns.Usable(frame) then return end
+    kept[frame] = { skin = skin, fn = fn, opts = opts, boxes = {} }
+    skin:Remember(frame, "modern kept", function() kept[frame] = nil end)
+    fn(skin, frame)
+    local function Queue(box)
+        local entry = kept[frame]
+        if not entry then return end
+        if box then entry.boxes[box] = true else entry.full = true end
+        Modern.Refresh.Queue(entry.skin, frame, "shapes", "modern " .. key, Refresh, frame)
+    end
+    local function Again() Queue() end
+    Shapes.Watch(frame, key, Again, Queue)
     return Again
 end

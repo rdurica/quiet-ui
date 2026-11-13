@@ -205,6 +205,7 @@ h.test("Inspect fixes the PvP page when its regions are built only on the first 
     tabsSized(A, c, 34)
     c.build()
     c.frame:Show()
+    t.mock:tick(0)
     rankBelowSeason(A, c)
     A.eq(#mock.printed, 0, "nothing reported")
     ns.Modern.Restore()

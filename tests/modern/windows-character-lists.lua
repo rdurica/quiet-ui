@@ -130,6 +130,7 @@ h.test("Windows skins pooled Reputation rows acquired after apply on the next li
     local list = {}
     local late = row(c.rep.frame.ScrollBox.ScrollTarget, list, "ReputationBar", "Late")
     c.rep.frame.ScrollBox:Update()
+    t.mock:tick(0)
     A.ok(R.invisible(list[1], c.frame), "the new row's bar frame art is hidden")
     local well, track = ns.Modern.Theme().track, false
     for _, region in ipairs(late.Content.ReputationBar._regions) do
@@ -176,6 +177,7 @@ h.test("Windows turns Reputation, Currency and Statistics headers into section s
     A.ok(striped(c.rep.header), "a reputation header is a section strip")
     A.ok(striped(statHead), "a statistics header is a section strip")
     stats.ScrollBox:Update()
+    t.mock:tick(0)
     A.ok(striped(statHead), "the strip survives the list skinning the pooled header again")
     A.ok(R.invisible(list[1], c.frame), "the currency header banner is held")
     A.ok(R.invisible(head.StateIcon, c.frame), "Blizzard's collapse icon gives way to the sign")
@@ -236,6 +238,7 @@ h.test("Windows turns detail pane banners into section strips and reward icons i
     A.eq(edges(reward), 4, "with a thin border")
     local late = banner("Equal-Level Enemy")
     content:Layout()
+    t.mock:tick(0)
     A.ok(striped(late), "a banner laid out for a new selection is a strip too")
     ns.Modern.Restore()
     A.ok(not striped(title) and edges(reward) == 0, "Restore removes strips and borders")
@@ -287,6 +290,7 @@ h.test("Windows draws accent plus and minus signs for expand icons, follows Bliz
     A.eq(sign(head), 2, "a collapsed header shows a plus")
     A.eq(sign(toggle), 1, "an open sub-header shows a minus")
     stats.ScrollBox:Update()
+    t.mock:tick(0)
     A.eq(sign(toggle), 1, "the sign survives the list skinning the pooled row again")
     A.eq(sign(head), 2, "on a header too")
     A.ok(R.invisible(open, c.frame), "Blizzard's toggle art is held")
