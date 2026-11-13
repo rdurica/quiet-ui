@@ -6,6 +6,7 @@ local Profiler = {}
 ns.Profiler = Profiler
 
 local profile
+local timing
 
 function Profiler.Active()
     return profile ~= nil
@@ -16,7 +17,8 @@ function Profiler.Start()
         ns.Print("CPU timing is not available on this client.")
         return
     end
-    profile = { started = GetTime(), sections = {}, smooth = {}, details = {}, frames = 0 }
+    profile = { started = GetTime(), sections = {}, smooth = {}, details = {}, frames = 0,
+        captured = date("%Y-%m-%d %H:%M:%S") }
     ns.Print("Measuring QuietUI for 10 seconds. Keep playing in the same situation.")
 end
 
@@ -48,8 +50,10 @@ function Profiler.Finish(pending)
         saved[#saved + 1] = text
         if print then ns.Print(text) end
     end
+    emit("Captured: " .. profile.captured, true)
     emit(string.format("CPU timing: %.1f seconds, %d frames, preset %s; pending layout: %s.", duration,
         profile.frames, preset and preset.name or "<no preset>", tostring(pending or "none")), true)
+    emit("Section timings exclude nested sections; smooth and lap rows overlap their parent.", true)
     if ns.Layout.Status then emit(ns.Layout.Status(), true) end
     for i, row in ipairs(rows) do
         emit(RowText(row, duration), i <= 8)
@@ -66,8 +70,8 @@ function Profiler.Finish(pending)
     profile = nil
 end
 
-local function Record(sections, label, started)
-    local ms = math.max(0, debugprofilestop() - started)
+local function Record(sections, label, started, elapsed)
+    local ms = elapsed or math.max(0, debugprofilestop() - started)
     local section = sections[label]
     if not section then section = { ms = 0, calls = 0, max = 0 }; sections[label] = section end
     section.ms, section.calls = section.ms + ms, section.calls + 1
@@ -77,11 +81,19 @@ end
 -- ns.Run that also times the call while a profile runs. A nil label is not timed.
 function Profiler.Run(label, fn, ...)
     local active = label and profile
-    local started = active and debugprofilestop()
-    ns.Run(label or "fades", fn, ...)
-    if active then
-        Record(active.sections, label, started)
+    if not active then
+        ns.Run(label or "fades", fn, ...)
+        return
     end
+    local parent = timing
+    local scope = { started = debugprofilestop(), children = 0 }
+    timing = scope
+    ns.Run(label, fn, ...)
+    local finished = debugprofilestop()
+    timing = parent
+    local elapsed = math.max(0, finished - scope.started)
+    if parent then parent.children = parent.children + elapsed end
+    Record(active.sections, label, nil, math.max(0, elapsed - scope.children))
 end
 
 -- Steps inside a section: `local t = Profiler.Clock()` then `t = Profiler.Lap("step", t)` after each

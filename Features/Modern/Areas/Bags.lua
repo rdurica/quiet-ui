@@ -111,10 +111,9 @@ local function ServerEmpty(button)
 end
 
 -- A slot without an item: the wing atlas on its icon, or (older clients) no icon texture at all.
-local function Vacant(button)
+local function Vacant(button, server)
     local icon = IconOf(button)
     if not ns.Usable(icon) then return false end
-    local server = ServerEmpty(button)
     if server ~= nil then return server end
     if empty[icon] then return true end
     if type(icon.GetTexture) ~= "function" then return false end
@@ -173,8 +172,9 @@ local function Paint(skin, button)
     local theme = Modern.Theme()
     local well, sheen, mark, gloss, glow = Look(skin, button)
     local icon = IconOf(button)
-    local placeholder = ns.Usable(icon) and ServerEmpty(button) ~= nil
-    if Vacant(button) then
+    local server = ServerEmpty(button)
+    local placeholder = ns.Usable(icon) and server ~= nil
+    if Vacant(button, server) then
         -- The placeholder is held like the wing; Empty releases it when the icon changes.
         if placeholder and not empty[icon] then
             empty[icon] = true
@@ -211,6 +211,31 @@ local function Paint(skin, button)
     end
 end
 
+local pending = {}
+local repaint = CreateFrame("Frame")
+repaint:Hide()
+local Empty
+
+local function Queue(button)
+    if not styled[button] then return end
+    pending[button] = true
+    repaint:Show()
+end
+
+repaint:SetScript("OnUpdate", function(self)
+    self:Hide()
+    local batch = pending
+    pending = {}
+    for button in pairs(batch) do
+        local skin = styled[button]
+        if skin then
+            local icon = IconOf(button)
+            if ns.Usable(icon) and type(icon.GetAtlas) == "function" then Empty(skin, icon) end
+            ns.Profiler.Run("modern bags paint", Paint, skin, button)
+        end
+    end
+end)
+
 local function Follow(button)
     if hooked[button] then return end
     hooked[button] = true
@@ -220,7 +245,7 @@ local function Follow(button)
                 if type(texture[method]) == "function" then
                     pcall(hooksecurefunc, texture, method, function()
                         local skin = styled[button]
-                        if skin then ns.Profiler.Run("modern bags", Paint, skin, button) end
+                        if skin then Queue(button) end
                     end)
                 end
             end
@@ -229,7 +254,7 @@ local function Follow(button)
 end
 
 -- The empty-slot icon is held invisible; an item's icon gets Blizzard's alpha back.
-local function Empty(skin, icon)
+Empty = function(skin, icon)
     local ok, atlas = pcall(icon.GetAtlas, icon)
     if ok and atlas == EMPTY_ATLAS then
         empty[icon] = true
@@ -248,8 +273,7 @@ local function FollowIcon(button, icon)
             pcall(hooksecurefunc, icon, method, function()
                 local skin = styled[button]
                 if not skin then return end
-                ns.Profiler.Run("modern bags", Empty, skin, icon)
-                ns.Profiler.Run("modern bags", Paint, skin, button)
+                Queue(button)
             end)
         end
     end
@@ -267,7 +291,7 @@ end
 function Bags.Item(skin, button, equipped)
     if equipped then worn[button] = true end
     if styled[button] then
-        Paint(styled[button], button)
+        Queue(button)
         return
     end
     styled[button] = skin
@@ -290,14 +314,14 @@ function Bags.Item(skin, button, equipped)
         if ns.Usable(button[key]) then skin:Hold(button[key]) end
     end
     skin:Panel(button)
-    Paint(skin, button)
+    Queue(button)
     Follow(button)
 end
 
 -- Repaints the border of a skinned slot after Blizzard updates its item; nothing while the area is off.
 function Bags.Repaint(button)
     local skin = styled[button]
-    if skin then Paint(skin, button) end
+    if skin then Queue(button) end
 end
 
 local function SkinItems(skin, bag)
@@ -310,7 +334,7 @@ local function Watch(bag)
     hooked[bag] = true
     local function Refresh()
         local skin = styled[bag]
-        if skin then ns.Profiler.Run("modern bags", SkinItems, skin, bag) end
+        if skin then ns.Profiler.Run("modern bags scan", SkinItems, skin, bag) end
     end
     if type(bag.UpdateItems) == "function" then pcall(hooksecurefunc, bag, "UpdateItems", Refresh) end
     if type(bag.HookScript) == "function" then pcall(bag.HookScript, bag, "OnShow", Refresh) end
