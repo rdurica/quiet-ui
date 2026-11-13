@@ -73,6 +73,7 @@ h.test("Windows gives the loot window the dark template with bare cards, and res
     local c = loot()
     local before = L.snapshot(R.all(c.frame))
     W.enable(ns)
+    t.mock:tick(0)
     local frame, element = c.frame, c.card
     A.ok(W.isDark(frame), "the loot window is a dark window")
     A.eq(visibleArt(c), "", "metal border, flat background, card art, slot art and close art are all held")
@@ -92,6 +93,7 @@ h.test("pooled loot cards are skinned on LOOT_OPENED and scroll updates, and not
     W.area(ns, "windows")
     local c = loot()
     W.enable(ns)
+    t.mock:tick(0)
     local target = c.frame.ScrollBox.ScrollTarget
     local late = card(target, {}, "Copper")
     mock:fire("LOOT_OPENED")

@@ -50,7 +50,7 @@ Area colours outside the theme: health bar dark grey `#33363B` over the darker b
 - An area's events reach its `onEvent` only while it is applied. `ADDON_LOADED` for a listed addon applies it again, so load-on-demand frames get skinned.
 - Blizzard art is held at alpha 0 (also against `SetAlphaFromBoolean` and vertex alpha), never hidden. No `Hide()`, `Show()` or state drivers on bars or unit frames; fade rules keep owning alpha.
 - Hooks use `hooksecurefunc` / `HookScript`, are set once and do nothing while the area is off. No script is replaced.
-- Pooled rows and rebuilt pages are skinned again on the update that refills them. A window is also skinned again when it shows.
+- Pooled rows and rebuilt pages are skinned again on the update that refills them. A window is also skinned again when it shows. Bag and equipment slot paint requests are combined once per frame, using the latest item state; queued work does nothing after the area is restored.
 - Blizzard's shared templates (tabs, scroll bars, item buttons, three-piece buttons and input boxes, dropdowns, insets, dialog borders) are recognised by their keys, so a window file names only its own art. A dropdown becomes a dark field whose arrow is a bare grey chevron, light under the mouse; its reset button stays.
 - Protected regions and window points change only out of combat; a wanted point is applied when combat ends.
 - Secret values (health, power, XP, unit identity) go straight to widgets and are never compared or used as keys.

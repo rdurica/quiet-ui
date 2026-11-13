@@ -37,11 +37,11 @@ h.test("Temporary CPU timing measures, completes and stops reporting", function(
     mock.now = started + 10
     update(0.1)
     local lines = bodies(mock)
-    A.ok(lines[2]:find("CPU timing: 10.0 seconds", 1, true), "CPU timing summary: " .. tostring(lines[2]))
+    A.ok(lines[3]:find("CPU timing: 10.0 seconds", 1, true), "CPU timing summary: " .. tostring(lines[3]))
     A.eq(lines[#lines], "layout: 3.000 ms/s, 3.000 ms/call, max 3.00 ms (10 calls).")
     local saved = QuietUIDB.lastProfile
     A.type(saved, "table", "the result is kept for reading after /reload")
-    A.ok(saved[1]:find("CPU timing: 10.0 seconds", 1, true), "saved summary")
+    A.ok(saved[2]:find("CPU timing: 10.0 seconds", 1, true), "saved summary")
     A.eq(saved[#saved], "layout: 3.000 ms/s, 3.000 ms/call, max 3.00 ms (10 calls).", "saved rows")
     local count = #mock.printed
     mock.now = started + 20
@@ -119,4 +119,22 @@ h.test("Smooth breakdown rows, total, inactive timer and completion", function(t
     mock.now = started + 11
     update(0.1)
     A.eq(timerReads, reads, "Completed profiling must disable detailed timers too")
+end)
+
+h.test("Nested section timings exclude child time and keep the capture timestamp", function(t)
+    local mock, profiler = t.mock, t.ns.Profiler
+    bootDisabled(t)
+    profiler.Start()
+    profiler.Run("parent", function()
+        mock.profile = mock.profile + 2
+        profiler.Run("child", function() mock.profile = mock.profile + 3 end)
+        mock.profile = mock.profile + 5
+    end)
+    mock.now = mock.now + 10
+    profiler.Finish()
+    local saved = QuietUIDB.lastProfile
+    local output = table.concat(saved, "\n")
+    t.assert.ok(saved[1]:find("Captured: ", 1, true), "saved results identify the capture")
+    t.assert.ok(output:find("parent: 0.700 ms/s, 7.000 ms/call", 1, true), output)
+    t.assert.ok(output:find("child: 0.300 ms/s, 3.000 ms/call", 1, true), output)
 end)
