@@ -32,9 +32,18 @@ local function FirstWindow(skin, ...)
 end
 
 local function Apply(skin, loadedAddon)
-    -- Opening professions loads its UI on demand. Existing windows already have their skin.
+    -- These UIs load on demand. Existing windows already have their skin.
     if loadedAddon == "Blizzard_Professions" then
         Modern.Professions.Apply(skin, _G.ProfessionsFrame)
+        return
+    elseif loadedAddon == "Blizzard_PlayerSpells" or loadedAddon == "Blizzard_SpellBookUI" then
+        FirstWindow(skin, "SpellBookFrame", "PlayerSpellsFrame")
+        Modern.Spellbook.Apply(skin, _G.PlayerSpellsFrame)
+        Modern.Talents.Apply(skin, _G.PlayerSpellsFrame)
+        return
+    elseif loadedAddon == "Blizzard_TalentUI" then
+        FirstWindow(skin, "PlayerTalentFrame", "ClassTalentFrame")
+        Modern.Talents.Apply(skin, _G.PlayerSpellsFrame)
         return
     end
     Character(skin)
