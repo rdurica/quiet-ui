@@ -60,7 +60,7 @@ end
 
 -- A friend card: keyed Background, a FriendName and a highlight getter.
 local function IsRow(frame)
-    return IsTexture(rawget(frame, "Background")) and ns.Usable(rawget(frame, "PartyButton")) ~= nil
+    return IsTexture(rawget(frame, "Background")) and ns.Usable(rawget(frame, "PartyButton"))
         and rawget(frame, "FriendName") ~= nil and type(frame.LockHighlight) == "function"
 end
 
