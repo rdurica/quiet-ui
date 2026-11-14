@@ -276,6 +276,7 @@ function Skin:Button(button)
 end
 
 function Skin:Undo()
+    self.undoing = true
     local entries = self.entries
     self.entries = {}
     self.seen = setmetatable({}, { __mode = "k" })
@@ -283,4 +284,5 @@ function Skin:Undo()
         local ok, err = pcall(entries[i])
         if not ok then ns.Report("modern undo " .. tostring(self.key), err) end
     end
+    self.undoing = nil
 end

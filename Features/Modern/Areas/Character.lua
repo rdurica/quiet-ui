@@ -255,7 +255,7 @@ local function Watch(frame)
     hooked[frame] = true
     local function Again()
         local skin = styled[frame]
-        if skin then ns.Profiler.Run("modern character", Refresh, skin) end
+        if skin then Modern.Refresh.Queue(skin, frame, "character", "modern character", Refresh, skin) end
     end
     if type(frame.HookScript) == "function" then pcall(frame.HookScript, frame, "OnShow", Again) end
     local pane = _G.CharacterStatsPaneScrollBox

@@ -86,7 +86,10 @@ local function SendSlot(skin, button)
     PaintSlot(button)
     if hooked[button] then return end
     hooked[button] = true
-    local function Again() ns.Profiler.Run("modern mail", PaintSlot, button) end
+    local function Again()
+        local owner = styled[button]
+        if owner then Modern.Refresh.Queue(owner, button, "mail slot", "modern mail paint", PaintSlot, button) end
+    end
     for _, method in ipairs({ "SetNormalTexture", "ClearNormalTexture" }) do
         if type(button[method]) == "function" then pcall(hooksecurefunc, button, method, Again) end
     end

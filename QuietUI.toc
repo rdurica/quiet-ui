@@ -69,6 +69,7 @@ Features\QuestMobs\Scan.lua
 Features\Glance\Glance.lua
 Features\Glance\Binding.lua
 Features\Modern\Modern.lua
+Features\Modern\Refresh.lua
 Features\Modern\Theme.lua
 Features\Modern\Skin.lua
 Features\Modern\Movable.lua
@@ -83,6 +84,7 @@ Features\Modern\Areas\CastBars.lua
 Features\Modern\Areas\WindowChrome.lua
 Features\Modern\Areas\Controls.lua
 Features\Modern\Areas\Shapes.lua
+Features\Modern\Areas\BagPaintCache.lua
 Features\Modern\Areas\Bags.lua
 Features\Modern\Areas\Character.lua
 Features\Modern\Areas\CharacterLists.lua

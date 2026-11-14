@@ -125,14 +125,80 @@ h.test("Windows follows a talent's state and skins talents of a newly loaded tre
     local c = talents()
     W.enable(ns)
     c.partial.StateBorder:SetAtlas("talents-node-square-yellow")
+    t.mock:tick(0)
     A.ok(bordered(ns, c.partial, "accent"), "the border follows Blizzard's new state art")
     local list = {}
     local late = node(c.page.ButtonsParent, list, "gray")
     c.page:LoadTalentTreeInternal()
+    t.mock:tick(0)
     A.eq(visibleArt(c, list), "", "a talent acquired after apply loses its art when the tree loads")
     A.ok(bordered(ns, late, "border"), "an open talent gets the theme border")
     ns.Modern.Restore()
     local after = node(c.page.ButtonsParent, {}, "gray")
     c.page:LoadTalentTreeInternal()
     A.ok(not R.invisible(after.Shadow, c.frame), "the tree hook does nothing while the area is off")
+end)
+
+
+h.test("Talents batches tree loads and paints the latest node state once", function(t)
+    local ns, A = t.ns, t.assert
+    W.area(ns, "windows")
+    local c = talents()
+    W.enable(ns)
+    t.mock:tick(0)
+    local skin = ns.Modern.Skin("windows")
+    local border, paints = skin.Border, 0
+    skin.Border = function(self, target, ...)
+        if target == c.partial then paints = paints + 1 end
+        return border(self, target, ...)
+    end
+    for _ = 1, 100 do
+        c.partial.StateBorder:SetAtlas("talents-node-square-green")
+        c.page:LoadTalentTreeInternal()
+    end
+    c.partial.StateBorder:SetAtlas("talents-node-square-yellow")
+    c.page:Hide(); c.page:Show()
+    A.eq(paints, 0)
+    t.mock:tick(0)
+    A.eq(paints, 1, "show, loads and state updates share one refresh")
+    A.ok(bordered(ns, c.partial, "accent"))
+    t.mock:tick(0)
+    A.eq(paints, 1, "idle frames do not repaint")
+    for _ = 1, 100 do c.partial.StateBorder:SetAtlas("talents-node-square-locked") end
+    t.mock:tick(0)
+    A.eq(paints, 2, "state-only bursts paint once")
+    A.ok(bordered(ns, c.partial, "wellEdge"))
+    c.partial.StateBorder:SetAtlas("talents-node-square-yellow")
+    c.page:LoadTalentTreeInternal()
+    ns.Modern.Restore()
+    t.mock:tick(0)
+    A.eq(paints, 2, "restore cancels tree and node work")
+    ns.Modern.Apply()
+    paints = 0
+    c.partial.StateBorder:SetAtlas("talents-node-square-yellow")
+    c.page:LoadTalentTreeInternal()
+    t.mock:tick(0)
+    A.eq(paints, 1, "existing hooks work after reapply")
+end)
+
+h.test("Loading the talents UI does not reskin unrelated windows", function(t)
+    local ns, A = t.ns, t.assert
+    W.area(ns, "windows")
+    talents()
+    W.enable(ns)
+    local apply, bags = ns.Modern.Talents.Apply, ns.Modern.Bags.Apply
+    local talentCalls, bagCalls = 0, 0
+    ns.Modern.Talents.Apply = function(...)
+        talentCalls = talentCalls + 1
+        return apply(...)
+    end
+    ns.Modern.Bags.Apply = function(...)
+        bagCalls = bagCalls + 1
+        return bags(...)
+    end
+    for _, addon in ipairs({ "Blizzard_PlayerSpells", "Blizzard_TalentUI", "Blizzard_SpellBookUI" }) do
+        ns.Modern.AddonLoaded(addon)
+    end
+    A.eq(talentCalls, 3)
+    A.eq(bagCalls, 0)
 end)

@@ -31,7 +31,58 @@ local function FirstWindow(skin, ...)
     end
 end
 
-local function Apply(skin)
+local PANEL_ADDONS = {
+    Blizzard_MacroUI = "MacroFrame", Blizzard_InspectUI = "InspectFrame", Blizzard_FlightMap = "FlightMapFrame",
+    Blizzard_StableUI = "PetStableFrame", Blizzard_AddOnList = "AddonList", Blizzard_TimeManager = "TimeManagerFrame",
+    Blizzard_LegacySystem = "LegacySystemFrame",
+}
+local DIALOG_ADDONS = {
+    Blizzard_GameMenu = "GameMenuFrame", Blizzard_ColorPickerFrame = "ColorPickerFrame",
+    Blizzard_CompactRaidFrames = "CompactRaidFrameManager",
+}
+local SOCIAL_ADDONS = { Blizzard_FriendsFrame = "FriendsFrame", Blizzard_Communities = "CommunitiesFrame" }
+
+-- Loading a window must not re-walk bags, character slots and every other existing window.
+local function Loaded(skin, addon)
+    if PANEL_ADDONS[addon] then
+        Modern.Panels.Apply(skin, PANEL_ADDONS[addon])
+    elseif DIALOG_ADDONS[addon] then
+        Modern.Dialogs.Apply(skin, DIALOG_ADDONS[addon])
+    elseif SOCIAL_ADDONS[addon] then
+        Modern.Social.Apply(skin, SOCIAL_ADDONS[addon])
+    elseif addon == "Blizzard_Professions" then
+        Modern.Professions.Apply(skin, _G.ProfessionsFrame)
+    elseif addon == "Blizzard_PlayerSpells" or addon == "Blizzard_SpellBookUI" then
+        FirstWindow(skin, "SpellBookFrame", "PlayerSpellsFrame")
+        Modern.Spellbook.Apply(skin, _G.PlayerSpellsFrame)
+        Modern.Talents.Apply(skin, _G.PlayerSpellsFrame)
+    elseif addon == "Blizzard_TalentUI" then
+        FirstWindow(skin, "PlayerTalentFrame", "ClassTalentFrame")
+        Modern.Talents.Apply(skin, _G.PlayerSpellsFrame)
+    elseif addon == "Blizzard_QuestUI" then
+        FirstWindow(skin, "QuestLogFrame")
+        Modern.Npc.Apply(skin, "QuestFrame")
+    elseif addon == "Blizzard_AuctionHouseUI" then
+        Modern.Auction.Apply(skin, _G.AuctionHouseFrame)
+    elseif addon == "Blizzard_MailFrame" then
+        Modern.Mail.Apply(skin)
+    elseif addon == "Blizzard_RaidFrame" then
+        Modern.Social.Apply(skin, "FriendsFrame")
+        Modern.Social.Apply(skin, "RaidInfoFrame")
+    elseif addon == "Blizzard_GroupFinder_VanillaStyle" then
+        Modern.Finder.Apply(skin)
+    elseif addon == "Blizzard_TrainerUI" then
+        Modern.Trainer.Apply(skin, _G.ClassTrainerFrame)
+    elseif addon == "Blizzard_Calendar" then
+        Modern.Calendar.Apply(skin)
+    else
+        return false
+    end
+    return true
+end
+
+local function Apply(skin, loadedAddon)
+    if loadedAddon and Loaded(skin, loadedAddon) then return end
     Character(skin)
     FirstWindow(skin, "SpellBookFrame", "PlayerSpellsFrame")
     Modern.Spellbook.Apply(skin, _G.PlayerSpellsFrame)

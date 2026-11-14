@@ -48,9 +48,11 @@ local function Skin(def)
     end
 end
 
-function Social.Apply(skin)
+function Social.Apply(skin, only)
     for _, name in ipairs(ORDER) do
-        local def = WINDOWS[name]
-        ns.Profiler.Run("modern social", Modern.Shapes.Keep, skin, _G[name], "social", Skin(def), def.opts)
+        if not only or name == only then
+            local def = WINDOWS[name]
+            ns.Profiler.Run("modern social", Modern.Shapes.Keep, skin, _G[name], "social", Skin(def), def.opts)
+        end
     end
 end

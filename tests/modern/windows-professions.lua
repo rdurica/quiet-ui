@@ -192,6 +192,7 @@ h.test("Windows skins a professions card filled in after apply when the window s
     local list = {}
     local late = card(c.frame.BookPage.ProfessionsContentFrame, list, "SecondaryProfession2", "Fishing")
     c.frame:Show()
+    t.mock:tick(0)
     A.ok(R.invisible(late.Background, c.frame), "the late card loses its art on show")
     A.ok(tracked(late.StatusBar, ns.Modern.Theme()), "the late card's bar gets a dark track")
 end)
@@ -218,7 +219,67 @@ h.test("Windows shrinks professions side tabs to icon tabs and turns recipe cate
     A.eq(select(1, c.head.ButtonText:GetTextColor()), 1, "the category title keeps Blizzard's colour")
     local late = category(c.page.RecipeList.ScrollBox.ScrollTarget, {}, "Wands")
     c.page.RecipeList.ScrollBox:Update()
+    t.mock:tick(0)
     A.ok(striped(late, theme), "a category pooled in after apply becomes a strip on the list update")
     ns.Modern.Restore()
     A.ok(not striped(c.head, theme), "Restore removes the strip")
+end)
+
+
+h.test("Professions batches recipe updates and leaves page chrome alone", function(t)
+    local ns, A = t.ns, t.assert
+    W.area(ns, "windows")
+    local c = professions()
+    W.enable(ns)
+    t.mock:tick(0)
+    local children, holdArt = ns.Modern.Character.Children, ns.Modern.Character.HoldArt
+    local walks, chrome = 0, 0
+    ns.Modern.Character.Children = function(target)
+        if target == c.page.RecipeList.ScrollBox.ScrollTarget then walks = walks + 1 end
+        return children(target)
+    end
+    ns.Modern.Character.HoldArt = function(skin, target, ...)
+        if target == c.page then chrome = chrome + 1 end
+        return holdArt(skin, target, ...)
+    end
+    local box = c.page.RecipeList.ScrollBox
+    for _ = 1, 100 do box:Update() end
+    A.eq(walks, 0)
+    t.mock:tick(0)
+    A.eq(walks, 1)
+    A.eq(chrome, 0)
+    c.frame:Hide(); c.frame:Show()
+    box:Update()
+    t.mock:tick(0)
+    A.eq(walks, 2)
+    A.eq(chrome, 1, "a show requests the full page refresh")
+    box:Update()
+    ns.Modern.Restore()
+    t.mock:tick(0)
+    A.eq(walks, 2, "restore cancels pending work")
+    ns.Modern.Apply()
+    walks = 0
+    box:Update()
+    t.mock:tick(0)
+    A.eq(walks, 1, "existing hooks work after reapply")
+end)
+
+h.test("Loading professions only skins professions", function(t)
+    local ns, A = t.ns, t.assert
+    W.area(ns, "windows")
+    professions()
+    W.enable(ns)
+    local apply, bags = ns.Modern.Professions.Apply, ns.Modern.Bags.Apply
+    local professionCalls, bagCalls = 0, 0
+    ns.Modern.Professions.Apply = function(...)
+        professionCalls = professionCalls + 1
+        return apply(...)
+    end
+    ns.Modern.Bags.Apply = function(...)
+        bagCalls = bagCalls + 1
+        return bags(...)
+    end
+    ns.Modern.AddonLoaded("Blizzard_Professions")
+    A.eq(professionCalls, 1)
+    A.eq(bagCalls, 0, "loading professions does not rescan bags")
 end)

@@ -3,7 +3,8 @@ local _, ns = ...
 -- Modernize: the area registry, apply / restore and event routing. An area is one file under
 -- Areas/ registered through ns.Modern.Register; Theme, Skin and Movable are the shared tools.
 --
---   ns.Modern.Register{ key, label, apply(skin), restore(skin), events, onEvent(skin, event, ...), addons }
+--   ns.Modern.Register{ key, label, apply(skin, loadedAddon), restore(skin), events, onEvent(skin, event, ...), addons }
+-- loadedAddon is nil for a full apply; areas can limit work when a particular addon loads.
 
 local Modern = {}
 ns.Modern = Modern
@@ -124,7 +125,7 @@ function Modern.AddonLoaded(name)
         if area.applied then
             for _, addon in ipairs(area.addons) do
                 if addon == name then
-                    ns.Profiler.Run("modern " .. area.key, area.apply, area.skin)
+                    ns.Profiler.Run("modern " .. area.key, area.apply, area.skin, name)
                     break
                 end
             end

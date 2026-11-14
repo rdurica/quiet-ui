@@ -85,6 +85,7 @@ h.test("Windows skins game menu buttons Blizzard builds when the menu shows", fu
     local late = P.new()
     local logout = threeSlice(late, menu, "Log Out")
     menu:Show()
+    t.mock:tick(0)
     A.eq(P.visibleArt(late, R), "", "a button built on show is flat")
     A.ok(W.isDark(logout), "the new button has the dark field")
 end)

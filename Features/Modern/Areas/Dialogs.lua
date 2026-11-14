@@ -68,8 +68,10 @@ local function Skin(def)
     end
 end
 
-function Dialogs.Apply(skin)
+function Dialogs.Apply(skin, only)
     for _, def in ipairs(DIALOGS) do
-        ns.Profiler.Run("modern dialogs", Modern.Shapes.Keep, skin, _G[def.name], "dialogs", Skin(def))
+        if not only or def.name == only then
+            ns.Profiler.Run("modern dialogs", Modern.Shapes.Keep, skin, _G[def.name], "dialogs", Skin(def))
+        end
     end
 end

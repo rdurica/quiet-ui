@@ -29,6 +29,15 @@ local SEARCH_WIDTH = 140
 local styled = setmetatable({}, { __mode = "k" })  -- TalentsFrame -> journal while applied
 local nodes = setmetatable({}, { __mode = "k" })   -- talent button -> journal while applied
 local hooked = setmetatable({}, { __mode = "k" })
+local pendingTrees, pendingNodes = {}, {}
+local refresh = CreateFrame("Frame")
+refresh:Hide()
+
+local function QueueNode(button)
+    if not nodes[button] then return end
+    pendingNodes[button] = true
+    refresh:Show()
+end
 
 local function HoldKeys(skin, owner, keys)
     for _, key in ipairs(keys) do
@@ -68,12 +77,17 @@ end
 
 -- One talent: shadow, sheen and state art go, the icon is cropped and framed in its state colour.
 local function Node(skin, button)
+    -- A tree refresh includes this node's latest state, so it also consumes any queued repaint.
+    pendingNodes[button] = nil
     if nodes[button] then
         Paint(button)
         return
     end
     nodes[button] = skin
-    skin:Remember(button, "modern talent", function() nodes[button] = nil end)
+    skin:Remember(button, "modern talent", function()
+        nodes[button] = nil
+        pendingNodes[button] = nil
+    end)
     HoldKeys(skin, button, NODE_ART)
     SquareIcon(skin, button.Icon)
     Paint(button)
@@ -82,7 +96,7 @@ local function Node(skin, button)
     hooked[border] = true
     for _, method in ipairs({ "SetAtlas", "SetTexture" }) do
         if type(border[method]) == "function" then
-            pcall(hooksecurefunc, border, method, function() ns.Profiler.Run("modern talents", Paint, button) end)
+            pcall(hooksecurefunc, border, method, function() QueueNode(button) end)
         end
     end
 end
@@ -155,12 +169,26 @@ local function Refresh(skin, talents)
     end
 end
 
+refresh:SetScript("OnUpdate", function(self)
+    self:Hide()
+    local trees = pendingTrees
+    pendingTrees = {}
+    for talents in pairs(trees) do
+        local skin = styled[talents]
+        if skin then ns.Profiler.Run("modern talents", Refresh, skin, talents) end
+    end
+    local buttons = pendingNodes
+    pendingNodes = {}
+    for button in pairs(buttons) do ns.Profiler.Run("modern talents paint", Paint, button) end
+end)
+
 local function Watch(talents)
     if hooked[talents] then return end
     hooked[talents] = true
     local function Again()
-        local skin = styled[talents]
-        if skin then ns.Profiler.Run("modern talents", Refresh, skin, talents) end
+        if not styled[talents] then return end
+        pendingTrees[talents] = true
+        refresh:Show()
     end
     if type(talents.HookScript) == "function" then pcall(talents.HookScript, talents, "OnShow", Again) end
     for _, method in ipairs(LOAD_METHODS) do
@@ -172,7 +200,10 @@ function Talents.Apply(skin, frame)
     local talents = ns.Usable(frame) and frame.TalentsFrame
     if not ns.Usable(talents) then return end
     styled[talents] = skin
-    skin:Remember(talents, "modern talents", function() styled[talents] = nil end)
+    skin:Remember(talents, "modern talents", function()
+        styled[talents] = nil
+        pendingTrees[talents] = nil
+    end)
     HoldKeys(skin, talents, ART)
     if ns.Usable(talents.ClassBackground) then skin:Border(talents, Modern.Theme().wellEdge, talents.ClassBackground) end
     for _, key in ipairs(DIVIDERS) do Divider(skin, talents, key) end

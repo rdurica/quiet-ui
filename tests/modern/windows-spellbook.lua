@@ -154,6 +154,7 @@ h.test("Windows skins spell items of a new page and moves the tab accent with Bl
     local list = {}
     local late = item(c.paged.View2, list, "Fireball")
     c.paged:DisplayViewsForCurrentPage()
+    t.mock:tick(0)
     A.eq(visibleArt(c, list), "", "an item acquired after apply loses its art when the page is displayed")
     A.ok(L.zoomed(late.Button.Icon), "the late spell icon is square-cropped")
     c.tabs[1].SquareBackgroundActive:Hide()
@@ -162,6 +163,7 @@ h.test("Windows skins spell items of a new page and moves the tab accent with Bl
     ns.Modern.Restore()
     local after = item(c.paged.View1, {}, "Frostbolt")
     c.paged:DisplayViewsForCurrentPage()
+    t.mock:tick(0)
     A.ok(not R.invisible(after.Backplate, c.frame), "the page hook does nothing while the area is off")
 end)
 
@@ -196,4 +198,26 @@ h.test("Windows turns the spellbook's dark ink into light text, keeps grey state
     A.deep({ title:GetTextColor() }, INK, "category title ink returns on restore")
     name:SetTextColor(unpack(INK))
     A.deep({ name:GetTextColor() }, INK, "the colour hook does nothing while the area is off")
+end)
+
+
+h.test("Spellbook page callbacks share one refresh and cancel on restore", function(t)
+    local ns, A = t.ns, t.assert
+    local c = spells()
+    W.enable(ns)
+    t.mock:tick(0)
+    local children, walks = ns.Modern.Character.Children, 0
+    ns.Modern.Character.Children = function(target)
+        if target == c.paged.View1 then walks = walks + 1 end
+        return children(target)
+    end
+    for _ = 1, 100 do c.paged:DisplayViewsForCurrentPage() end
+    c.book:Hide(); c.book:Show()
+    A.eq(walks, 0)
+    t.mock:tick(0)
+    A.eq(walks, 1)
+    c.paged:DisplayViewsForCurrentPage()
+    ns.Modern.Restore()
+    t.mock:tick(0)
+    A.eq(walks, 1)
 end)
