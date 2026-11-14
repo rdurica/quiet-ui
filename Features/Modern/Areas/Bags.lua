@@ -168,13 +168,22 @@ local function Look(skin, button)
     end))
 end
 
+local cache = Modern.BagPaintCache
+
 local function Paint(skin, button)
-    local theme = Modern.Theme()
-    local well, sheen, mark, gloss, glow = Look(skin, button)
     local icon = IconOf(button)
     local server = ServerEmpty(button)
     local placeholder = ns.Usable(icon) and server ~= nil
-    if Vacant(button, server) then
+    local vacant = Vacant(button, server)
+    local color, rich
+    if not vacant then color, rich = SlotColor(button) end
+    local themeKey = ns.Settings.ModernTheme()
+    if cache.Same(button, skin, icon, themeKey, vacant, placeholder, rich, color) then return end
+    -- Save only a successful visual state. Painting is idempotent and the
+    -- journal invalidates this entry when styling is restored/turned off.
+    local theme = Modern.Theme()
+    local well, sheen, mark, gloss, glow = Look(skin, button)
+    if vacant then
         -- The placeholder is held like the wing; Empty releases it when the icon changes.
         if placeholder and not empty[icon] then
             empty[icon] = true
@@ -191,13 +200,13 @@ local function Paint(skin, button)
         for _, region in ipairs({ well, sheen, mark }) do region:Show() end
         gloss:Hide()
         glow:Hide()
+        cache.Put(button, skin, icon, themeKey, vacant, placeholder, rich, color)
         return
     end
     if placeholder and empty[icon] then
         empty[icon] = nil
         ns.ReleaseAlpha(icon)
     end
-    local color, rich = SlotColor(button)
     skin:Border(button, color)
     for _, region in ipairs({ well, sheen, mark }) do region:Hide() end
     gloss:SetColorTexture(1, 1, 1, 1)
@@ -209,6 +218,7 @@ local function Paint(skin, button)
     else
         glow:Hide()
     end
+    cache.Put(button, skin, icon, themeKey, vacant, placeholder, rich, color)
 end
 
 local pending = {}
@@ -297,6 +307,7 @@ function Bags.Item(skin, button, equipped)
     styled[button] = skin
     skin:Remember(button, "modern bag item", function()
         styled[button] = nil
+        cache.Forget(button)
         local icon = IconOf(button)
         if icon then empty[icon] = nil end
     end)

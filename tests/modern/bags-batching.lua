@@ -11,6 +11,7 @@ local function setup(t)
     local bag = B.bag("ContainerFrame1")
     ContainerFrame1 = bag
     local item = B.item(bag, "ContainerFrame1Item1", EPIC)
+    B.slotArt(item)
     B.atlas(item)
     W.enable(t.ns)
     t.mock:tick(0)
@@ -54,4 +55,43 @@ h.test("Turning Modern off discards queued slot work and restores the icon", fun
     W.enable(t.ns)
     t.mock:tick(0)
     t.assert.ok(B.same(B.border(item), t.ns.Modern.Theme().wellEdge), "re-enabling paints current state")
+end)
+
+
+h.test("Unchanged bag icon churn does not repaint, but quality and quest borders still update", function(t)
+    local _, item = setup(t)
+    local skin = t.ns.Modern.Skin("windows")
+    local original, paints = skin.Border, 0
+    function skin:Border(frame, ...)
+        if frame == item then paints = paints + 1 end
+        return original(self, frame, ...)
+    end
+
+    -- Texture refreshes do not change the material appearance of the slot.
+    for i = 1, 20 do
+        item.icon:SetTexture("Interface\\\\Icons\\\\NewItem")
+        t.ns.Modern.Bags.Repaint(item)
+        t.mock:tick(0)
+    end
+    t.assert.eq(paints, 0, "unchanged icon callbacks do not repaint")
+
+    B.quality(item, RARE)
+    t.mock:tick(0)
+    t.assert.eq(paints, 1, "quality change repaints exactly once")
+    t.assert.ok(B.same(B.border(item), RARE))
+
+    B.quest(item, true)
+    t.mock:tick(0)
+    t.assert.eq(paints, 2, "quest accent repaints exactly once")
+    t.assert.ok(B.same(B.border(item), t.ns.Modern.Theme().accent))
+
+    B.quest(item, false)
+    t.mock:tick(0)
+    t.assert.eq(paints, 3, "removing quest accent restores quality border")
+    t.assert.ok(B.same(B.border(item), RARE))
+
+    t.ns.Modern.Restore()
+    W.enable(t.ns)
+    t.mock:tick(0)
+    t.assert.ok(B.same(B.border(item), RARE), "restoring and reapplying paints again")
 end)
