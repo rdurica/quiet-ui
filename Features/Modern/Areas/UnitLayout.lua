@@ -192,7 +192,7 @@ local function After(skull, level)
     -- The skull starts on the box's left edge; the name follows it after a clear gap.
     if SkullShown(skull) then
         local ok, width = pcall(skull.GetWidth, skull)
-        if not ok or type(width) ~= "number" then width = 16 end
+        if not ok or type(width) ~= "number" or ns.IsSecret(width) then width = 16 end
         return { "BOTTOMLEFT", level, "BOTTOMLEFT", width - INSET - SKULL_PAD + SKULL_GAP, 0 }
     end
     return { "BOTTOMLEFT", level, "BOTTOMRIGHT", NAME_GAP, 0 }
