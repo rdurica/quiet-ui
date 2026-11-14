@@ -63,7 +63,8 @@ h.test("Windows restores SocialUIFrame and the old FriendsFrame exactly, on Rest
     local A, mock = t.assert, t.mock
     local ns, c, f = setup(t)
     local legacy = S.legacy(c)
-    local before = L.snapshot(R.all(UIParent))
+    -- Only the two friends windows: other areas stay applied and hook their own frames.
+    local before = L.snapshot(R.all(legacy, R.all(f.frame)))
     W.enable(ns)
     A.ok(W.isDark(legacy), "the old FriendsFrame is still skinned")
     A.ok(W.isDark(f.frame), "and so is SocialUIFrame")

@@ -14,6 +14,11 @@ local Rows = h.lib("modern-social-rows")
 Rows.use(P)
 S.use(P, Rows)
 
+-- A text the skin leaves alone: its own alpha and shown state, whatever its (fixture-hidden) page does.
+local function stays(text)
+    return text._shown ~= false and text._alpha ~= 0
+end
+
 local function setup(t)
     local ns = t.ns
     W.area(ns, "windows")
@@ -72,8 +77,8 @@ h.test("Windows gives the broadcast box and the unavailable notice the dark popo
     A.ok(W.isDark(f.edit), "its input is a dark field")
     A.eq(Q.unheld(c.art), "", "the DiamondMetal borders and the input pieces are held")
     A.ok(W.isDark(f.broadcast.UpdateButton) and W.isDark(f.broadcast.CancelButton), "Update and Cancel are flat buttons")
-    A.ok(not R.invisible(f.edit.PromptText, f.frame), "the prompt text stays")
-    A.ok(not R.invisible(f.notice.Text, f.frame), "the notice text stays")
+    A.ok(stays(f.edit.PromptText), "the prompt text stays")
+    A.ok(stays(f.notice.Text), "the notice text stays")
 end)
 
 for _, key in ipairs({ "FriendsList", "RecentAlliesList", "FriendRequestsList" }) do
@@ -118,7 +123,7 @@ h.test("Windows flattens every red and gold button of the window and their click
         local name = button.Text and button.Text:GetText() or ("button " .. index)
         A.ok(W.isDark(button), name .. " is a flat Modern button")
         A.ok(P.hasHover(button), name .. " lights up under the mouse")
-        A.ok(not R.invisible(button.Text, f.frame), name .. " keeps its label")
+        A.ok(stays(button.Text), name .. " keeps its label")
         button:Click()
         A.eq(button.clicks, 1, name .. " still clicks")
         A.eq(watches[index].n, 0, name .. " keeps its script")
@@ -165,7 +170,7 @@ h.test("Windows gives the raid page a flat All Assist checkbox and keeps its rol
     A.ok(not F.mark(f.assist, theme), "the mark follows Blizzard's state")
     for index, role in ipairs(f.roles) do
         A.alpha(role.Icon, 0.9, "role icon " .. index .. " stays")
-        A.ok(not R.invisible(role.Count, f.frame), "role count " .. index .. " stays")
+        A.ok(stays(role.Count), "role count " .. index .. " stays")
     end
 end)
 
