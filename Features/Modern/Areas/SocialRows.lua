@@ -1,9 +1,9 @@
 local _, ns = ...
 
--- The pooled rows of the friends list: a friend card stands bare (card and highlight held) with a quiet rule under
--- it, a faint wash under the mouse and an accent edge on the left while Blizzard marks it selected (the row's locked
--- highlight, followed through LockHighlight / UnlockHighlight). The group header becomes a section strip with an
--- accent minus, a plus while collapsed (the atlas of its CollapseButton icon).
+-- The pooled rows of the friends and recent allies lists: a card stands bare (card and highlight held) with a quiet
+-- rule under it, a faint wash under the mouse and an accent edge on the left while Blizzard marks it selected (the
+-- row's locked highlight, followed through LockHighlight / UnlockHighlight). The group header becomes a section strip
+-- with an accent minus, a plus while collapsed (the atlas of its CollapseButton icon).
 
 local Modern = ns.Modern
 local Rows = {}
@@ -58,10 +58,9 @@ local function Follow(row)
     pcall(hooksecurefunc, row, "UnlockHighlight", Set(false))
 end
 
--- A friend card: keyed Background, a FriendName and a highlight getter.
+-- A friend or recent ally card: a keyed Background and a PartyButton (ally rows have no FriendName).
 local function IsRow(frame)
     return IsTexture(rawget(frame, "Background")) and ns.Usable(rawget(frame, "PartyButton"))
-        and rawget(frame, "FriendName") ~= nil and type(frame.LockHighlight) == "function"
 end
 
 function Rows.Row(skin, frame)
