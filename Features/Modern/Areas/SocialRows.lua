@@ -103,6 +103,7 @@ local function PaintSign(header)
     local parts = skin:Own(button, "friend sign", function()
         return { Modern.GlyphLine(button, SIGN, 2), Modern.GlyphLine(button, 2, SIGN) }
     end)
+    if not parts then return end
     for _, line in ipairs(parts) do line:SetColorTexture(unpack(Modern.Theme().accent)) end
     parts[1]:Show()
     parts[2]:SetShown(IsPlus(button.Icon))
