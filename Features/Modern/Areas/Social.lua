@@ -49,6 +49,7 @@ local function Skin(def)
 end
 
 function Social.Apply(skin)
+    Modern.SocialWindow.Apply(skin)
     for _, name in ipairs(ORDER) do
         local def = WINDOWS[name]
         ns.Profiler.Run("modern social", Modern.Shapes.Keep, skin, _G[name], "social", Skin(def), def.opts)

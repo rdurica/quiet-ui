@@ -103,14 +103,18 @@ function Shapes.Hover(skin, button)
     end
 end
 
--- A bare chevron pointing down where the dropdown's gold arrow box was (the arrow is held, the field stays).
+-- A bare chevron pointing down where the dropdown's gold arrow box was (the arrow is held, the field stays). A
+-- dropdown with its arrow baked into the plate (common-dropdown-b-button) has none: the chevron sits at its right.
 local function Chevron(arrow)
     return function(button)
         local lines = { Modern.GlyphLine(button, CHEVRON, 2, 0, 0, -45), Modern.GlyphLine(button, CHEVRON, 2, 0, 0, 45) }
-        -- Anchored on the arrow, not the button centre.
         for index, line in ipairs(lines) do
             line:ClearAllPoints()
-            line:SetPoint("CENTER", arrow, "CENTER", index == 1 and -2.5 or 2.5, 0)
+            if arrow then
+                line:SetPoint("CENTER", arrow, "CENTER", index == 1 and -2.5 or 2.5, 0)
+            else
+                line:SetPoint("CENTER", button, "RIGHT", (index == 1 and -2.5 or 2.5) - 14, 0)
+            end
         end
         return lines
     end
@@ -259,6 +263,8 @@ function Shapes.One(skin, frame, opts)
         if IsTexture(arrow) then
             skin:Hold(arrow)
             Modern.GlyphButton(skin, frame, "dropdown chevron", Chevron(arrow), "text")
+        elseif (FileOf(frame.Background) or ""):find("common-dropdown-b", 1, true) then
+            Modern.GlyphButton(skin, frame, "dropdown chevron", Chevron(nil), "text")
         end
         return true
     elseif kind == "Button" and IsSquare(frame) then
