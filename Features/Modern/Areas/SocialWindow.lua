@@ -87,7 +87,11 @@ local function Shape(skin, frame)
     return false
 end
 
-local OPTS = { shape = Shape }
+local function List(skin, box)
+    Modern.SocialRows.Pool(skin, box)
+end
+
+local OPTS = { shape = Shape, list = List }
 
 -- The Battle.net bar: the infoBG plate and the tag pill go; the status dropdown and the tag are walked.
 local function Bar(skin, bar)
@@ -113,13 +117,8 @@ local function Skin(skin, frame)
     Modern.Shapes.Walk(skin, frame, OPTS)
 end
 
-local function List(skin, box)
-    Modern.SocialRows.Pool(skin, box)
-end
-
 function Window.Apply(skin)
     local frame = rawget(_G, KEY)
     if not ns.Usable(frame) then return end
-    OPTS.list = List
     Modern.Shapes.Keep(skin, frame, "social", Skin, OPTS)
 end
