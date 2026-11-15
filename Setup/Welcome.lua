@@ -1,7 +1,7 @@
 local _, ns = ...
 
--- The welcome: choose Classic or Modern, once per character. Same flat window as setup, without a close:
--- a card selects, Choose answers.
+-- The welcome: choose Classic or Modern, or Custom modules, once per character. Same flat window as setup,
+-- without a close: a card selects, Choose answers; Custom opens a second screen of module checkboxes.
 
 local Setup = ns.Setup
 local S = Setup.state
@@ -10,7 +10,10 @@ local CARD_W, IMAGE_H, SIDE = 300, 150, 20
 local WIDTH = CARD_W * 2 + SIDE * 3
 local CARD_TOP = Setup.HEADER + 52
 local CARD_H = IMAGE_H + 64
-local HEIGHT = CARD_TOP + CARD_H + 16 + 26 + 50
+local CUSTOM_H = 40
+local ACTION_Y = CARD_TOP + CARD_H + 16 + CUSTOM_H + 12
+local HEIGHT = ACTION_Y + 26 + 50
+local ROW_STEP = 44
 
 local CHOICES = {
     {
@@ -27,64 +30,88 @@ local CHOICES = {
     },
 }
 
+local CLASSIC = { chat = true, fading = true, helpers = true, layout = true, modernize = false }
+local MODERN = { chat = true, fading = true, helpers = true, layout = true, modernize = true }
+
+-- Modernize on is Modern, the Classic set is Classic, any other set selects no card.
 local function Current()
-    return ns.Settings.Modernize() and "modern" or "classic"
+    if ns.Settings.Modernize() then return "modern" end
+    if Setup.SameModules(Setup.ActiveModules(), CLASSIC) then return "classic" end
 end
 
-local function Choose(key)
+-- The answer goes into the effective settings. The old Modern chat and Modernize flags are gone with it.
+local function Write(set)
     ns.Settings.CharDB().welcomed = true
     local settings = ns.Settings.Effective()
-    local stored = type(settings.modernize) == "table" and settings.modernize or nil
-    if key == "modern" then
-        stored = stored or {}
-        stored.enabled = true
-        settings.modernize = stored
-    elseif stored then
-        stored.enabled = nil
-        if next(stored) == nil then settings.modernize = nil end
+    settings.chat = nil
+    if type(settings.modernize) == "table" then
+        settings.modernize.enabled = nil
+        if next(settings.modernize) == nil then settings.modernize = nil end
     end
+    settings.modules = Setup.StoredModules(set)
 end
 
--- A changed look reloads, so it is complete at once; the same look only closes, and the layout prompt follows.
--- ReloadUI from addon code is blocked on this client, so Choose is a secure button running /reload while the
--- selection changes the look; PreClick saves the choice first.
-local function Answered(frame, reloads)
+-- A changed set reloads, so it is complete at once; the same set only closes, and the layout prompt follows.
+-- ReloadUI from addon code is blocked on this client, so Choose and Save are secure buttons running /reload while
+-- the set changes; PreClick saves the answer first. The old set is restored first, out of combat.
+local function Answered(frame, button, reloads)
     frame:Hide()
-    if frame.changes and not reloads then
-        ns.Print("type /reload to finish the new look")
+    if button.changes and not reloads then
+        ns.Print("type /reload to finish the new modules")
     end
-    if not frame.changes then ns.Layout.Ensure() end
+    if not button.changes and ns.Settings.Module("layout") then ns.Layout.Ensure() end
 end
 
-local function ChooseButton(frame)
-    local button = Setup.Button(frame, "Choose", nil, "SecureActionButtonTemplate")
+-- False when the answer waits: Custom Save does not change modules in combat.
+local function Commit(frame, button)
+    local set = button.source(frame)
+    if not set then return false end
+    local combat = InCombatLockdown()
+    if button.changes and combat and button.strict then
+        ns.Print("Leave combat to change modules.")
+        return false
+    end
+    if button.changes and not combat and ns.DB().enabled and ns.RestoreAll then ns.RestoreAll() end
+    Write(set)
+    return true
+end
+
+local function ChooseButton(frame, text, source, strict)
+    local button = Setup.Button(frame, text, nil, "SecureActionButtonTemplate")
+    button.source, button.strict = source, strict
     if type(button.SetAttribute) ~= "function" then
         button:SetScript("OnClick", function()
-            if not frame.selected then return end
-            Choose(frame.selected)
-            local reloads = frame.changes and type(ReloadUI) == "function"
-            Answered(frame, reloads)
+            if not Commit(frame, button) then return end
+            local reloads = button.changes and type(ReloadUI) == "function"
+            Answered(frame, button, reloads)
             if reloads then ReloadUI() end
         end)
         return button
     end
     if type(button.RegisterForClicks) == "function" then button:RegisterForClicks("AnyUp", "AnyDown") end
     button:SetScript("PreClick", function()
-        if frame.selected then Choose(frame.selected) end
+        button.committed = Commit(frame, button)
     end)
     button:SetScript("PostClick", function()
-        Answered(frame, button:GetAttribute("type") == "macro")
+        if not button.committed then return end
+        button.committed = nil
+        Answered(frame, button, button:GetAttribute("type") == "macro")
     end)
     return button
 end
 
--- Only a look that changes runs /reload. Attributes are locked in combat; then chat asks for /reload.
-local function ArmReload(frame)
-    frame.changes = frame.selected ~= nil and frame.selected ~= Current()
-    local button = frame.choose
+-- Only a changed set runs /reload. Attributes are locked in combat; then chat asks for /reload.
+local function ArmReload(frame, button)
+    local set = button.source(frame)
+    button.changes = set ~= nil and not Setup.SameModules(Setup.ActiveModules(), set)
     if type(button.SetAttribute) ~= "function" or InCombatLockdown() then return end
     button:SetAttribute("macrotext", "/reload")
-    button:SetAttribute("type", frame.changes and "macro" or nil)
+    button:SetAttribute("type", button.changes and "macro" or nil)
+end
+
+local function SelectedSet(frame)
+    if frame.selected == "modern" then return MODERN end
+    if frame.selected == "classic" then return CLASSIC end
 end
 
 -- The chosen card keeps the accent edge; Choose waits for one.
@@ -94,7 +121,64 @@ local function Select(frame, key)
         Setup.EdgeColor(card, cardKey == key and Setup.Colors().accent or Setup.Colors().border)
     end
     if key then frame.choose:Enable() else frame.choose:Disable() end
-    ArmReload(frame)
+    ArmReload(frame, frame.choose)
+end
+
+local function CustomSet(frame) return frame.custom end
+
+-- Save waits for a checked module.
+local function PaintCustom(frame)
+    for _, row in ipairs(frame.moduleRows) do Setup.PaintBox(row.button.box, frame.custom[row.key]) end
+    if Setup.AnyModule(frame.custom) then frame.save:Enable() else frame.save:Disable() end
+    ArmReload(frame, frame.save)
+end
+
+local function BuildCustom(frame)
+    frame.moduleRows = {}
+    for i, info in ipairs(Setup.MODULES) do
+        local key = info.key
+        local button = Setup.Choice(frame, info.label, function()
+            frame.custom[key] = not frame.custom[key]
+            PaintCustom(frame)
+        end)
+        button:SetWidth(WIDTH - SIDE * 2)
+        button:SetPoint("TOPLEFT", SIDE, -(CARD_TOP + (i - 1) * ROW_STEP))
+        local note = Setup.Note(frame, info.text)
+        note:SetWidth(WIDTH - SIDE * 2 - 28)
+        note:SetPoint("TOPLEFT", SIDE + 28, -(CARD_TOP + (i - 1) * ROW_STEP + 22))
+        frame.moduleRows[i] = { key = key, button = button, note = note }
+    end
+    frame.back = Setup.Button(frame, "Back", function() frame.showScreen(frame, false) end)
+    frame.back:SetWidth(120)
+    frame.back:SetPoint("TOP", -70, -ACTION_Y)
+    frame.save = ChooseButton(frame, "Save", CustomSet, true)
+    frame.save:SetWidth(120)
+    frame.save:SetPoint("TOP", 70, -ACTION_Y)
+end
+
+local function ShowScreen(frame, custom)
+    -- The second screen is built on first use.
+    if custom and not frame.moduleRows then BuildCustom(frame) end
+    for _, card in pairs(frame.cards) do
+        if custom then card:Hide() else card:Show() end
+    end
+    for _, part in ipairs({ frame.customButton, frame.choose }) do
+        if custom then part:Hide() else part:Show() end
+    end
+    for _, row in ipairs(frame.moduleRows or {}) do
+        if custom then row.button:Show(); row.note:Show() else row.button:Hide(); row.note:Hide() end
+    end
+    for _, part in ipairs({ frame.back, frame.save }) do
+        if part then
+            if custom then part:Show() else part:Hide() end
+        end
+    end
+    frame.intro:SetText(custom and "Turn on the parts of QuietUI you want. The UI reloads when you save."
+        or "Pick the look you like. Both keep the screen quiet: fewer frames, the same game.")
+    if custom then
+        frame.custom = { chat = true, fading = false, helpers = false, layout = false, modernize = false }
+        PaintCustom(frame)
+    end
 end
 
 local function Card(frame, choice, x)
@@ -136,9 +220,15 @@ local function CreateWelcome()
     for i, choice in ipairs(CHOICES) do
         frame.cards[choice.key] = Card(frame, choice, SIDE + (i - 1) * (CARD_W + SIDE))
     end
-    frame.choose = ChooseButton(frame)
+    frame.showScreen = ShowScreen
+    frame.customButton = Setup.Button(frame, "Custom: choose which parts of QuietUI to turn on", function()
+        ShowScreen(frame, true)
+    end)
+    frame.customButton:SetSize(WIDTH - SIDE * 2, CUSTOM_H)
+    frame.customButton:SetPoint("TOP", 0, -(CARD_TOP + CARD_H + 16))
+    frame.choose = ChooseButton(frame, "Choose", SelectedSet)
     frame.choose:SetWidth(200)
-    frame.choose:SetPoint("TOP", 0, -(CARD_TOP + CARD_H + 16))
+    frame.choose:SetPoint("TOP", 0, -ACTION_Y)
     frame.note = Setup.Note(frame, "")
     frame.note:SetWidth(WIDTH - SIDE * 2)
     frame.note:SetJustifyH("CENTER")
@@ -169,6 +259,7 @@ function Setup.Welcome()
     S.welcome = S.welcome or CreateWelcome()
     local known = ns.Settings.Modernize() or db.layoutHash ~= nil or ns.Settings.ActivePreset() ~= nil
     S.welcome.note:SetText(Note())
+    ShowScreen(S.welcome, false)
     Select(S.welcome, known and Current() or nil)
     S.welcome:Show()
     ns.RaiseDialog(S.welcome)

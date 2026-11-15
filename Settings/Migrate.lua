@@ -41,8 +41,24 @@ end
 -- Migration runs once per visible table; a replaced table migrates again.
 local migrated = setmetatable({}, { __mode = "k" })
 
+-- The old Modern chat and Modernize checkboxes become modules. Idempotent and cheap.
+function ns.Settings.MigrateModules(settings)
+    if type(settings) ~= "table" then return end
+    local modern = settings.modernize
+    local legacyModern = type(modern) == "table" and modern.enabled ~= nil
+    if settings.chat == nil and not legacyModern then return end
+    if type(settings.modules) ~= "table" then settings.modules = {} end
+    if settings.chat == false then settings.modules.chat = false end
+    settings.chat = nil
+    if legacyModern then
+        if modern.enabled == true then settings.modules.modernize = true end
+        modern.enabled = nil
+    end
+end
+
 function ns.Settings.MigrateOnce(settings)
     if type(settings) ~= "table" then return end
+    ns.Settings.MigrateModules(settings)
     local visible = settings.visible
     if type(visible) ~= "table" or migrated[visible] then return end
     migrated[visible] = true

@@ -23,7 +23,7 @@ local function HoldFont(frame, fs)
         fs._quietHoldHook = true
         pcall(hooksecurefunc, fs, "SetAlpha", function(self, alpha)
             if self._quietApplying or not ns.DB().enabled then return end
-            if ns.Settings.ModernChat and not ns.Settings.ModernChat() then return end
+            if ns.Settings.Module and not ns.Settings.Module("chat") then return end
             if type(alpha) == "number" and not ns.IsSecret(alpha) and alpha < 0.01 then return end
             self._quietApplying = true
             self:SetAlpha(0)
@@ -90,7 +90,7 @@ local function TextSignature(frame, children)
 end
 
 local function HideNativeText(frame, force)
-    if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
+    if not ns.DB().enabled or not ns.Settings.Module("chat") then return end
     if Forbidden(frame) then return end
     -- The root child list is read once and shared by the signature and the walk.
     local okKids, rootKids = pcall(function()

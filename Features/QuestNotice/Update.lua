@@ -87,6 +87,7 @@ end
 
 ns.Feature({
     name = "quest notice",
+    enabled = function() return ns.Settings.Module("helpers") end,
     apply = function() Q.Apply() end,
     restore = function() Q.Restore() end,
     frame = function(elapsed) Q.Update(elapsed) end,

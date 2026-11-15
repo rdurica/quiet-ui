@@ -4,7 +4,7 @@ local _, ns = ...
 -- apply, restore and the per-frame phases, and the registry owns the event frame.
 --
 --   ns.Feature{ name, enabled, apply, restore, events, always, early, required, fade, frame, tick, rescan, hooks }
---   always: events also delivered while the addon is off (once booted).
+--   always: events also delivered while the addon is off or the feature's gate is off (once booted).
 --   early: events delivered before boot and while off (QuietUI's own boot events).
 --   required: events whose failed RegisterEvent is reported once as "<name> events".
 
@@ -66,7 +66,8 @@ local function OnEvent(_, event, ...)
     if not list then return end
     for i = 1, #list do
         local entry = list[i]
-        if Allowed(entry, event) and Registry.On(entry.feature) then
+        -- An always event is a cleanup the feature may need while its gate is off.
+        if Allowed(entry, event) and (entry.feature.alwaysSet[event] or Registry.On(entry.feature)) then
             -- One label per feature, so a failing feature reports once whatever event it was.
             ns.Profiler.Run(entry.feature.name, entry.fn, ...)
         end
@@ -100,7 +101,7 @@ local function Hook(feature, global, fn)
     if type(_G[global]) ~= "function" then return end
     feature.labels[global] = feature.labels[global] or (feature.name .. "." .. global)
     local ok = pcall(hooksecurefunc, global, function(...)
-        if not ns.DB().enabled then return end
+        if not ns.DB().enabled or not Registry.On(feature) then return end
         ns.Profiler.Run(feature.labels[global], fn, ...)
     end)
     if ok then feature.hooked[global] = true end

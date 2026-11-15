@@ -359,6 +359,7 @@ end
 
 ns.Feature({
     name = "highlights",
+    enabled = function() return ns.Settings.Module("helpers") end,
     apply = function() if type(Highlights.Apply) == "function" then Highlights.Apply() end end,
     restore = function() if type(Highlights.Restore) == "function" then Highlights.Restore() end end,
     events = events,

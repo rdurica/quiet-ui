@@ -7,14 +7,17 @@ local _, ns = ...
 local Setup = ns.Setup
 local S = Setup.state
 
+-- Each tab names its module; its tab and page exist only while that module is on in the draft.
 local TABS = {
+    { id = "modules", label = "Modules", height = 280 },
     { id = "general", label = "General", height = 224 },
-    { id = "visible", label = "Visible", height = 300 },
-    { id = "bars", label = "Bars", height = 370 },
-    { id = "groups", label = "Groups", height = 416 },
-    { id = "player", label = "Player", height = 352 },
-    { id = "chat", label = "Misc.", height = 260 },
-    { id = "modern", label = "Modern", height = 310 },
+    { id = "visible", label = "Visible", height = 300, module = "fading" },
+    { id = "bars", label = "Bars", height = 370, module = "fading" },
+    { id = "groups", label = "Groups", height = 416, module = "fading" },
+    { id = "player", label = "Player", height = 352, module = "fading" },
+    { id = "chat", label = "Chat", height = 130, module = "chat" },
+    { id = "helpers", label = "Helpers", height = 260, module = "helpers" },
+    { id = "modern", label = "Modern", height = 310, module = "modernize" },
     { id = "info", label = "Info", height = 200 },
 }
 
@@ -44,8 +47,36 @@ local function TabButton(parent, text, onClick)
     return button
 end
 
+local function TabOn(tab)
+    return not tab.module or (Setup.draft.modules and Setup.draft.modules[tab.module])
+end
+
+-- The sidebar lists the tabs whose module is on, without gaps. An open page whose tab left falls back to Modules.
+local function LayoutTabs(frame)
+    local row = 0
+    for _, tab in ipairs(frame.tabs) do
+        if TabOn(tab) then
+            tab:ClearAllPoints()
+            tab:SetPoint("TOPLEFT", 8, -(Setup.HEADER + 12) - row * (TAB_H + 2))
+            tab:Show()
+            row = row + 1
+        else
+            tab:Hide()
+        end
+    end
+    for _, tab in ipairs(frame.tabs) do
+        if tab.id == frame.page and not TabOn(tab) then
+            frame.page = "modules"
+            for _, page in ipairs(frame.pages) do
+                if page.id == "modules" then page:Show() else page:Hide() end
+            end
+        end
+    end
+end
+
 -- The selected tab is a strip with an accent mark; the others are plain grey text.
 function Setup.PaintTabs(frame)
+    LayoutTabs(frame)
     for _, tab in ipairs(frame.tabs) do
         if tab.id == frame.page then
             tab.fill:Show(); tab.mark:Show()
@@ -130,10 +161,16 @@ end
 
 local function Footer(widget)
     widget.reset = Setup.Button(widget, "Reset default", function()
+        -- Back to the default modules is a module change like in Save: restore, then reload.
+        local reload = ns.DB().enabled and type(ReloadUI) == "function"
+            and not Setup.SameModules(Setup.ActiveModules(), Setup.ReadModules({}))
+        if reload and InCombatLockdown() then ns.Print("Leave combat to change modules."); return end
+        if reload and ns.RestoreAll then ns.RestoreAll() end
         if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         ns.Settings.ActivatePreset(nil, {})
         Setup.LoadSavedDraft()
         Setup.Paint()
+        if reload then ReloadUI(); return end
         if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
         if ns.ApplyAll then ns.ApplyAll() end
     end)
@@ -210,14 +247,14 @@ local function CreateSetup()
 
     widget.tabs = {}
     widget.pages = {}
-    for index, info in ipairs(TABS) do
+    for _, info in ipairs(TABS) do
         local id = info.id
         local tab = TabButton(widget, info.label, function()
             ShowPage(widget, id)
         end)
         tab.id = id
+        tab.module = info.module
         tab:SetFrameLevel(widget:GetFrameLevel() + 20)
-        tab:SetPoint("TOPLEFT", 8, -(Setup.HEADER + 12) - (index - 1) * (TAB_H + 2))
         widget.tabs[#widget.tabs + 1] = tab
         widget.pages[#widget.pages + 1] = Page(widget, id, info.height)
     end

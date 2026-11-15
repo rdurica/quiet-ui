@@ -11,6 +11,7 @@ Ever hidden the UI just to enjoy the view? QuietUI lets you play like that. Whil
 The first time you log in, each character picks a look:
 
 - **Classic** keeps Blizzard's frames, just quieter.
+- **Custom** lets you switch on only the parts you want, for example just the chat.
 - **Modern** (experimental) gives the UI a flat, dark graphite style: slim unit frames, clean windows, and a tidier map, minimap and tooltips. You can turn any area off on its own, and switching Modern off brings the original look back.
 
 <p align="center">
@@ -18,6 +19,10 @@ The first time you log in, each character picks a look:
 <img src="https://media.forgecdn.net/attachments/2152/163/03-modern-hud-jpg.jpg" width="49%" alt="Modern in combat">
 </p>
 <p align="center"><em>The same fight in Classic (left) and Modern (right).</em></p>
+
+## Modules
+
+QuietUI has five modules: **Chat**, **Fading**, **Helpers**, **Layout** and **Modernize**. Choose **Custom** in the first-run window, or the **Modules** tab in `/quiet setup`, to switch on only what you want. A module that is off changes nothing and its settings tabs disappear. Changing modules reloads the UI.
 
 ## What it does
 
@@ -42,12 +47,14 @@ Type `/quiet setup` or click the minimap button. Everything is in one window, wi
 
 | Tab | What you set there |
 |---|---|
+| Modules | Switch the five modules on or off |
 | General | Shared presets and the bundled Edit Mode layout |
 | Visible | *Always visible* or *Only on hover* for each part of the HUD |
 | Bars, Groups | Which bars fade together, and bars for enemy or friendly targets |
 | Player | Player frame and pet, buffs and debuffs, the range indicator |
-| Misc. | Modern chat, quest updates, highlights and quest mobs |
-| Modern | The Modern look, its theme, and each area on its own |
+| Chat | Chat fade time and tab position |
+| Helpers | Quest updates, highlights and quest mobs |
+| Modern | The Modern theme, and each area on its own |
 | Info | A short introduction and how Glance works |
 
 <p align="center">

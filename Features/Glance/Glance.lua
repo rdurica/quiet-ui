@@ -11,7 +11,7 @@ BINDING_CATEGORY_QUIETUI = "QuietUI"
 BINDING_NAME_QUIETUI_GLANCE = "Glance"
 
 function Glance.Toggle()
-    if not ns.DB().enabled then return end
+    if not ns.DB().enabled or not ns.Settings.Module("fading") then return end
     Glance.state.active = not Glance.state.active
 end
 

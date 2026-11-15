@@ -38,6 +38,7 @@ function Layout.UpdatePreview()
 end
 
 function Layout.Preview(ref)
+    if not ns.Settings.Module("layout") then return end
     if not S.previewOriginal then
         if not Layout.Ready() then return end
         local info = Layout.Load()

@@ -6,12 +6,14 @@ The goal is a clean UI, not a configurable framework. It works out of the box; s
 
 | File | Covers |
 |------|--------|
-| [setup.md](setup.md) | The `/quiet` command, the `/quiet setup` window, its look, and chat messages. |
+| [setup.md](setup.md) | The `/quiet` command, the `/quiet setup` window, the welcome, its look, and chat messages. |
 | [settings.md](settings.md) | What `QuietUIDB` (account) and `QuietUICharDB` (character) may hold, with defaults. |
 | [general.md](general.md) | Shared presets, `/quiet preset`, interface modes, and the bundled Edit Mode layout. |
 | [visible.md](visible.md) | Always visible and Only on hover, and the rules for each faded HUD element except action bars and the player frame. |
 | [bars.md](bars.md) | Action bar fade groups, the swing timer, Enemy/Friend, and group visibility. |
 | [player.md](player.md) | Player and pet frames, thresholds, a living target, buffs and debuffs, and the In range gradient. |
-| [misc.md](misc.md) | Modern chat, quest update notices, Highlights, and Quest mobs. |
-| [modern.md](modern.md) | Modernize: the Modern tab, theme, the area list, and movable windows. |
+| [modules.md](modules.md) | The five modules, what each covers, defaults, and how a change applies. |
+| [chat.md](chat.md) | Modern chat and chat input history. |
+| [helpers.md](helpers.md) | Quest update notices, Highlights, and Quest mobs. |
+| [modern.md](modern.md) | The Modernize module: the Modern tab, theme, the area list, and movable windows. |
 | [glance.md](glance.md) | The Glance key and `/quiet glance`. |

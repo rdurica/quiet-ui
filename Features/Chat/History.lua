@@ -23,7 +23,7 @@ local function Replay(edit, line)
 end
 
 local function Store(source, line)
-    if replaying or not ns.DB().enabled or type(line) ~= "string" or ns.IsSecret(line) or line == "" then return end
+    if replaying or not ns.DB().enabled or not ns.Settings.Module("chat") or type(line) ~= "string" or ns.IsSecret(line) or line == "" then return end
     local list = ns.Settings.ChatHistory()
     if list[#list] == line then return end
     list[#list + 1] = line
@@ -50,7 +50,7 @@ end
 Chat.BindHistory = BindHistory
 
 function Chat.ApplyHistory()
-    if not ns.DB().enabled then return end
+    if not ns.DB().enabled or not ns.Settings.Module("chat") then return end
     for i = 1, Chat.ChatCount() do
         local edit = Chat.Window(i, "EditBox")
         if edit and ns.Usable(edit) then BindHistory(edit) end

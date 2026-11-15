@@ -22,9 +22,8 @@ local function RangeKindText(kind)
     return "Unfriendly"
 end
 
--- Theme and the areas show only while Modernize is checked.
+-- The page only shows while Modernize is on, so its options are always usable.
 function Setup.PaintModern(frame)
-    Setup.PaintBox(frame.modernize.box, draft.modernize)
     local name = draft.modernTheme or "dark"
     frame.modernTheme.value:SetText(name:sub(1, 1):upper() .. name:sub(2))
     for _, row in ipairs(frame.modernAreas) do
@@ -32,9 +31,6 @@ function Setup.PaintModern(frame)
     end
     Setup.PaintBox(frame.modernXPGain.box, draft.modernXPGain)
     if draft.modernAreas.status ~= false then frame.modernXPGain:Enable() else frame.modernXPGain:Disable() end
-    for _, widget in ipairs(frame.modernOptions) do
-        if draft.modernize then widget:Show() else widget:Hide() end
-    end
 end
 
 function Setup.Paint()
@@ -43,7 +39,16 @@ function Setup.Paint()
         Setup.ButtonText(S.frame.presetSelector, S.presetName or "<no preset>")
         Setup.ButtonText(S.frame.layoutSelector, ns.Layout.Label and ns.Layout.Label(S.presetLayout)
             or (S.presetLayout and S.presetLayout.layoutName or "Choose layout"))
-        if S.presetName then
+        local layoutOn = draft.modules.layout
+        for _, part in ipairs({ S.frame.layoutHeader, S.frame.import }) do
+            if layoutOn then part:Show() else part:Hide() end
+        end
+        if not layoutOn then
+            S.frame.forceLayout:Hide()
+            S.frame.layoutSelector:Hide()
+            if S.presetName then S.frame.renamePreset:Enable() else S.frame.renamePreset:Disable() end
+            if S.selectedPresetId then S.frame.deletePreset:Enable() else S.frame.deletePreset:Disable() end
+        elseif S.presetName then
             S.frame.forceLayout:Hide()
             S.frame.layoutSelector:Show()
             S.frame.renamePreset:Enable()
@@ -99,8 +104,8 @@ function Setup.Paint()
     if S.frame.highlightHerb then Setup.PaintBox(S.frame.highlightHerb.box, draft.highlightHerb) end
     if S.frame.highlightOre then Setup.PaintBox(S.frame.highlightOre.box, draft.highlightOre) end
     if S.frame.highlightQuest then Setup.PaintBox(S.frame.highlightQuest.box, draft.highlightQuest) end
-    if S.frame.chat then
-        Setup.PaintBox(S.frame.chat.box, draft.chat)
+    if S.frame.moduleRows then
+        for _, row in ipairs(S.frame.moduleRows) do Setup.PaintBox(row.button.box, draft.modules[row.key]) end
     end
     if S.frame.fade then
         S.frame.fade.value:SetText(FadeText(draft.chatFade))
@@ -130,7 +135,7 @@ function Setup.Paint()
             end
         end
     end
-    if S.frame.modernize then Setup.PaintModern(S.frame) end
+    if S.frame.modernTheme then Setup.PaintModern(S.frame) end
     if S.frame.groupRows then
         for _, row in ipairs(S.frame.groupRows) do
             row.value:SetText(tostring(draft.groups[row.id]))

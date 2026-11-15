@@ -45,7 +45,7 @@ local TAB_KEYS = {
 local stripping = false
 local chromeStripped = false
 local function StripTab(tab)
-    if not tab or not ns.DB().enabled or not ns.Settings.ModernChat() then return end
+    if not tab or not ns.DB().enabled or not ns.Settings.Module("chat") then return end
     local marked = ns.MarkingChat
     ns.MarkingChat = true
     ns.HideTextures(tab)
@@ -61,7 +61,7 @@ local function StripTab(tab)
     if not tab._quietClick and tab.HookScript then
         tab._quietClick = true
         tab:HookScript("OnClick", function()
-            if ns.DB().enabled and ns.Settings.ModernChat() then StripTab(tab) end
+            if ns.DB().enabled and ns.Settings.Module("chat") then StripTab(tab) end
         end)
     end
     ns.MarkingChat = marked
@@ -134,7 +134,7 @@ local function StripDock()
 end
 
 function Chat.StripAll(force)
-    if stripping or not ns.DB().enabled or not ns.Settings.ModernChat() then return end
+    if stripping or not ns.DB().enabled or not ns.Settings.Module("chat") then return end
     stripping = true
     ns.MarkingChat = true
     if force then chromeStripped = false end
@@ -171,7 +171,7 @@ end
 
 function Chat.Restrip(frame)
     if stripping or not ns.Usable(frame) or not OwnChatFrame(frame) or not ns.DB().enabled
-        or not ns.Settings.ModernChat() then return end
+        or not ns.Settings.Module("chat") then return end
     stripping = true
     ns.MarkingChat = true
     local ok, err = pcall(StripChat, frame)

@@ -226,7 +226,7 @@ local function ReleaseEditMouse(edit)
 end
 
 local function SyncEdit(edit)
-    if not ns.DB().enabled or not ns.Settings.ModernChat() then
+    if not ns.DB().enabled or not ns.Settings.Module("chat") then
         ReleaseEditMouse(edit)
         edit._quietAlpha = nil
         if edit._quietPlate then
@@ -281,7 +281,7 @@ Chat.BindEdit = BindEdit
 
 -- Focus events can be missed, so visible input boxes are checked every frame.
 function Chat.SyncVisibleEdits()
-    if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
+    if not ns.DB().enabled or not ns.Settings.Module("chat") then return end
     for i = 1, ChatCount() do
         local edit = _G["ChatFrame" .. i .. "EditBox"]
         if edit and edit._quietEdit and edit:IsShown() then

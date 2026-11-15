@@ -128,7 +128,7 @@ local function RestoreTabPoints(list)
 end
 
 local function PlaceTabs()
-    if placingTabs or not ns.DB().enabled or not ns.Settings.ModernChat() then return end
+    if placingTabs or not ns.DB().enabled or not ns.Settings.Module("chat") then return end
     placingTabs = true
     local ok, err = pcall(function()
         local top = ns.Settings.ChatTabs() == "top"

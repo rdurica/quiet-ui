@@ -24,5 +24,6 @@ end
 
 ns.Feature({
     name = "glance",
+    enabled = function() return ns.Settings.Module("fading") end,
     restore = function() Glance.state.active = false end,
 })

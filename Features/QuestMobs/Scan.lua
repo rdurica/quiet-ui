@@ -189,6 +189,7 @@ end
 
 ns.Feature({
     name = "quest mobs",
+    enabled = function() return ns.Settings.Module("helpers") end,
     apply = function() if type(QuestMobs.Apply) == "function" then QuestMobs.Apply() end end,
     restore = function() if type(QuestMobs.Restore) == "function" then QuestMobs.Restore() end end,
     events = events,

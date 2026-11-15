@@ -5,6 +5,7 @@ local _, ns = ...
 
 ns.Feature{
     name = "modern",
+    enabled = function() return ns.Settings.Module("modernize") end,
     apply = ns.Modern.Apply,
     restore = ns.Modern.Restore,
     events = {
