@@ -6,8 +6,7 @@ local function readLines(path)
     local f = assert(io.open(path, "rb"), "cannot open " .. path)
     local lines = {}
     for line in f:lines() do
-        line = line:gsub("\r$", "")
-        lines[#lines + 1] = line
+        lines[#lines + 1] = (line:gsub("\r$", ""))
     end
     f:close()
     return lines
