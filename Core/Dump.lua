@@ -179,8 +179,15 @@ local function Errors()
     local lines = {}
     for _, entry in ipairs(list) do
         if type(entry) == "table" then
-            lines[#lines + 1] = string.format("%s x%s, %s, QuietUI %s", Show(entry.name), Show(entry.count),
+            local head = string.format("%s x%s, %s, QuietUI %s", Show(entry.name), Show(entry.count),
                 Show(entry.time), Show(entry.version))
+            if entry.combat ~= nil then head = head .. ", combat: " .. (entry.combat and "yes" or "no") end
+            -- "none" is stored for outside; shown as "outside" so it never reads as an empty section
+            if entry.instance ~= nil then
+                head = head .. ", instance: " .. (entry.instance == "none" and "outside" or Show(entry.instance))
+            end
+            if entry.group ~= nil then head = head .. ", group: " .. Show(entry.group) end
+            lines[#lines + 1] = head
             lines[#lines + 1] = "  " .. Show(entry.message):gsub("\n", "\n  ")
             local stack = Show(entry.stack)
             if stack ~= "" and stack ~= "?" then lines[#lines + 1] = "  " .. stack:gsub("\n", "\n  ") end
@@ -289,6 +296,13 @@ local function Settings()
         if key ~= "lastDump" and key ~= "errors" then db[key] = value end
     end
     local char = type(QuietUICharDB) == "table" and QuietUICharDB or {}
+    -- Sent chat lines are private: only their count goes into the report.
+    if char.chatHistory ~= nil then
+        local copy = {}
+        for key, value in pairs(char) do copy[key] = value end
+        copy.chatHistory = "<" .. (type(char.chatHistory) == "table" and #char.chatHistory or 0) .. " lines>"
+        char = copy
+    end
     return "QuietUICharDB = " .. Dump.Serialize(char) .. "\nQuietUIDB = " .. Dump.Serialize(db)
 end
 

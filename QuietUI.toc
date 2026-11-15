@@ -20,6 +20,7 @@ Core\World.lua
 Core\Plates.lua
 Core\Feature.lua
 Core\WorldFeature.lua
+Core\Blocked.lua
 Settings\Store.lua
 Settings\Getters.lua
 Settings\Groups.lua
