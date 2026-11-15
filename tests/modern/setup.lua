@@ -1,13 +1,14 @@
--- Modern tab of the setup window: tab order, Modernize checkbox, dependent options from the
+-- Modern tab of the setup window: tab order, the Modernize checkbox on the Modules tab, the options from the
 -- registry, drafts, Save, presets and Reset default.
 local h = ...
 local L = h.lib("modern")
 
 local function click(b) b._scripts.OnClick(b) end
 
+-- Opens the Modern tab. The tab is only listed while Modernize is on, so a stored table decides that.
 local function fixture(t, stored)
     local ns = t.ns
-    QuietUIDB = {}; QuietUICharDB = stored or {}
+    QuietUIDB = {}; QuietUICharDB = stored or { modules = { modernize = true } }
     ns.ApplyAll = function() end
     ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
     ns.Layout.Choices = function() return {} end
@@ -35,46 +36,78 @@ local function stepper(t, label)
 end
 local function checked(button) return button.box._checked == true end
 
-h.test("Modern is the seventh of eight tabs, between Misc. and Info", function(t)
+local function tabIndex(ui, id)
+    for i, tab in ipairs(ui.tabs) do
+        if tab.id == id then return i end
+    end
+end
+
+local function inside(frame, page)
+    local p = frame
+    while p do
+        if p == page then return true end
+        p = p._parent
+    end
+    return false
+end
+
+h.test("Modules is the first tab and Modern sits between Helpers and Info", function(t)
     local A = t.assert
     local ui = fixture(t)
-    A.eq(#ui.tabs, 8)
-    A.eq(ui.tabs[6].label._text, "Misc.")
-    A.eq(ui.tabs[7].label._text, "Modern")
-    A.eq(ui.tabs[7].id, "modern")
-    A.eq(ui.tabs[8].label._text, "Info")
-    A.eq(ui.pages[7].id, "modern")
+    A.eq(ui.tabs[1].id, "modules")
+    local helpers, modern, info = tabIndex(ui, "helpers"), tabIndex(ui, "modern"), tabIndex(ui, "info")
+    A.ok(helpers and modern and info, "helpers, modern and info tabs")
+    A.eq(modern, helpers + 1, "Modern follows Helpers")
+    A.eq(info, modern + 1, "Info follows Modern")
+    A.eq(ui.tabs[modern].label._text, "Modern")
+    A.eq(ui.pages[modern].id, "modern")
+    A.eq(tabIndex(ui, "misc"), nil, "no Misc. tab")
 end)
 
-h.test("Modernize is unchecked by default and hides the options", function(t)
-    local A, ns = t.assert, t.ns
-    L.area(t, "zz_a", { label = "Zz alpha" })
-    local ui = fixture(t)
-    local modernize = check(t, "Modernize")
-    A.ok(modernize, "Modernize checkbox")
-    A.ok(modernize:IsVisible(), "Modernize is visible on the Modern tab")
-    A.falsy(checked(modernize))
-    A.falsy(stepper(t, "Theme"):IsVisible(), "Theme hidden")
-    A.eq(stepper(t, "Background"), nil, "no Background option")
-    A.eq(check(t, "Class colours"), nil, "no Class colours option")
-    A.falsy(check(t, "Zz alpha"):IsVisible(), "area hidden")
+h.test("the Modernize checkbox lives on the Modules tab, unchecked by default, and not on the Modern tab", function(t)
+    local A = t.assert
+    local ui = fixture(t, {})
+    local modules, modern = ui.pages[tabIndex(ui, "modules")], ui.pages[tabIndex(ui, "modern")]
+    local boxes = 0
+    for _, f in ipairs(t.mock.frames) do
+        if f._kind == "Button" and f.box and f.label and f.label._text == "Modernize" then
+            boxes = boxes + 1
+            A.ok(inside(f, modules), "checkbox sits on the Modules page")
+            A.falsy(inside(f, modern), "checkbox is not on the Modern page")
+        end
+    end
+    A.eq(boxes, 1, "exactly one Modernize checkbox")
+    A.falsy(checked(check(t, "Modernize")), "off by default")
 end)
 
-h.test("checking Modernize shows theme and every area on", function(t)
+h.test("with Modernize on the Modern tab shows the theme and every area, enabled, with no class colours option", function(t)
     local A, ns = t.assert, t.ns
     L.area(t, "zz_a", { label = "Zz alpha" })
     L.area(t, "zz_b", { label = "Zz beta" })
     local ui = fixture(t)
-    click(check(t, "Modernize"))
+    A.ok(ui.tabs[tabIndex(ui, "modern")]:IsVisible(), "Modern tab listed")
     A.ok(checked(check(t, "Modernize")))
     local theme = stepper(t, "Theme")
-    A.ok(theme:IsVisible())
+    A.ok(theme:IsVisible() and theme:IsEnabled(), "theme always enabled on the page")
     A.ok(theme.value._text:lower():find("dark", 1, true), "theme shows Dark, got " .. tostring(theme.value._text))
+    A.eq(stepper(t, "Background"), nil, "no Background option")
+    A.eq(check(t, "Class colours"), nil, "no Class colours option")
     for _, area in ipairs(ns.Modern.Areas()) do
         local box = check(t, area.label)
         A.ok(box, "checkbox for " .. area.key)
-        A.ok(box:IsVisible() and checked(box), area.key .. " visible and on")
+        A.ok(box:IsVisible() and box:IsEnabled() and checked(box), area.key .. " visible, enabled and on")
     end
+end)
+
+h.test("checking Modernize in the draft lists the Modern tab and unchecking it hides the tab at once", function(t)
+    local A = t.assert
+    local ui = fixture(t, {})
+    local tab = ui.tabs[tabIndex(ui, "modern")]
+    A.falsy(tab:IsVisible(), "no Modern tab while Modernize is off")
+    click(check(t, "Modernize"))
+    A.ok(tab:IsVisible(), "Modern tab listed once checked")
+    click(check(t, "Modernize"))
+    A.falsy(tab:IsVisible(), "Modern tab gone once unchecked")
 end)
 
 h.test("area checkboxes follow ns.Modern.Areas() in order and label", function(t)
@@ -82,7 +115,6 @@ h.test("area checkboxes follow ns.Modern.Areas() in order and label", function(t
     L.area(t, "zz_a", { label = "Zz alpha" })
     L.area(t, "zz_b", { label = "Zz beta" })
     local ui = fixture(t)
-    click(check(t, "Modernize"))
     -- The XP area heads its own section; the others fill the Areas column.
     local list = {}
     for _, area in ipairs(ns.Modern.Areas()) do
@@ -113,7 +145,6 @@ end
 h.test("the XP and reputation section holds the Modern XP bar and Show on big XP gain, on by default", function(t)
     local A = t.assert
     fixture(t)
-    click(check(t, "Modernize"))
     A.ok(section(t, "XP and reputation"), "XP and reputation section")
     local area, gain = check(t, "Modern XP bar"), check(t, "Show on big XP gain")
     A.ok(area and area:IsVisible() and checked(area), "Modern XP bar on")
@@ -127,7 +158,6 @@ end)
 h.test("Show on big XP gain is disabled while Modern XP bar is off and saves false only when unchecked", function(t)
     local A, ns = t.assert, t.ns
     local ui = fixture(t)
-    click(check(t, "Modernize"))
     click(check(t, "Modern XP bar"))
     A.falsy(check(t, "Show on big XP gain"):IsEnabled(), "disabled without the XP area")
     click(check(t, "Modern XP bar"))
@@ -141,38 +171,39 @@ h.test("Show on big XP gain is disabled while Modern XP bar is off and saves fal
     A.falsy(ns.Settings.ModernXPGain())
 end)
 
-h.test("unchecking Modernize hides the options but keeps their values", function(t)
-    local A, ns = t.assert, t.ns
+h.test("turning Modernize off and on again in the draft keeps the area values", function(t)
+    local A = t.assert
     L.area(t, "zz_a", { label = "Zz alpha" })
     local ui = fixture(t)
-    click(check(t, "Modernize"))
     click(check(t, "Zz alpha"))
     click(check(t, "Modernize"))
-    A.falsy(check(t, "Zz alpha"):IsVisible()); A.falsy(stepper(t, "Theme"):IsVisible())
     click(check(t, "Modernize"))
     A.falsy(checked(check(t, "Zz alpha")), "area stays unchecked")
 end)
 
 h.test("nothing is stored until Save, closing discards the draft", function(t)
     local A, ns = t.assert, t.ns
-    local ui = fixture(t)
+    local ui = fixture(t, {})
     click(check(t, "Modernize"))
+    A.eq(QuietUICharDB.modules, nil, "draft only")
     A.eq(QuietUICharDB.modernize, nil, "draft only")
     ui:Hide(); ns.Setup.Show()
     A.falsy(checked(check(t, "Modernize")), "closing discards")
 end)
 
-h.test("Save with Modernize on stores enabled and the chosen options under their keys", function(t)
+h.test("Save with Modernize on stores the module and the chosen options under their keys", function(t)
     local A, ns = t.assert, t.ns
     L.area(t, "zz_a", { label = "Zz alpha" })
     L.area(t, "zz_b", { label = "Zz beta" })
-    local ui = fixture(t)
+    local ui = fixture(t, {})
     click(check(t, "Modernize"))
     click(check(t, "Zz beta"))
     click(ui.save)
+    A.type(QuietUICharDB.modules, "table")
+    A.eq(QuietUICharDB.modules.modernize, true)
     local m = QuietUICharDB.modernize
     A.type(m, "table")
-    A.eq(m.enabled, true)
+    A.eq(m.enabled, nil, "no enabled key any more")
     A.eq(m.zz_beta, nil)
     A.eq(m.zz_b, false, "unchecked area saved under its key without Setup changes")
     A.ok(m.zz_a == nil or m.zz_a == true)
@@ -186,7 +217,7 @@ end)
 h.test("the tab shows the saved values after reopening", function(t)
     local A, ns = t.assert, t.ns
     L.area(t, "zz_a", { label = "Zz alpha" })
-    local ui = fixture(t, { modernize = { enabled = true, zz_a = false } })
+    local ui = fixture(t, { modules = { modernize = true }, modernize = { zz_a = false } })
     A.ok(checked(check(t, "Modernize")))
     A.falsy(checked(check(t, "Zz alpha")))
     A.ok(check(t, "Zz alpha"):IsVisible(), "options visible while Modernize is on")
@@ -194,19 +225,21 @@ end)
 
 h.test("saving with Modernize unchecked turns it off and keeps the other values", function(t)
     local A, ns = t.assert, t.ns
-    local ui = fixture(t, { modernize = { enabled = true } })
+    local ui = fixture(t, { modules = { modernize = true }, modernize = { theme = "dark", zz_a = false } })
     click(check(t, "Modernize"))
     click(ui.save)
     A.eq(ns.Settings.Modernize(), false)
-    A.eq(QuietUICharDB.modernize and QuietUICharDB.modernize.enabled, nil)
+    A.eq(QuietUICharDB.modules and QuietUICharDB.modules.modernize, nil)
+    A.eq(QuietUICharDB.modernize and QuietUICharDB.modernize.zz_a, false, "the area choice is kept")
 end)
 
 h.test("Reset default clears modernize, turns Modernize off and keeps windowPoints", function(t)
     local A, ns = t.assert, t.ns
-    local ui = fixture(t, { modernize = { enabled = true },
+    local ui = fixture(t, { modules = { modernize = true }, modernize = { theme = "dark" },
         windowPoints = { CharacterFrame = { "CENTER", "CENTER", 1, 2 } } })
     click(ui.reset)
     A.eq(QuietUICharDB.modernize, nil)
+    A.eq(QuietUICharDB.modules, nil)
     A.eq(ns.Settings.Modernize(), false)
     A.falsy(checked(check(t, "Modernize")), "the tab shows Modernize off")
     A.deep(QuietUICharDB.windowPoints, { CharacterFrame = { "CENTER", "CENTER", 1, 2 } })
@@ -215,7 +248,7 @@ end)
 h.test("a preset saved with Modernize on brings the same modernize table on another character", function(t)
     local A, ns = t.assert, t.ns
     L.area(t, "zz_a", { label = "Zz alpha" })
-    local ui = fixture(t)
+    local ui = fixture(t, {})
     click(check(t, "Modernize"))
     click(check(t, "Zz alpha"))
     click(ui.save)
@@ -224,6 +257,7 @@ h.test("a preset saved with Modernize on brings the same modernize table on anot
     QuietUICharDB = {}
     ns.Settings.ActivatePreset(id)
     A.deep(QuietUICharDB.modernize, saved)
+    A.deep(QuietUICharDB.modules, { modernize = true })
     A.eq(ns.Settings.Modernize(), true)
     A.eq(ns.Settings.ModernArea("zz_a"), false)
 end)
@@ -232,7 +266,7 @@ h.test("saving Modernize on or off reloads the UI once; saving it again unchange
     local A = t.assert
     local reloads = 0
     ReloadUI = function() reloads = reloads + 1 end
-    local ui = fixture(t)
+    local ui = fixture(t, {})
     QuietUIDB.enabled = true
     click(check(t, "Modernize"))
     click(ui.save)
@@ -253,7 +287,7 @@ h.test("a Save that reloads leaves applying to the reload", function(t)
     local A, ns = t.assert, t.ns
     local applies = 0
     ReloadUI = function() end
-    local ui = fixture(t)
+    local ui = fixture(t, {})
     QuietUIDB.enabled = true
     ns.ApplyAll = function() applies = applies + 1 end
     click(check(t, "Modernize"))
@@ -267,7 +301,7 @@ h.test("saving Modernize on while QuietUI is off does not reload", function(t)
     local A = t.assert
     local reloads = 0
     ReloadUI = function() reloads = reloads + 1 end
-    local ui = fixture(t)
+    local ui = fixture(t, {})
     QuietUIDB.enabled = false
     click(check(t, "Modernize"))
     click(ui.save)

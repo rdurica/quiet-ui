@@ -9,7 +9,7 @@ function M.area(ns, key)
 end
 
 function M.enable(ns)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
 end
 

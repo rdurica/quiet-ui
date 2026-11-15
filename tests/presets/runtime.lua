@@ -7,10 +7,9 @@ local function setup(t)
     local c = { selected = 0, quiet = 0, restored = 0, combat = false, ready = true }
     QuietUIDB = { enabled = true }
     QuietUICharDB = { previousLayout = 3, presetLayoutManaged = true }
-    local id = assert(ns.Settings.SavePreset(nil, 'Healer', { layoutName = 'Raid' }, { chatFade = 0 }))
+    local id = assert(ns.Settings.SavePreset(nil, 'Healer', { layoutName = 'Raid' }, { chatFade = 0, modules = { chat = false } }))
     ns.Settings.ActivatePreset(id)
     ns.Settings.ForceQuietLayout = function() return c.force ~= false end
-    ns.Settings.ModernChat = function() return false end
     ns.Layout.SelectQuiet = function() c.quiet = c.quiet + 1; return true end
     ns.Layout.SelectPreset = function()
         if c.combat or not c.ready then return false end

@@ -6,7 +6,7 @@ local W = h.lib("modern-windows")
 h.test("a hidden window reset in combat returns to its Blizzard point when combat ends", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     t.boot()
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     local frame = W.window("ZzHiddenResetWindow")
     ns.Modern.MakeMovable(frame, "ZzHiddenResetWindow")
     local original = W.point(frame)

@@ -1,4 +1,4 @@
--- Compact eight-tab setup: Groups tab, visibility modes, membership, scrolling and reset.
+-- Compact setup with Modules first: Groups tab, visibility modes, membership, scrolling and reset.
 local h = ...
 
 local function click(b) b._scripts.OnClick(b) end
@@ -7,12 +7,13 @@ local function fixture(t)
     local ns = t.ns
     QuietUIDB = {}; QuietUICharDB = { chatFade = 20 }
     ns.ApplyAll = function() end
+    ns.RestoreAll = function() end
     ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
     ns.Layout.Choices = function() return { { name = "Other", ref = { layoutName = "Other", layoutType = 1 } } } end
     ns.Layout.Preview = function() end
     ns.Layout.CommitPreview = function() end
     ns.Layout.CancelPreview = function() end
-    local id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { chat = false, chatFade = 0, groupAuras = false,
+    local id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { modules = { chat = false }, chatFade = 0, groupAuras = false,
         player = "resource", requireLivingTarget = true, visible = { bars = true, swing = true },
         groups = { ["1"] = 2 }, hostile = { ["1"] = true }, friendly = { ["2"] = true },
         range = { yards = "spell", kind = "friendly", spell = "Heal" } })
@@ -21,14 +22,14 @@ local function fixture(t)
     return t.mock:findByName("QuietUISetup"), id
 end
 
-h.test("setup is compact with eight tabs; group visibility lives on Groups and Bars is not on Visible", function(t)
+h.test("setup is compact with ten tabs, Modules first; group visibility lives on Groups and Bars is not on Visible", function(t)
     local ns, A = t.ns, t.assert
     local ui = fixture(t)
     A.ok(ui:GetWidth() >= 900 and ui:GetWidth() <= 980 and ui:GetHeight() <= 600, "Setup is not compact")
-    A.ok(#ui.tabs == 8 and ui.pages[4].id == "groups", "Groups tab is missing")
-    A.ok(ui.visibilityHeader:GetParent() == ui.pages[4] and ui.groupRows[1]:GetParent() == ui.pages[3],
+    A.ok(#ui.tabs == 10 and ui.pages[1].id == "modules" and ui.pages[5].id == "groups", "Groups tab is missing")
+    A.ok(ui.visibilityHeader:GetParent() == ui.pages[5] and ui.groupRows[1]:GetParent() == ui.pages[4],
         "Group visibility did not move out of Bars")
-    A.ok(ui.presetSelector:GetWidth() == ui.pages[1]:GetWidth() and ui.layoutSelector:GetWidth() == ui.pages[1]:GetWidth(),
+    A.ok(ui.presetSelector:GetWidth() == ui.pages[2]:GetWidth() and ui.layoutSelector:GetWidth() == ui.pages[2]:GetWidth(),
         "General selectors do not use the content width")
     for _, row in ipairs(ui.rows) do
         A.ok(row.key ~= "bars" and row.key ~= "swing", "Bars still appear on Visible")

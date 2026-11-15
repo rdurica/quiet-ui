@@ -3,9 +3,9 @@
 -- XP area or with the option unchecked.
 local h = ...
 
-local function setup(t, modernize)
+local function setup(t, modernize, modules)
     local ns, mock = t.ns, t.mock
-    QuietUICharDB = { modernize = modernize }
+    QuietUICharDB = { modules = modules or { modernize = true }, modernize = modernize }
     t.boot()
     MainStatusTrackingBarContainer = CreateFrame("Frame", nil, UIParent)
     ns.Faders.Find(false)
@@ -23,7 +23,7 @@ local function tick(t) t.ns.NextFadeTick(); t.ns.Faders.Update(1) end
 
 h.test("a gain of 5 % of the level shows the Only on hover XP bar for 5 s; a mob-sized gain does not", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
-    local bar = setup(t, { enabled = true })
+    local bar = setup(t, {})
     A.ok(ns.Settings.OnlyOnHover("xp"), "XP is Only on hover by default")
     tick(t); A.eq(bar._alpha, 0, "hidden before any gain")
     mock.xp = 130; mock:fire("PLAYER_XP_UPDATE", "player")
@@ -40,7 +40,7 @@ end)
 
 h.test("quest XP shows the Only on hover XP bar for 5 s", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
-    local bar = setup(t, { enabled = true })
+    local bar = setup(t, {})
     mock:fire("QUEST_TURNED_IN", 1, 500)
     mock.now = mock.now + 4.5
     tick(t); A.eq(bar._alpha, 1, "shown 4.5 s after quest XP")
@@ -50,8 +50,13 @@ end)
 
 h.test("no big gain reveal without Modernize, without the XP area or with Show on big XP gain off", function(t)
     local A, mock = t.assert, t.mock
-    for _, modernize in ipairs({ {}, { enabled = true, status = false }, { enabled = true, xpGain = false } }) do
-        local bar = setup(t, modernize)
+    local cases = {
+        { {}, {} }, -- Modernize module off
+        { { status = false } },
+        { { xpGain = false } },
+    }
+    for _, case in ipairs(cases) do
+        local bar = setup(t, case[1], case[2])
         mock.xp = mock.xp + 200; mock:fire("PLAYER_XP_UPDATE", "player")
         tick(t); A.eq(bar._alpha, 0, "stays on hover")
     end

@@ -9,7 +9,7 @@ h.test("unit events for other units do no work, events for skinned units skin ag
     U.installColours(mock)
     local calls = 0
     UnitClassification = function() calls = calls + 1; return "normal" end
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     local applied = calls
     A.ok(applied > 0, "the target health border reads the classification")

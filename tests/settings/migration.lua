@@ -35,17 +35,17 @@ h.test("a replaced visible table with legacy bars migrates on the next CharDB", 
     t.assert.ok(always, "groupVisibility has no 'always' group after migration")
 end)
 
-h.test("a direct chat write is visible at once", function(t)
+h.test("a direct modules write is visible at once", function(t)
     local ns = counted(t, { visible = {} })
-    t.assert.eq(ns.Settings.ModernChat(), true, "Modern chat must default on")
-    QuietUICharDB.chat = false
-    t.assert.eq(ns.Settings.ModernChat(), false, "Direct write QuietUICharDB.chat = false was not seen")
-    QuietUICharDB.chat = nil
-    t.assert.eq(ns.Settings.ModernChat(), true, "Clearing chat did not restore the default")
+    t.assert.eq(ns.Settings.Module("chat"), true, "Chat must default on")
+    QuietUICharDB.modules = { chat = false }
+    t.assert.eq(ns.Settings.Module("chat"), false, "Direct write QuietUICharDB.modules.chat = false was not seen")
+    QuietUICharDB.modules = nil
+    t.assert.eq(ns.Settings.Module("chat"), true, "Clearing modules did not restore the default")
 end)
 
 h.test("Settings with an active preset migrates preset.settings at most once", function(t)
-    local settings = { visible = { xp = true }, chat = false }
+    local settings = { visible = { xp = true }, modules = { chat = false } }
     local ns, calls = counted(t, { presetId = "1" }, {
         enabled = true,
         presets = { ["1"] = { name = "A", layout = {}, settings = settings, interfaceStyle = 0 } },

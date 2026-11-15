@@ -381,7 +381,7 @@ h.test("the Windows area off or Modernize off restores the calendar and hides ev
 
     W.enable(ns)
     A.ok(W.isDark(c.frame), "the calendar skins again")
-    QuietUICharDB.modernize.enabled = false
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     A.deep(L.diff(before), {}, "Modernize off restores every texture, alpha, colour, point and text")
     A.ok(C.hidden(C.added(c.frame, before)), "every own region is hidden again")

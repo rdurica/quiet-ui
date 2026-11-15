@@ -3,7 +3,7 @@ local h = ...
 local I = h.lib("modern-icons")
 
 local function enable(ns)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
 end
 
@@ -89,7 +89,7 @@ h.test("late gamepad load reapplies the same skin and disabled restore returns e
     local gamepad = createGamepad(t)
     ns.Modern.AddonLoaded("Blizzard_GamepadActionBars")
     A.ok(I.zoomed(gamepad.Icon), "loaded gamepad button")
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     for _, button in ipairs({ standard, gamepad }) do
         A.ok(not I.zoomed(button.Icon), button:GetName() .. " icon restored")

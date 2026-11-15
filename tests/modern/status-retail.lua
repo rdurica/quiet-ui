@@ -5,7 +5,7 @@
 local h = ...
 local L = h.lib("modern")
 
-local function enable() QuietUICharDB = { modernize = { enabled = true } } end
+local function enable() QuietUICharDB = { modules = { modernize = true }, modernize = {} } end
 
 local function data(mock)
     mock.xp, mock.rested = 0.25, 0.1

@@ -65,7 +65,7 @@ h.test("Unit frames turns raid-style party frames into dark boxes with a class-c
     local container, first = party()
     local plate = member("NamePlate1UnitFrame", "nameplate1")
     local before = L.snapshot(R.all(UIParent))
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.eq(health(first)[1], FILL, "the health fill is the unit frames' near-black")
     A.eq(first.healthBar.fill._texture, ns.Modern.Theme().bar, "the health fill is flat")
@@ -94,7 +94,7 @@ h.test("Unit frames keeps a party member's name colour when UnitClass has no tok
     UnitClass = function() return nil end
     blizzard()
     local _, first = party()
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     CompactUnitFrame_UpdateName(first)
     A.eq(#mock.printed, 0, "nothing reported: " .. table.concat(mock.printed, " / "))
@@ -111,7 +111,7 @@ h.test("Unit frames skins a raid frame Blizzard sets up after the area was appli
     U.installColours(mock)
     UnitIsPlayer = function() return true end
     blizzard()
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     local late = member("CompactRaidFrame7", "raid7")
     DefaultCompactUnitFrameSetup(late)
@@ -136,7 +136,7 @@ h.test("Unit frames turns the raid power bar into a thin muted line, and restore
     local _, first = party()
     DefaultCompactUnitFrameSetup(first)
     local before = L.snapshot(R.all(UIParent))
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     local function bottomOf(region)
         for i = 1, region:GetNumPoints() do
@@ -165,7 +165,7 @@ h.test("Unit frames darkens an offline member's fill so it does not read as full
     UnitIsConnected = function() return online end
     blizzard()
     local _, first = party()
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.ok(health(first)[1] < FILL, "the offline fill is dark")
     online = true
@@ -184,7 +184,7 @@ h.test("Unit frames shows the raid health percent in the centre, and restores it
     first.statusText = first:CreateFontString(nil, "ARTWORK")
     first.statusText:SetPoint("BOTTOM", first, "BOTTOM", 0, 3)
     local before = L.snapshot(R.all(UIParent))
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.eq(cvars.raidFramesHealthText, "perc", "Blizzard shows the health percent")
     local point, anchor = first.statusText:GetPoint(1)
@@ -201,7 +201,7 @@ h.test("Unit frames ignores a classColors false stored before the option was rem
     UnitIsPlayer = function() return true end
     blizzard()
     local _, first = party()
-    QuietUICharDB = { modernize = { enabled = true, classColors = false } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = { classColors = false } }
     ns.Modern.Apply()
     A.ok(first.name._vertex[1] ~= 1, "the name takes its class colour")
 end)
@@ -218,7 +218,7 @@ h.test("Unit frames gives the portrait party frames the compact box", function(t
     memberFrame.HealthBarContainer = CreateFrame("Frame", nil, memberFrame)
     memberFrame.HealthBarContainer.HealthBar = bar(memberFrame.HealthBarContainer)
     memberFrame.Portrait = memberFrame:CreateTexture(nil, "BACKGROUND")
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.eq(memberFrame.Texture._alpha, 0, "the party frame art is held")
     A.eq(memberFrame.Portrait._alpha, 0, "the portrait is held")

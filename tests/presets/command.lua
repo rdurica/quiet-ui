@@ -6,7 +6,6 @@ local function setup(t)
     local ns = t.ns
     local ctx = { selected = {}, restored = 0, combat = false, canceled = 0, refreshed = 0 }
     ns.Settings.ForceQuietLayout = function() return ns.Settings.ActivePreset() ~= nil end
-    ns.Settings.ModernChat = function() return false end
     ns.Layout.SelectPreset = function()
         if ctx.combat then return false end
         ctx.selected[#ctx.selected + 1] = ns.Settings.ActivePreset().layout.layoutName
@@ -30,9 +29,9 @@ local function setup(t)
         if refresh then return refresh(...) end
     end
     QuietUIDB = { enabled = true }
-    QuietUICharDB = {}
-    ctx.healer = ns.Settings.SavePreset(nil, 'Raid Healer', { layoutName = 'Raid' }, { chatFade = 0 })
-    ctx.minimal = ns.Settings.SavePreset(nil, 'Minimal', { layoutName = 'Quiet' }, { chat = false })
+    QuietUICharDB = { modules = { chat = false } }
+    ctx.healer = ns.Settings.SavePreset(nil, 'Raid Healer', { layoutName = 'Raid' }, { chatFade = 0, modules = { chat = false } })
+    ctx.minimal = ns.Settings.SavePreset(nil, 'Minimal', { layoutName = 'Quiet' }, { modules = { chat = false } })
     t.boot()
     ctx.command = SlashCmdList.QUIETUI
     t.mock.printed = {}
@@ -101,7 +100,7 @@ h.test("preset in combat applies settings now and selects the layout after comba
     c.combat = true
     c.command('preset Minimal')
     A.eq(QuietUICharDB.presetId, c.minimal)
-    A.eq(QuietUICharDB.chat, false)
+    A.deep(QuietUICharDB.modules, { chat = false })
     A.eq(QuietUICharDB.chatFade, nil)
     A.eq(#c.selected, 1)
     A.eq(QuietUICharDB.previousLayout, 3)

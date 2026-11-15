@@ -13,6 +13,15 @@ for _, mode in ipairs(modes) do
             if not value then failures[#failures + 1] = message end
         end
         local ns = scenario(t, mode)
+        -- Modernize on, so every tab is in the sidebar.
+        QuietUICharDB.modules = { modernize = true }
+        local function find(root, text)
+            for _, child in ipairs(root.children) do
+                if child.label and child.label.text == text and child.box ~= nil then return child end
+                local found = find(child, text)
+                if found then return found end
+            end
+        end
         local other = CreateFrame('Frame', nil, UIParent)
         other:SetFrameStrata('DIALOG'); other:SetFrameLevel(500)
         -- Topology from ../ForeverDungeonJournal/ForeverDungeonJournal.lua:
@@ -59,8 +68,8 @@ for _, mode in ipairs(modes) do
         expect(ui.title.text == 'QuietUI' and ui.close.scripts.OnClick, 'flat header keeps the title and a usable close')
         click(ui.close); expect(not ui.shown, 'close hides the window'); ns.Setup.Show()
         local height, width = ui.height, ui.width
-        local labels = { 'General', 'Visible', 'Bars', 'Groups', 'Player', 'Misc.', 'Modern', 'Info' }
-        expect(#ui.tabs == 8, 'eight tabs')
+        local labels = { 'Modules', 'General', 'Visible', 'Bars', 'Groups', 'Player', 'Chat', 'Helpers', 'Modern', 'Info' }
+        expect(#ui.tabs == 10, 'ten tabs, Modules first')
         for index, tab in ipairs(ui.tabs) do
             click(tab)
             expect(tab.label.text == labels[index], 'tab order ' .. index)
@@ -76,8 +85,8 @@ for _, mode in ipairs(modes) do
             end
             for pageIndex, page in ipairs(ui.pages) do expect(page.shown == (pageIndex == index), 'only selected page is shown') end
         end
-        click(ui.tabs[1])
-        expect(ui.presetSelector.width == ui.pages[1].width and ui.layoutSelector.width == ui.pages[1].width,
+        click(ui.tabs[2])
+        expect(ui.presetSelector.width == ui.pages[2].width and ui.layoutSelector.width == ui.pages[2].width,
             'General selectors span content width')
         for _, button in ipairs({ ui.presetSelector, ui.layoutSelector, ui.newPreset, ui.renamePreset,
             ui.deletePreset, ui.reset, ui.import, ui.save }) do
@@ -93,7 +102,7 @@ for _, mode in ipairs(modes) do
         expect(ui.newPreset.width >= #'New preset' * 6, 'preset action label fits')
         local left = ui.newPreset.points[1][4]
         local middle = ui.renamePreset.points[1][4]
-        local right = ui.pages[1].width + ui.deletePreset.points[1][4] - ui.deletePreset.width
+        local right = ui.pages[2].width + ui.deletePreset.points[1][4] - ui.deletePreset.width
         expect(middle - left - ui.newPreset.width == right - middle - ui.renamePreset.width,
             'General preset action gaps are equal')
         click(ui.presetSelector)
@@ -140,8 +149,11 @@ for _, mode in ipairs(modes) do
         expect(ns.Settings.ActivePreset() ~= nil, 'cancel deletion preserves preset')
         click(ui.deletePreset); click(dialog.yes)
         expect(not ns.Settings.ActivePreset(), 'confirmed deletion remains immediate')
-        ui.chat.scripts.OnClick(); ui:Hide(); ns.Setup.Show()
-        expect(QuietUICharDB.chat == nil, 'closing discards changed draft')
+        local chatBox = find(ui.pages[1], 'Chat')
+        expect(chatBox, 'Modules page has a Chat checkbox')
+        if chatBox then chatBox.scripts.OnClick() end
+        ui:Hide(); ns.Setup.Show()
+        expect(QuietUICharDB.modules and QuietUICharDB.modules.chat == nil, 'closing discards changed draft')
         local escape = false
         for _, name in ipairs(UISpecialFrames) do if name == 'QuietUISetup' then escape = true end end
         expect(escape, 'Escape retains named-frame closing registration')

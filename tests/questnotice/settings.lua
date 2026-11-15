@@ -1,7 +1,15 @@
--- The Quest updates setting and text size: accessors, preset snapshots and the Misc. tab controls.
+-- The Quest updates setting and text size: accessors, preset snapshots and the Helpers tab controls.
 local h = ...
 
 local function click(b) b._scripts.OnClick(b) end
+
+-- The Helpers tab (Quests, Highlights, Quest mobs) and its page; found by id, so tab order may change.
+local function helpers(ui)
+    for index, tab in ipairs(ui.tabs) do
+        if tab.id == "helpers" then return ui.pages[index], tab end
+    end
+    error("Helpers tab is missing", 0)
+end
 
 -- Layout reads are stubbed; ApplyAll records the notice state at the moment it runs.
 local function fixture(t)
@@ -77,7 +85,7 @@ h.test("a preset selector choice stays a draft; saving the selection applies the
     local off = ns.Settings.SavePreset(nil, "Off", ns.Layout.CurrentRef(), { questNotice = false })
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
-    A.ok(ui.questNotice and ui.questNotice.box, "Misc. Quest updates choice is missing")
+    A.ok(ui.questNotice and ui.questNotice.box, "Helpers Quest updates choice is missing")
     click(ui.presetSelector); click(ui.presetMenu.items[2])
     A.ok(not ui.questNotice.box._checked and ns.Settings.QuestNoticeEnabled(), "Preset draft must paint off without applying it")
     A.ok(QuietUICharDB.presetId == nil and #applied == 0, "Preset choice must stay unsaved")
@@ -166,22 +174,23 @@ h.test("Text size cycles only Smaller, Default and Larger and saves the two offs
     A.eq(ns.Settings.CopySettings({ questNoticeSize = "larger" }).questNoticeSize, "larger", "Presets keep an explicit text size")
 end)
 
-h.test("Quest updates sits on Misc. below chat with a description", function(t)
+h.test("Quest updates sits on Helpers with a description", function(t)
     local ns = fixture(t)
     local A = t.assert
+    QuietUICharDB.modules = { modernize = true } -- every tab is listed
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
-    local choice, page = ui.questNotice, ui.pages[6]
-    A.ok(choice and choice.box and choice.label, "Misc. Quest updates choice is missing")
-    A.eq(ui.tabs[6].label:GetText(), "Misc.", "Sixth tab is Misc.")
-    A.ok(choice:GetParent() == page and choice.label:GetText() == "Quest updates", "Choice belongs on Misc.")
+    local page, tab = helpers(ui)
+    local choice = ui.questNotice
+    A.ok(choice and choice.box and choice.label, "Helpers Quest updates choice is missing")
+    A.eq(tab.label:GetText(), "Helpers", "The tab is called Helpers")
+    A.ok(choice:GetParent() == page and choice.label:GetText() == "Quest updates", "Choice belongs on Helpers")
     A.ok(choice.box._checked, "Default choice must be checked")
-    A.eq(#ui.tabs, 8, "Adding Quest updates must retain eight tabs")
+    A.ok(not ui.fade or ui.fade:GetParent() ~= page, "Chat controls live on the Chat tab, not on Helpers")
     local height = ui:GetHeight()
     A.ok(height <= 600, "Quest updates must fit the existing compact setup height")
-    local fade, header = ui.fade, ui.questHeader
-    A.ok(header and header:GetParent() == page and header._points[1][2] == page, "Quest section belongs on Misc.")
-    A.ok(-header._points[1][5] >= -fade._points[1][5] + fade:GetHeight() + 24, "Quest section must sit clear of chat")
+    local header = ui.questHeader
+    A.ok(header and header:GetParent() == page and header._points[1][2] == page, "Quest section belongs on Helpers")
     A.ok(header.help, "Quest heading must offer an info button")
     GameTooltip._lines = {}
     header.help._scripts.OnEnter(header.help)
@@ -190,12 +199,12 @@ h.test("Quest updates sits on Misc. below chat with a description", function(t)
         "Info bubble must say what quest updates do")
     local point = choice._points[1]
     A.ok(point and point[1] == "TOPLEFT" and point[2] == page and point[3] == "TOPLEFT",
-        "Choice sits on the Misc. page")
+        "Choice sits on the Helpers page")
     A.ok(-point[5] >= -header._points[1][5] + header:GetHeight(), "Choice sits under the quest heading")
     local sizeRow = ui.questNoticeSize
-    A.ok(sizeRow and sizeRow:GetParent() == page and sizeRow.value:GetText() == "Default", "Text size defaults on Misc.")
+    A.ok(sizeRow and sizeRow:GetParent() == page and sizeRow.value:GetText() == "Default", "Text size defaults on Helpers")
     A.ok(-sizeRow._points[1][5] >= -point[5] + choice:GetHeight(), "Text size sits under Quest updates")
-    A.ok(-sizeRow._points[1][5] + sizeRow:GetHeight() <= page:GetHeight(), "Text size must fit Misc. content")
+    A.ok(-sizeRow._points[1][5] + sizeRow:GetHeight() <= page:GetHeight(), "Text size must fit Helpers content")
     for index, tab in ipairs(ui.tabs) do
         click(tab)
         A.eq(ui:GetHeight(), height, "Tab switch must not resize setup")

@@ -20,7 +20,7 @@ local function known(button)
 end
 
 local function enable(ns)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
 end
 
@@ -37,7 +37,7 @@ h.test("12.0 bar art (BorderArt and both gryphon end caps) is held at alpha 0 ag
     A.alpha(bar, 1, "bar alpha untouched")
     A.alpha(bar.ActionBarPageNumber.Text, 1, "page number text stays")
     A.alpha(buttons[1], 1, "button alpha untouched")
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     A.deep(L.diff(before), {}, "bar art restores exactly (alpha)")
 end)
@@ -58,7 +58,7 @@ h.test("12.0 button parts SlotArt, SlotBackground, Border, Flash and the state t
         A.ok(I.outlined(button.Count), name .. " count outlined")
         A.eq(button:GetWidth(), 45); A.eq(button:GetHeight(), 45)
     end
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     A.deep(L.diff(before), {}, "every Blizzard part restores exactly")
     for _, button in ipairs(buttons) do A.ok(not I.border(button), button:GetName() .. " own border hidden") end
@@ -71,7 +71,7 @@ h.test("12.0 IconMask is taken off the icon so the square crop is not clipped, a
     A.eq(button.icon:GetNumMaskTextures(), 1, "fixture: the icon carries IconMask")
     enable(ns)
     A.eq(button.icon:GetNumMaskTextures(), 0, "no mask on the icon while the area is on")
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     A.eq(button.icon:GetNumMaskTextures(), 1, "mask is back after restore")
     A.eq(button.icon:GetMaskTexture(1), button.IconMask, "the same IconMask")
@@ -147,7 +147,7 @@ h.test("12.0 state feedback regions go away when the area is switched off", func
     enable(ns)
     local theme = ns.Modern.Theme()
     button:SetButtonState("PUSHED"); button:SetChecked(true)
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     button:SetButtonState("PUSHED"); button:SetChecked(true)
     A.deep(B.visibleOwn(button, theme, seen), {}, "no own flat region is visible after restore, even pressed or checked")
@@ -176,9 +176,9 @@ h.test("12.0 hover feedback is shown again after apply, restore, apply", functio
     local button = buttons[1]
     local seen = known(button)
     enable(ns)
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
-    QuietUICharDB.modernize.enabled = true
+    QuietUICharDB.modules.modernize = true
     ns.Modern.Apply()
     local hover = false
     for region in pairs(B.visibleOwn(button, ns.Modern.Theme(), seen)) do

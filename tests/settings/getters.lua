@@ -10,10 +10,10 @@ h.test("CharDB creates an empty table when the saved variable is missing", funct
 end)
 
 h.test("CharDB returns the populated saved table itself", function(t)
-    local saved = { visible = { xp = true }, chat = false }
+    local saved = { visible = { xp = true }, modules = { chat = false } }
     QuietUICharDB = saved
     t.assert.eq(t.ns.Settings.CharDB(), saved)
-    t.assert.eq(t.ns.Settings.CharDB().chat, false)
+    t.assert.eq(t.ns.Settings.CharDB().modules.chat, false)
 end)
 
 h.test("CharDB keeps the first character's account copy and drops the account keys", function(t)
@@ -70,14 +70,14 @@ h.test("Boolean getters default on and turn off only with an explicit false", fu
     A.eq(ns.Settings.AlwaysShowDebuffs(), true)
     A.eq(ns.Settings.QuestNoticeEnabled(), true)
     A.eq(ns.Settings.QuestMobs(), true)
-    A.eq(ns.Settings.ModernChat(), true)
+    A.eq(ns.Settings.Module("chat"), true)
     QuietUICharDB = { groupAuras = false, alwaysShowDebuffs = false, questNotice = false,
-        questMobs = false, chat = false }
+        questMobs = false, modules = { chat = false } }
     A.eq(ns.Settings.GroupAuras(), false)
     A.eq(ns.Settings.AlwaysShowDebuffs(), false)
     A.eq(ns.Settings.QuestNoticeEnabled(), false)
     A.eq(ns.Settings.QuestMobs(), false)
-    A.eq(ns.Settings.ModernChat(), false)
+    A.eq(ns.Settings.Module("chat"), false)
 end)
 
 h.test("Boolean getters that default off turn on only with an explicit true", function(t)

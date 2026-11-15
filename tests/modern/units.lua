@@ -4,8 +4,7 @@ local U = h.lib("modern-units")
 
 local function enable(ns, extra)
     extra = extra or {}
-    extra.enabled = true
-    QuietUICharDB = { modernize = extra }
+    QuietUICharDB = { modules = { modernize = true }, modernize = extra }
     ns.Modern.Apply()
 end
 
@@ -31,7 +30,7 @@ h.test("units hold every Blizzard frame art texture at alpha 0 and release them 
     QuietUICharDB.modernize.units = nil
     ns.Modern.Apply()
     A.ok(U.hidden(frames[3]), "area reapplied")
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     A.eq(U.parts(frames[3]).art[1]:GetAlpha(), 1, "Modernize off releases art")
 end)
@@ -107,7 +106,7 @@ h.test("units restore every treatment when their area or Modernize turns off, th
     QuietUICharDB.modernize.units = nil
     ns.Modern.Apply()
     A.eq(U.statusTexture(p.health), ns.Modern.Theme().bar, "area reapplied")
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     A.eq(U.statusTexture(p.health), original, "Modernize off restores bars")
 end)

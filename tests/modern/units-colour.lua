@@ -7,8 +7,7 @@ local GREY = { 0.2, 0.21, 0.23 }
 
 local function enable(ns, extra)
     extra = extra or {}
-    extra.enabled = true
-    QuietUICharDB = { modernize = extra }
+    QuietUICharDB = { modules = { modernize = true }, modernize = extra }
     ns.Modern.Apply()
 end
 

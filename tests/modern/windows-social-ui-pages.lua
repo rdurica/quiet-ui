@@ -222,7 +222,7 @@ end)
 h.test("the friends window comes back at its saved point after a reload", function(t)
     local A = t.assert
     local ns, c, f = setup(t)
-    QuietUICharDB = { modernize = { enabled = true }, windowPoints = { SocialUIFrame = { "CENTER", "CENTER", 7, 8 } } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {}, windowPoints = { SocialUIFrame = { "CENTER", "CENTER", 7, 8 } } }
     ns.Modern.Apply()
     A.deep(W.point(f.frame), { "CENTER", "CENTER", 7, 8 }, "the saved point is applied")
 end)

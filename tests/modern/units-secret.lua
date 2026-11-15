@@ -28,7 +28,7 @@ local function run(t, mutate)
     mock:setUnit("target", { exists = true, player = true })
     frames[3].Name:SetTextColor(1, 0.82, 0)
     mutate(secret)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     local health = U.parts(frames[3]).health
     health:SetStatusBarColor(0, 1, 0)
@@ -82,7 +82,7 @@ h.test("a class token that arrives after the unit colours the name on UNIT_NAME_
     mock:setUnit("target", { exists = true, player = true })
     frames[3].Name:SetTextColor(1, 0.82, 0)
     UnitClass = function() return nil end
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.deep({ frames[3].Name:GetTextColor() }, { 1, 0.82, 0, 1 }, "name keeps Blizzard's colour while unknown")
     A.ok(not U.classIcon(frames[3]), "no class icon while unknown")
@@ -100,7 +100,7 @@ h.test("an unknown class goes back to the colour Blizzard gave the new unit, not
     mock:setUnit("target", { exists = true, player = true })
     local name = frames[3].Name
     name:SetTextColor(1, 0.82, 0)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.deep({ name:GetTextColor() }, { 0.25, 0.78, 0.92, 1 }, "name takes the mage colour")
     -- The class is unknown and Blizzard did not recolour: the class colour of the old unit must not stay.
@@ -124,7 +124,7 @@ h.test("a GetClassColor that raises falls back to the class colour table", funct
     local frames = setup(t)
     mock:setUnit("target", { exists = true, player = true })
     C_ClassColor = { GetClassColor = function() error("GetClassColor is not for this client") end }
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.eq(L.errors(mock), 0, "no error reported")
     A.deep({ frames[3].Name:GetTextColor() }, { 0.25, 0.78, 0.92, 1 }, "name takes the mage colour")

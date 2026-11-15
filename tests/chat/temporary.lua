@@ -53,7 +53,7 @@ h.test("Restore reaches a temporary window, even after it closed", function(t)
     ns.Chat.SyncVisibleEdits()
     ns.Chat.Update(1)
     CHAT_FRAMES[#CHAT_FRAMES] = nil -- Blizzard drops a closed temporary window from the list
-    QuietUICharDB.chat = false
+    QuietUICharDB.modules = { chat = false }
     ns.Chat.Restore()
     A.near(ChatFrame11Tab._alpha, 0.6, 0.01, "whisper tab alpha back")
     A.ok(ChatFrame11EditBox:IsMouseEnabled(), "whisper input mouse back")

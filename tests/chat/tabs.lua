@@ -162,24 +162,24 @@ h.test("Restore gives the tabs their alpha back", function(t)
     ChatFrame2Tab:Show(); ChatFrame2Tab._alpha = 0.4
     ns.Chat.StripAll()
     ns.Chat.Update(1)
-    QuietUICharDB.chat = false
+    QuietUICharDB.modules = { chat = false }
     ns.Chat.Restore()
     A.near(ChatFrame2Tab._alpha, 0.4, 0.01, "original alpha back")
     ChatFrame2Tab:SetAlpha(0.7)
     A.near(ChatFrame2Tab._alpha, 0.7, 0.01, "Blizzard alpha not held after restore")
 end)
 
-h.test("Modern chat off restores the original dock and tab points", function(t)
+h.test("Chat module off restores the original dock and tab points", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
     ns.Chat.StripAll()
     assertBelow(A, ChatFrame2Tab, ChatFrame2, "moved")
-    QuietUICharDB.chat = false
+    QuietUICharDB.modules = { chat = false }
     ns.Chat.Restore()
     A.deep(snapshot(GeneralDockManager), dock0, "dock points")
     A.deep(snapshot(ChatFrame2Tab), tab0, "tab points")
-    -- With Modern chat off a Blizzard re-anchor is left alone.
+    -- With Chat module off a Blizzard re-anchor is left alone.
     FCF_SetTabPosition(ChatFrame2, 0)
     FCF_DockUpdate()
     A.deep(snapshot(ChatFrame2Tab), tab0, "tab points after hooks")
@@ -203,7 +203,7 @@ h.test("Re-enabling after a restore moves tabs below again and keeps Blizzard's 
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
     for _ = 1, 2 do
         QuietUIDB.enabled = true
-        QuietUICharDB.chat = nil
+        QuietUICharDB.modules = nil
         ns.Chat.StripAll(true)
         assertBelow(A, GeneralDockManager, ChatFrame1, "dock")
         assertBelow(A, ChatFrame2Tab, ChatFrame2, "tab")

@@ -15,7 +15,7 @@ h.test("once-only startup validation, delayed layouts and detach before selectio
         SaveLayouts = function() end,
         ConvertStringToLayoutInfo = function() return {} end,
     }
-    local id = ns.Settings.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { chat = false })
+    local id = ns.Settings.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { modules = { chat = false } })
     -- Simulate the character's saved selection from before the mode change.
     QuietUIDB.presets[id].interfaceStyle = nil
     QuietUICharDB.presetId = id
@@ -26,7 +26,7 @@ h.test("once-only startup validation, delayed layouts and detach before selectio
     A.ok(QuietUICharDB.presetId == id and switches == 0, "Unloaded layouts must defer validation and selection")
     ready = true
     mock:tick(0.1)
-    A.ok(QuietUICharDB.presetId == nil and QuietUICharDB.chat == false and switches == 0)
+    A.ok(QuietUICharDB.presetId == nil and QuietUICharDB.modules and QuietUICharDB.modules.chat == false and switches == 0)
     local completedChecks = checks
     A.ok(completedChecks > 0, "Validation ran once layouts were loaded")
     mock:fire("PLAYER_ENTERING_WORLD", true, false)

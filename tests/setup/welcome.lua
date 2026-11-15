@@ -1,4 +1,4 @@
--- The welcome: Classic or Modern, once per character, also after an update.
+-- The welcome: Classic or Modern, once per character, also after an update. The Custom choice is in welcome-custom.lua.
 -- Choose is a secure /reload button: a click runs PreClick (save), the macro, then PostClick (hide).
 local h = ...
 
@@ -103,7 +103,7 @@ h.test("A character with a preset changes that preset and is told so", function(
     frame.cards.modern:Click()
     choose(frame.choose)
     A.eq(reloads.n, 1)
-    A.eq(QuietUIDB.presets[id].settings.modernize.enabled, true, "the preset holds the choice")
+    A.eq(QuietUIDB.presets[id].settings.modules.modernize, true, "the preset holds the choice")
 end)
 
 h.test("A look chosen in combat asks for /reload", function(t)

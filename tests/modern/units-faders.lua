@@ -8,7 +8,8 @@ local function skinned(t)
     U.frames()
     U.installColours(t.mock)
     local s = P.env(t)
-    QuietUICharDB.modernize = { enabled = true }
+    QuietUICharDB.modules = { modernize = true }
+    QuietUICharDB.modernize = {}
     t.ns.Modern.Apply()
     s.reports = t.mock.printed
     t.assert.ok(U.hidden(PlayerFrame), "unit skins are applied")

@@ -1,7 +1,7 @@
 -- XP range follows a level up during a running gain; a secret watched reputation goes straight to its bar.
 local h = ...
 
-local function enable() QuietUICharDB = { modernize = { enabled = true } } end
+local function enable() QuietUICharDB = { modules = { modernize = true }, modernize = {} } end
 
 local function child(height)
     local function walk(frame)

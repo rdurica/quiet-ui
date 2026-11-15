@@ -79,7 +79,7 @@ h.test("apply runs only when Modernize and the area are on, and only once", func
     A.eq(a.apply, 1, "applied once")
     A.eq(b.apply, 0, "area off is not applied")
     A.ok(L.zoomed(a.icon)); A.ok(not L.zoomed(b.icon))
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     A.ok(not L.zoomed(a.icon), "Modernize off restores the applied area")
 end)
