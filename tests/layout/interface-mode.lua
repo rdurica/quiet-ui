@@ -52,13 +52,13 @@ h.test("interface-specific built-ins, custom layouts, identity, indices, preview
     InputUtil = nil
     A.eq(ns.Layout.Choices()[1].name, "Modern", "Missing mode APIs must use the keyboard layout list")
     InputUtil = { GetCurrentInterfaceStyle = function() return style end }
-    local id = ns.Settings.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { chat = false })
+    local id = ns.Settings.SavePreset(nil, "Test A", { layoutName = "QuietUI", layoutType = 1 }, { chatFade = 5 })
     ns.Settings.ActivatePreset(id)
     style = 1
     local before = info.activeLayout
     A.ok(ns.Layout.ValidatePresetInterface() and char.presetId == nil,
         "Startup must detach a legacy keyboard preset in gamepad mode")
-    A.ok(char.chat == false and info.activeLayout == before, "Detach must preserve settings and the active layout")
+    A.ok(char.chatFade == 5 and info.activeLayout == before, "Detach must preserve settings and the active layout")
     A.eq(db.presets[id].layout.layoutName, "QuietUI", "Detach must not modify the shared preset")
     ns.Settings.SavePreset(id, "Test A", { builtin = 3 }, { chatFade = 0 })
     ns.Settings.ActivatePreset(id)

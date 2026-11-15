@@ -9,12 +9,13 @@ local function fixture(t)
     QuietUIDB = {}; QuietUICharDB = { chatFade = 20 }
     local rec = {}
     ns.ApplyAll = function() end
+    ns.RestoreAll = function() end
     ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
     ns.Layout.Choices = function() return { { name = "Other", ref = { layoutName = "Other", layoutType = 1 } } } end
     ns.Layout.Preview = function(ref) rec.preview = ref.layoutName end
     ns.Layout.CommitPreview = function() rec.committed = true; rec.preview = nil end
     ns.Layout.CancelPreview = function() rec.cancelled = true; rec.preview = nil end
-    rec.id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { chat = false, chatFade = 0, groupAuras = false,
+    rec.id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { modules = { chat = false }, chatFade = 0, groupAuras = false,
         player = "resource", requireLivingTarget = true, visible = { bars = true, swing = true },
         groups = { ["1"] = 2 }, hostile = { ["1"] = true }, friendly = { ["2"] = true },
         range = { yards = "spell", kind = "friendly", spell = "Heal" } })
@@ -35,7 +36,7 @@ h.test("General: preset selection stays a draft until Save, layout preview commi
     ui:Hide(); ns.Setup.Show(); click(ui.save)
     A.ok(not QuietUICharDB.presetId and QuietUICharDB.chatFade == 20, "Closing discards selection")
     click(ui.presetSelector); click(ui.presetMenu.items[2]); click(ui.save)
-    A.ok(QuietUICharDB.presetId == id and QuietUICharDB.chat == false and QuietUICharDB.chatFade == 0)
+    A.ok(QuietUICharDB.presetId == id and QuietUICharDB.modules.chat == false and QuietUICharDB.chatFade == 0)
     click(ui.layoutSelector); click(ui.layoutMenu.items[1])
     A.eq(rec.preview, "Other", "Layout selection must preview immediately")
     A.eq(ns.Settings.Presets()[id].layout.layoutName, "Raid", "Preview must not save the shared preset")
@@ -60,10 +61,10 @@ h.test("General: detach keeps settings; Reset does not touch the shared preset",
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     click(ui.presetSelector); click(ui.presetMenu.items[1]); click(ui.save)
-    A.ok(not QuietUICharDB.presetId and QuietUICharDB.chat == false, "Detach preserves settings")
+    A.ok(not QuietUICharDB.presetId and QuietUICharDB.modules and QuietUICharDB.modules.chat == false, "Detach preserves settings")
     ns.Settings.ActivatePreset(id); ns.Setup.Show(); click(ui.reset)
-    A.ok(not QuietUICharDB.presetId and QuietUICharDB.chat == nil)
-    A.eq(ns.Settings.Presets()[id].settings.chat, false, "Reset must not mutate shared preset")
+    A.ok(not QuietUICharDB.presetId and QuietUICharDB.modules == nil)
+    A.eq(ns.Settings.Presets()[id].settings.modules.chat, false, "Reset must not mutate shared preset")
 end)
 
 h.test("General: new, rename and delete presets are drafts until Save; preset command refreshes setup", function(t)

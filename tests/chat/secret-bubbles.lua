@@ -327,7 +327,7 @@ h.test("A reused bubble for a plain line loses the secret anchors and keeps norm
     A.ok(reused.hyperlinks, "the reused bubble did not get link hit testing back")
 end)
 
-h.test("A secret bubble leaves the native chat untouched when Modern chat is off", function(t)
+h.test("A secret bubble leaves the native chat untouched when Chat module is off", function(t)
     local ns, A = t.ns, t.assert
     local chat = ChatFrame1
     local native = chat:CreateFontString(nil, "ARTWORK")
@@ -336,11 +336,11 @@ h.test("A secret bubble leaves the native chat untouched when Modern chat is off
     settle(ns)
     A.ok(bubbleFor(chat, SECRET), "no bubble was laid out for the secret line")
     local chatPoints, nativePoints = #chat._points, #native._points
-    QuietUICharDB.chat = false
+    QuietUICharDB.modules = { chat = false }
     native:SetAlpha(1)
     chat:AddMessage("modern chat off")
     settle(ns)
-    A.alpha(native, 1, "native text was hidden with Modern chat off")
+    A.alpha(native, 1, "native text was hidden with Chat module off")
     A.eq(#chat._points, chatPoints, "the native chat frame was re-anchored")
     A.eq(#native._points, nativePoints, "the native text was re-anchored")
 end)

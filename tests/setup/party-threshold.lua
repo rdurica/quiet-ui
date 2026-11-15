@@ -12,12 +12,13 @@ local function fixture(t, activate)
     local ns = t.ns
     QuietUIDB = {}; QuietUICharDB = { chatFade = 20 }
     ns.ApplyAll = function() end
+    ns.RestoreAll = function() end
     ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
     ns.Layout.Choices = function() return {} end
     ns.Layout.Preview = function() end
     ns.Layout.CommitPreview = function() end
     ns.Layout.CancelPreview = function() end
-    local id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { chat = false, chatFade = 0, groupAuras = false, player = "resource" })
+    local id = ns.Settings.SavePreset(nil, "Healer", ns.Layout.CurrentRef(), { modules = { chat = false }, chatFade = 0, groupAuras = false, player = "resource" })
     if activate then ns.Settings.ActivatePreset(id) end
     ns.Setup.Show()
     return t.mock:findByName("QuietUISetup"), id

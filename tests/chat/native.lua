@@ -22,7 +22,7 @@ local function nativeChat(t)
     return chat, font
 end
 
-h.test("Native chat stays visible after addon or Modern chat is disabled", function(t)
+h.test("Native chat stays visible after addon or Chat module is disabled", function(t)
     local ns, A = t.ns, t.assert
     QuietUIDB = { enabled = true }
     QuietUICharDB = {}
@@ -33,13 +33,13 @@ h.test("Native chat stays visible after addon or Modern chat is disabled", funct
     A.eq(chat.scrolled, 1, "Active chat wheel must work")
     chat:AddMessage("enabled")
     A.alpha(font, 0)
-    QuietUICharDB.chat = false
+    QuietUICharDB.modules = { chat = false }
     font:SetAlpha(1)
     chat:AddMessage("modern chat off")
     wheel(chat, 1)
-    A.eq(chat.scrolled, 1, "Wheel hook remained active with Modern chat off")
-    A.alpha(font, 1, "AddMessage hid native text with Modern chat off")
-    QuietUICharDB.chat = nil
+    A.eq(chat.scrolled, 1, "Wheel hook remained active with Chat module off")
+    A.alpha(font, 1, "AddMessage hid native text with Chat module off")
+    QuietUICharDB.modules = nil
     QuietUIDB.enabled = false
     font:SetAlpha(1)
     chat:AddMessage("addon off")

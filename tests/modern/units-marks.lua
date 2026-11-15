@@ -4,7 +4,7 @@ local h = ...
 local U = h.lib("modern-units")
 
 local function enable(ns)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
 end
 

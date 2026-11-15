@@ -13,7 +13,7 @@ end)
 
 h.test("the Modern tab shows a Buffs and debuffs checkbox", function(t)
     local A, ns = t.assert, t.ns
-    QuietUIDB = {}; QuietUICharDB = { modernize = { enabled = true } }
+    QuietUIDB = {}; QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.ApplyAll = function() end
     ns.Layout.CurrentRef = function() return { layoutName = "Raid", layoutType = 1 } end
     ns.Layout.Choices = function() return {} end

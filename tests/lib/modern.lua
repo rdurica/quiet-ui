@@ -13,9 +13,10 @@ end
 
 -- Modernize on (plus extra keys such as { bars = false, xpGain = false }).
 function L.enable(extra)
-    local m = { enabled = true }
+    local m = {}
     for k, v in pairs(extra or {}) do m[k] = v end
     QuietUICharDB = QuietUICharDB or {}
+    QuietUICharDB.modules = { modernize = true }
     QuietUICharDB.modernize = m
     return m
 end

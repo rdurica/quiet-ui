@@ -19,7 +19,7 @@ local function fixture(t)
 end
 
 local function enable(ns)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
 end
 
@@ -128,7 +128,7 @@ h.test("12.0 restore returns icon, border, held art, duration and stops skinning
     local before = L.snapshot({ buff.Icon, buff.DebuffBorder, buff.Duration, enchant.TempEnchantBorder,
         debuff.Icon, debuff.DebuffBorder, debuff.Duration })
     enable(ns)
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     for _, button in ipairs({ buff, enchant, debuff }) do
         A.ok(not I.zoomed(button.Icon), "icon restored")

@@ -1,5 +1,13 @@
--- Quest mobs setting: accessor, shared preset key, Misc. tab layout and info text, draft handling.
+-- Quest mobs setting: accessor, shared preset key, Helpers tab layout and info text, draft handling.
 local h = ...
+
+-- The Helpers tab (Quests, Highlights, Quest mobs) and its page; found by id, so tab order may change.
+local function helpers(ui)
+    for index, tab in ipairs(ui.tabs) do
+        if tab.id == "helpers" then return ui.pages[index], tab end
+    end
+    error("Helpers tab is missing", 0)
+end
 
 local function click(button)
     if not (button and type(button._scripts.OnClick) == "function") then error("Required control is missing", 0) end
@@ -19,24 +27,24 @@ end
 
 local function label(widget) return widget.label and widget.label._text end
 
--- The Misc. checkbox: a page child labelled "Quest mobs" with a box (the section heading has no box).
+-- The Helpers checkbox: a page child labelled "Quest mobs" with a box (the section heading has no box).
 local function choice(ui)
     local found
-    for _, child in ipairs(ui.pages[6]._children) do
+    for _, child in ipairs((helpers(ui))._children) do
         if child.box and label(child) == "Quest mobs" then
-            if found then error("Misc. must have exactly one Quest mobs checkbox", 0) end
+            if found then error("Helpers must have exactly one Quest mobs checkbox", 0) end
             found = child
         end
     end
-    if not found then error("Misc. Quest mobs checkbox is missing", 0) end
+    if not found then error("Helpers Quest mobs checkbox is missing", 0) end
     return found
 end
 local function checked(ui) return choice(ui).box._checked == true end
 local function heading(ui, text)
-    for _, child in ipairs(ui.pages[6]._children) do
+    for _, child in ipairs((helpers(ui))._children) do
         if child._kind == "Frame" and not child.box and label(child) == text then return child end
     end
-    error("Misc. has no " .. text .. " section", 0)
+    error("Helpers has no " .. text .. " section", 0)
 end
 
 -- Resolves a TOPLEFT offset relative to the page, following anchors to sibling widgets.
@@ -99,15 +107,15 @@ h.test("questMobs is a shared preset key", function(t)
     A.eq(ns.Settings.QuestMobs(), true, "Accessor must read the active preset, not the personal snapshot")
 end)
 
-h.test("Misc. shows Quest mobs checked under Highlights with an English info text", function(t)
+h.test("Helpers shows Quest mobs checked under Highlights with an English info text", function(t)
     local ns, A = t.ns, t.assert
     boot(t)
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
-    local page = ui.pages[6]
-    A.ok(label(ui.tabs[6]) == "Misc." and #ui.tabs == 8, "Misc. stays the sixth of eight tabs")
+    local page, tab = helpers(ui)
+    A.eq(label(tab), "Helpers", "the tab is called Helpers")
     local box = choice(ui)
-    A.eq(box._parent, page, "Quest mobs belongs on Misc.")
+    A.eq(box._parent, page, "Quest mobs belongs on Helpers")
     A.ok(checked(ui), "Clean profile must paint Quest mobs checked")
     local section = heading(ui, "Quest mobs")
     local _, sectionY = offset(section, page)
@@ -121,7 +129,7 @@ h.test("Misc. shows Quest mobs checked under Highlights with an English info tex
         A.ok(-sectionY >= -y + widget._h, "Quest mobs section must sit below the Highlights choices")
     end
     A.ok(-boxY >= -sectionY + section._h, "Quest mobs checkbox sits under its heading")
-    A.ok(-boxY + box._h <= page._h, "Quest mobs checkbox must fit inside the Misc. page height")
+    A.ok(-boxY + box._h <= page._h, "Quest mobs checkbox must fit inside the Helpers page height")
     local all = (tooltip(t.mock, section.help) .. "\n" .. table.concat(texts(page), "\n")):lower()
     A.ok(all:find("exclamation", 1, true), "Info must mention the exclamation mark for kill mobs")
     A.ok(all:find("pouch", 1, true), "Info must mention the pouch for mobs that drop a quest item")
@@ -132,6 +140,7 @@ end)
 h.test("Setup keeps one height on every tab and fits the tallest page", function(t)
     local ns, A = t.ns, t.assert
     boot(t)
+    QuietUICharDB.modules = { modernize = true } -- every tab is listed
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
     choice(ui)
@@ -147,7 +156,7 @@ h.test("Setup keeps one height on every tab and fits the tallest page", function
             A.eq(page._shown, index == other, "Only selected page may be shown")
         end
     end
-    A.ok(ui.pages[6]._h <= tallest, "Misc. may not exceed the tallest tab")
+    A.ok((helpers(ui))._h <= tallest, "Helpers may not exceed the tallest tab")
 end)
 
 h.test("Unchecking is a draft; X and Escape discard it", function(t)

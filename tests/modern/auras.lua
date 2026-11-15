@@ -3,7 +3,7 @@ local h = ...
 local I = h.lib("modern-icons")
 
 local function enable(ns)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
 end
 
@@ -56,7 +56,7 @@ h.test("auras restore icon, border, duration and font state when disabled", func
     enable(ns)
     A.ok(I.zoomed(buff.Icon), "skin applied before disabling")
     A.ok(I.outlined(buff.Duration), "duration treatment applied before disabling")
-    QuietUICharDB.modernize.enabled = nil
+    QuietUICharDB.modules.modernize = nil
     ns.Modern.Apply()
     for _, button in ipairs({ buff, magic, enchant }) do
         A.ok(not I.zoomed(button.Icon), button:GetName() .. " icon restored")

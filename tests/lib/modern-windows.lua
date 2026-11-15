@@ -9,7 +9,7 @@ function W.area(ns, key)
 end
 
 function W.enable(ns, extra)
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     for key, value in pairs(extra or {}) do QuietUICharDB.modernize[key] = value end
     ns.Modern.Apply()
 end

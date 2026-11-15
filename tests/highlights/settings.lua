@@ -1,10 +1,18 @@
--- Highlights settings contracts: ns.Settings.Highlights accessor, the Misc. tab (draft, Save, Reset, presets).
+-- Highlights settings contracts: ns.Settings.Highlights accessor, the Helpers tab (draft, Save, Reset, presets).
 local h = ...
 
 local KEYS = { herb = "highlightHerb", ore = "highlightOre", quest = "highlightQuest" }
 local LABELS = { herb = "Herbs", ore = "Ore", quest = "Interact objects" }
 
 local function click(b) b._scripts.OnClick(b) end
+
+-- The Helpers tab (Quests, Highlights, Quest mobs) and its page; found by id, so tab order may change.
+local function helpers(ui)
+    for index, tab in ipairs(ui.tabs) do
+        if tab.id == "helpers" then return ui.pages[index], tab end
+    end
+    error("Helpers tab is missing", 0)
+end
 
 -- Real addon; only the layout and apply seams are replaced by recorders.
 local function fixture(t)
@@ -32,7 +40,7 @@ end
 
 local function choice(ui, key)
     local widget = ui[KEYS[key]]
-    if not (widget and widget.box and widget.label) then error("Misc. " .. LABELS[key] .. " choice is missing", 0) end
+    if not (widget and widget.box and widget.label) then error("Helpers " .. LABELS[key] .. " choice is missing", 0) end
     return widget
 end
 local function checked(ui, key) return choice(ui, key).box._checked == true end
@@ -69,10 +77,10 @@ local function texts(object, out)
 end
 
 local function header(ui)
-    for _, child in ipairs(ui.pages[6]._children) do
+    for _, child in ipairs((helpers(ui))._children) do
         if child.label and child.label._text == "Highlights" then return child end
     end
-    error("Misc. has no Highlights section", 0)
+    error("Helpers has no Highlights section", 0)
 end
 
 local function tooltip(t, help)
@@ -93,21 +101,20 @@ h.test("Clean profile reads all three categories off", function(t)
     expect(t, true, true, true, "All stored must read all on")
 end)
 
-h.test("Misc. shows Highlights right of Chat and Quests with three unchecked choices stacked", function(t)
+h.test("Helpers shows Highlights with three unchecked choices stacked", function(t)
     local A = t.assert
     local ns = fixture(t)
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
-    local page = ui.pages[6]
-    A.ok(ui.tabs[6].label._text == "Misc." and #ui.tabs == 8, "Misc. stays the sixth of eight tabs")
+    local page, tab = helpers(ui)
+    A.eq(tab.label._text, "Helpers", "the tab is called Helpers")
+    A.eq(ui.pages[1].id, "modules", "Modules is the first page")
     local section = header(ui)
     local sectionX, sectionY = offset(section, page)
-    local sizeX = offset(ui.questNoticeSize, page)
-    A.ok(sectionX >= sizeX + ui.questNoticeSize:GetWidth(), "Highlights must sit in the column right of the Quests controls")
     local previousY, previousHeight
     for _, key in ipairs({ "herb", "ore", "quest" }) do
         local widget = choice(ui, key)
-        A.ok(widget:GetParent() == page, LABELS[key] .. " belongs on Misc.")
+        A.ok(widget:GetParent() == page, LABELS[key] .. " belongs on Helpers.")
         A.eq(widget.label._text, LABELS[key], "Choice label must be " .. LABELS[key])
         A.ok(not widget.box._checked, LABELS[key] .. " must start unchecked")
         local x, y = offset(widget, page)
@@ -125,7 +132,7 @@ h.test("Highlights info text is English and explains Interact and soft targeting
     local ns = fixture(t)
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
-    local all = tooltip(t, header(ui).help) .. "\n" .. table.concat(texts(ui.pages[6]), "\n")
+    local all = tooltip(t, header(ui).help) .. "\n" .. table.concat(texts((helpers(ui))), "\n")
     A.ok(all:find("Interact With Target", 1, true), "Info must name the Interact With Target binding")
     A.ok(all:find("Key Bindings", 1, true), "Info must point to Key Bindings")
     A.ok(all:lower():find("soft target", 1, true), "Info must mention soft targeting")
@@ -133,16 +140,17 @@ h.test("Highlights info text is English and explains Interact and soft targeting
     A.ok(all:lower():find("restore", 1, true), "Info must say settings are restored when turned off")
 end)
 
-h.test("Misc. content fits and setup keeps one height on every tab", function(t)
+h.test("Helpers content fits and setup keeps one height on every tab", function(t)
     local A = t.assert
     local ns = fixture(t)
+    QuietUICharDB.modules = { modernize = true } -- every tab is listed
     ns.Setup.Show()
     local ui = t.mock:findByName("QuietUISetup")
-    local page = ui.pages[6]
+    local page = helpers(ui)
     for _, key in ipairs({ "herb", "ore", "quest" }) do
         local widget = choice(ui, key)
         local _, y = offset(widget, page)
-        A.ok(-y + widget:GetHeight() <= page:GetHeight(), LABELS[key] .. " must fit inside the Misc. tab height")
+        A.ok(-y + widget:GetHeight() <= page:GetHeight(), LABELS[key] .. " must fit inside the Helpers tab height")
     end
     local height = ui:GetHeight()
     local tallest = 0
@@ -152,7 +160,7 @@ h.test("Misc. content fits and setup keeps one height on every tab", function(t)
         A.eq(ui:GetHeight(), height, "Tab switch must not resize setup")
         A.ok(ui.pages[index]:IsShown(), "Selected tab must show its page")
     end
-    A.ok(page:GetHeight() <= tallest, "Misc. may not exceed the tallest tab")
+    A.ok(page:GetHeight() <= tallest, "Helpers may not exceed the tallest tab")
 end)
 
 h.test("Toggling is a draft, Save stores only true keys and applies", function(t)

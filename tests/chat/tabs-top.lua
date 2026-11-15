@@ -164,13 +164,13 @@ h.test("Switching Top to Bottom moves the tabs below and keeps Blizzard's points
     ns.Chat.StripAll(true)
     assertBelow(A, GeneralDockManager, ChatFrame1, "dock below")
     assertBelow(A, ChatFrame2Tab, ChatFrame2, "tab below")
-    QuietUICharDB.chat = false
+    QuietUICharDB.modules = { chat = false }
     ns.Chat.Restore()
     A.deep(snapshot(GeneralDockManager), dock0, "dock originals")
     A.deep(snapshot(ChatFrame2Tab), tab0, "tab originals")
 end)
 
-h.test("Top then Modern chat off restores points and tab alpha", function(t)
+h.test("Top then Chat module off restores points and tab alpha", function(t)
     local ns, A = t.ns, t.assert
     setup(t)
     top()
@@ -178,7 +178,7 @@ h.test("Top then Modern chat off restores points and tab alpha", function(t)
     local dock0, tab0 = snapshot(GeneralDockManager), snapshot(ChatFrame2Tab)
     ns.Chat.StripAll()
     ns.Chat.Update(1)
-    QuietUICharDB.chat = false
+    QuietUICharDB.modules = { chat = false }
     ns.Chat.Restore()
     A.deep(snapshot(GeneralDockManager), dock0, "dock points")
     A.deep(snapshot(ChatFrame2Tab), tab0, "tab points")

@@ -46,12 +46,14 @@ h.test("A line sent in one window reaches the other inputs", function(t)
     A.deep(QuietUICharDB.chatHistory, { "party pull" }, "stored once")
 end)
 
-h.test("History works without Modern chat, and restore puts the line limit back", function(t)
+-- #34: input history belongs to the Chat module, so with Chat off it is neither applied nor stored
+-- (tests/chat/module.lua). Restore still runs, whatever the gate says.
+h.test("Restore puts the line limit back after the Chat module is switched off", function(t)
     local ns, A = t.ns, t.assert
     setup()
-    QuietUICharDB.chat = false
     ns.Chat.ApplyHistory()
     A.ok(ChatFrame1EditBox:GetHistoryLines() >= 50, "room for the stored lines")
+    QuietUICharDB.modules = { chat = false }
     ns.Chat.RestoreHistory()
     A.eq(ChatFrame1EditBox:GetHistoryLines(), 32, "line limit back")
 end)

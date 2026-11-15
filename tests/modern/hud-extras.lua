@@ -37,7 +37,7 @@ h.test("Unit frames gives a boss frame the target's compact box", function(t)
     U.installColours(mock)
     U.frames()
     local boss = U.target("Boss1TargetFrame", "boss1")
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.eq(U.parts(boss).portrait._alpha, 0, "the boss portrait is held")
     A.eq(U.statusTexture(U.parts(boss).health), ns.Modern.Theme().bar, "the boss health bar is flat")
@@ -50,7 +50,7 @@ h.test("Cast bars flattens the breath bar and repaints it on every Setup, and re
     local breath = timer(container)
     container.mirrorTimers = { breath }
     local before = L.snapshot(R.all(container))
-    QuietUICharDB = { modernize = { enabled = true } }
+    QuietUICharDB = { modules = { modernize = true }, modernize = {} }
     ns.Modern.Apply()
     A.eq(breath.Border._alpha, 0, "the cast bar frame is held")
     A.eq(breath.TextBorder._alpha, 0, "the text box is held")
