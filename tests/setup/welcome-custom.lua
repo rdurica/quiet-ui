@@ -291,3 +291,23 @@ h.test("Custom Save in combat is refused: nothing written, not welcomed, no relo
     A.ok(frame:IsShown(), "the welcome stays open")
     A.ok(box(frame, "Fading").box._checked, "the second screen keeps the picks")
 end)
+
+h.test("Nothing is armed before a click, so combat starting after the screen was filled cannot reload", function(t)
+    local mock, A = t.mock, t.assert
+    t.boot()
+    local reloads = counter()
+    local frame = welcome(mock)
+    click(custom(frame))
+    local save = control(frame, "Save")
+    A.eq(save:GetAttribute("type"), nil, "not armed while the screen is filled in")
+    inCombat(function() press(save) end)
+    A.ok(said(mock, "Leave combat to change modules."), "the refusal is printed")
+    A.eq(QuietUICharDB.modules, nil, "no modules are written")
+    A.eq(QuietUICharDB.welcomed, nil, "the welcome is not marked answered")
+    A.eq(reloads.n, 0, "no reload")
+    A.eq(save:GetAttribute("type"), nil, "still not armed")
+    -- Out of combat the same click saves and reloads, and disarms again.
+    press(save)
+    A.eq(reloads.n, 1, "reloads out of combat")
+    A.eq(save:GetAttribute("type"), nil, "disarmed after the click")
+end)
