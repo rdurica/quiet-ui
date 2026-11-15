@@ -52,8 +52,7 @@ local function Write(set)
 end
 
 -- A changed set reloads, so it is complete at once; the same set only closes, and the layout prompt follows.
--- ReloadUI from addon code is blocked on this client, so Choose and Save are secure buttons running /reload while
--- the set changes; PreClick saves the answer first. The old set is restored first, out of combat.
+-- The click saves the answer first (see Setup.ReloadButton); the old set is restored first, out of combat.
 local function Answered(frame, button, reloads)
     frame:Hide()
     if button.changes and not reloads then
@@ -62,10 +61,11 @@ local function Answered(frame, button, reloads)
     if not button.changes and ns.Settings.Module("layout") then ns.Layout.Ensure() end
 end
 
--- False when the answer waits: Custom Save does not change modules in combat.
+-- Not handled when the answer waits: Custom Save does not change modules in combat.
 local function Commit(frame, button)
     local set = button.source(frame)
     if not set then return false end
+    button.changes = not Setup.SameModules(Setup.ActiveModules(), set)
     local combat = InCombatLockdown()
     if button.changes and combat and button.strict then
         ns.Print("Leave combat to change modules.")
@@ -73,40 +73,16 @@ local function Commit(frame, button)
     end
     if button.changes and not combat and ns.DB().enabled and ns.RestoreAll then ns.RestoreAll() end
     Write(set)
-    return true
+    return true, button.changes
 end
 
 local function ChooseButton(frame, text, source, strict)
-    local button = Setup.Button(frame, text, nil, "SecureActionButtonTemplate")
+    local button
+    button = Setup.ReloadButton(frame, text, function() return Commit(frame, button) end, function(reloads)
+        Answered(frame, button, reloads)
+    end)
     button.source, button.strict = source, strict
-    if type(button.SetAttribute) ~= "function" then
-        button:SetScript("OnClick", function()
-            if not Commit(frame, button) then return end
-            local reloads = button.changes and type(ReloadUI) == "function"
-            Answered(frame, button, reloads)
-            if reloads then ReloadUI() end
-        end)
-        return button
-    end
-    if type(button.RegisterForClicks) == "function" then button:RegisterForClicks("AnyUp", "AnyDown") end
-    button:SetScript("PreClick", function()
-        button.committed = Commit(frame, button)
-    end)
-    button:SetScript("PostClick", function()
-        if not button.committed then return end
-        button.committed = nil
-        Answered(frame, button, button:GetAttribute("type") == "macro")
-    end)
     return button
-end
-
--- Only a changed set runs /reload. Attributes are locked in combat; then chat asks for /reload.
-local function ArmReload(frame, button)
-    local set = button.source(frame)
-    button.changes = set ~= nil and not Setup.SameModules(Setup.ActiveModules(), set)
-    if type(button.SetAttribute) ~= "function" or InCombatLockdown() then return end
-    button:SetAttribute("macrotext", "/reload")
-    button:SetAttribute("type", button.changes and "macro" or nil)
 end
 
 local function SelectedSet(frame)
@@ -121,7 +97,6 @@ local function Select(frame, key)
         Setup.EdgeColor(card, cardKey == key and Setup.Colors().accent or Setup.Colors().border)
     end
     if key then frame.choose:Enable() else frame.choose:Disable() end
-    ArmReload(frame, frame.choose)
 end
 
 local function CustomSet(frame) return frame.custom end
@@ -130,7 +105,6 @@ local function CustomSet(frame) return frame.custom end
 local function PaintCustom(frame)
     for _, row in ipairs(frame.moduleRows) do Setup.PaintBox(row.button.box, frame.custom[row.key]) end
     if Setup.AnyModule(frame.custom) then frame.save:Enable() else frame.save:Disable() end
-    ArmReload(frame, frame.save)
 end
 
 local function BuildCustom(frame)

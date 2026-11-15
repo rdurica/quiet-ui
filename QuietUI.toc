@@ -122,6 +122,7 @@ Setup\ModuleSet.lua
 Setup\Style.lua
 Setup\Paint.lua
 Setup\Widgets.lua
+Setup\Reload.lua
 Setup\Window.lua
 Setup\Pages\Modules.lua
 Setup\Pages\General.lua
