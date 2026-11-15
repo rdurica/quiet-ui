@@ -3,6 +3,7 @@
 local h = ...
 
 local NOTE = "Press Ctrl+C to copy the report, then open the link to create an issue."
+local LINK_NOTE = "Issue link: click it, press Ctrl+C and paste it into your browser."
 local INFO = "Found a bug? Type /quiet dump and send the report."
 
 local function start(t)
@@ -247,4 +248,32 @@ h.test("The report scrolls with the mouse wheel, clamped to its range", function
     A.eq(scroll:GetVerticalScroll(), 100, "clamped to the range")
     scroll._scripts.OnMouseWheel(scroll, 1000)
     A.eq(scroll:GetVerticalScroll(), 0, "clamped at the top")
+end)
+
+h.test("After a user change the whole text is highlighted again", function(t)
+    local A = t.assert
+    start(t)
+    local win = open(t)
+    local report, link = fields(t, win)
+    for _, box in ipairs({ report, link }) do
+        local original = box:GetText()
+        box._highlight = nil
+        box:SetText(original .. "x")
+        box._scripts.OnTextChanged(box, true)
+        A.eq(box:GetText(), original, "the text is put back")
+        A.ok(allHighlighted(box), "the put-back text is selected again")
+    end
+end)
+
+h.test("The link field has a muted label on the window", function(t)
+    local A = t.assert
+    start(t)
+    local win = open(t)
+    local label
+    for _, f in ipairs(texts(t, win)) do
+        if f._text == LINK_NOTE then label = f end
+    end
+    A.ok(label, "the link label is on the window")
+    local r, g, b = label:GetTextColor()
+    A.ok(r == g and g == b and r < 1, "the label is muted")
 end)
