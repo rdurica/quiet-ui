@@ -125,6 +125,7 @@ Setup\Paint.lua
 Setup\Widgets.lua
 Setup\Reload.lua
 Setup\Window.lua
+Setup\Dump.lua
 Setup\Pages\Modules.lua
 Setup\Pages\General.lua
 Setup\Pages\Visible.lua

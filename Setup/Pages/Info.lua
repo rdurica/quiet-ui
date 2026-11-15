@@ -10,4 +10,6 @@ Setup.Pages.info = function(widget, info)
     widget.glanceHeader = column:Add(Setup.Section(info, "Glance",
         "Press the Glance binding or use /quiet glance to reveal the hidden HUD, including hover-only elements. Press again to return to the usual visibility rules. Chat is unchanged and Glance is not saved."), 30)
     widget.glanceBody = column:Add(Setup.Body(info, "Press ` to show what has faded. Press it again and the choices on the other tabs apply. Change the key under QuietUI in Key Bindings. You can also use /quiet glance in a macro for your controller."), 40)
+    column:Gap()
+    widget.bugBody = column:Add(Setup.Body(info, "Found a bug? Type /quiet dump and send the report."), 20)
 end
