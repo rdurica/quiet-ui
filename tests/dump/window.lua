@@ -231,3 +231,20 @@ h.test("The Info tab tells how to report a bug", function(t)
     end
     A.ok(found, "the Info tab has the sentence")
 end)
+
+h.test("The report scrolls with the mouse wheel, clamped to its range", function(t)
+    local A = t.assert
+    start(t)
+    local win = open(t)
+    local report = fields(t, win)
+    local scroll = report:GetParent()
+    A.ok(scroll._scripts.OnMouseWheel, "the scroll frame handles the wheel")
+    scroll._vrange = 100
+    scroll._scripts.OnMouseWheel(scroll, -1)
+    local down = scroll:GetVerticalScroll()
+    A.ok(down > 0, "wheel down scrolls, got " .. tostring(down))
+    scroll._scripts.OnMouseWheel(scroll, -1000)
+    A.eq(scroll:GetVerticalScroll(), 100, "clamped to the range")
+    scroll._scripts.OnMouseWheel(scroll, 1000)
+    A.eq(scroll:GetVerticalScroll(), 0, "clamped at the top")
+end)

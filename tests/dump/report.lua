@@ -119,3 +119,17 @@ h.test("Reporting never changes alpha or settings other than errors", function(t
     A.eq(QuietUICharDB.chatFade, 5)
     A.deep(QuietUICharDB, { chatFade = 5 })
 end)
+
+h.test("The recorded stack starts at the reporting caller", function(t)
+    local ns, A = t.ns, t.assert
+    -- Like the client: level 1 is the function calling debugstack, then its callers outward.
+    local calls = { "closure", "ns.Report", "CALLER", "outer" }
+    _G.debugstack = function(level)
+        local out = {}
+        for i = level, #calls do out[#out + 1] = calls[i] end
+        return table.concat(out, "\n")
+    end
+    local function caller() ns.Report("where", "boom") end
+    caller()
+    A.ok(tostring(QuietUIDB.errors[1].stack):find("^CALLER"), "stack: " .. tostring(QuietUIDB.errors[1].stack))
+end)
