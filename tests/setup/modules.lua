@@ -351,6 +351,19 @@ h.test("Save into a shared preset with a changed module set restores everything,
     A.eq(table.concat(log.events, ","), "restore,reload")
 end)
 
+h.test("A preset save that fails after a module change brings the old set back", function(t)
+    local ns, A = t.ns, t.assert
+    local ui, log = open(t)
+    ui:Hide()
+    local id = ns.Settings.SavePreset(nil, "Raid", { builtin = 1 }, {})
+    ns.Settings.ActivatePreset(id)
+    ns.Setup.Show()
+    click(moduleBox(ui, "Fading"))
+    QuietUIDB.presets[id] = nil
+    click(ui.save)
+    A.eq(table.concat(log.events, ","), "restore,apply", "restored, then applied again, no reload")
+end)
+
 local REFUSAL = "Leave combat to change modules."
 
 h.test("Save with a changed module set in combat is refused and saves nothing", function(t)
