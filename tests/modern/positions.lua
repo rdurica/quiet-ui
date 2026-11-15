@@ -72,9 +72,11 @@ h.test("Modern tab Reset positions is visible with the module on and clears poin
     reset._scripts.OnClick(reset)
     A.eq(QuietUICharDB.windowPoints, nil, "cleared immediately, before Save")
     A.deep(QuietUICharDB.modernize, { theme = "dark" }, "other settings remain")
+    local page
+    for _, candidate in ipairs(ui.pages) do if candidate.id == "modern" then page = candidate end end
     for _, control in ipairs(mock.frames) do
-        A.falsy(control._kind == "Button" and control.label and control.label._text == "Modernize",
-            "the Modern page has no Modernize checkbox; the Modules tab owns it")
+        A.falsy(control._kind == "Button" and control.label and control.label._text == "Modernize"
+            and control:GetParent() == page, "the Modern page has no Modernize checkbox; the Modules tab owns it")
     end
     A.ok(reset:IsVisible(), "Reset positions stays shown on the page")
 end)
