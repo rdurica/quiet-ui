@@ -73,11 +73,14 @@ Type `/quiet setup` or click the minimap button. Everything is in one window, wi
 /quiet glance           Show the whole HUD (works in macros and with a controller)
 /quiet preset           List your presets
 /quiet preset "Name"    Switch to a shared preset
+/quiet dump            Collect a bug report to copy into an issue
 ```
 
 `/quietui` works too. Glance uses `` ` `` when the key is free; change it under **QuietUI** in **Key Bindings**. `/quiet off` brings Blizzard's frames back.
 
 ## Feedback
+
+Reporting a bug: type `/quiet dump`, copy the report with Ctrl+C and open the link to create an issue.
 
 Found something odd, especially in Modern? Please [open an issue](https://github.com/rdurica/quiet-ui/issues).
 

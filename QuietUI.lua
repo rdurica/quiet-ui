@@ -239,7 +239,7 @@ ns.Feature({
 })
 
 ------------------------------------------------------------------------------
--- /quiet on | off | setup | glance | preset, no argument toggles.
+-- /quiet on | off | setup | glance | preset | profile | dump, no argument toggles.
 ------------------------------------------------------------------------------
 SLASH_QUIETUI1 = "/quiet"
 SLASH_QUIETUI2 = "/quietui"
@@ -257,6 +257,14 @@ SlashCmdList["QUIETUI"] = function(msg)
     end
     if msg == "setup" then
         ns.Setup.Show()
+        return
+    end
+    if msg == "dump" then
+        if not ns.DB().enabled then
+            ns.Print("QuietUI is off. Turn it on with /quiet on, then type /quiet dump.")
+            return
+        end
+        ns.Setup.ShowDump()
         return
     end
     if msg == "glance" then

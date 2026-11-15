@@ -34,7 +34,7 @@ The behavior spec lives in `docs/features/` (index: `docs/features/README.md`), 
 
 ## Code
 
-- Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key, plus `GetMinimapShape` only while the Modern minimap area is applied (restore its prior value on undo). Do not add libraries.
+- Files load in `QuietUI.toc` order and share the addon table: `local _, ns = ...`. No globals except `QuietUIDB`, `QuietUICharDB`, the slash command, `QuietUISetup` so Escape can close the setup window, `QuietUIDump` so Escape can close the report window, and `QuietUIGlance`, `BINDING_CATEGORY_QUIETUI`, and `BINDING_NAME_QUIETUI_GLANCE` for the Glance key, plus `GetMinimapShape` only while the Modern minimap area is applied (restore its prior value on undo). Do not add libraries.
 - Folders, in load order. One responsibility per file, at most 400 lines (checked by `tests/core/structure.lua`, together with cross-file references and stray globals).
   - `Core/`: helpers every file uses (`DB`, `Print`, `Report`, `Run`, `Usable`, `IsSecret`, `Flat`, `Backdropped`), alpha hooks, fading, hover catchers, nameplate helpers, texture hiding, `RestoreAlpha`, world state (`ns.World`), the profiler, and the feature registry (`Feature.lua`).
   - `Settings/`: `ns.Settings`: `CharDB` store, the getters, presets with personal snapshots, and migrations.
