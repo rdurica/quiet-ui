@@ -8,6 +8,7 @@
 
 Core\Base.lua
 Core\Profiler.lua
+Core\Dump.lua
 Core\UI.lua
 Core\Hover.lua
 Core\Catcher.lua

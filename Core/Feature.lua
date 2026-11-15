@@ -156,6 +156,12 @@ function Registry.On(feature)
     return on and true or false
 end
 
+-- Whether the named feature is on; false for an unknown name.
+function Registry.IsOn(name)
+    local feature = byName[name]
+    return feature ~= nil and Registry.On(feature)
+end
+
 function Registry.SetBooted(on)
     Registry.booted = on and true or false
 end
