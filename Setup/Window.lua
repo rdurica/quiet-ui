@@ -160,26 +160,25 @@ function Setup.PresetDialog(owner, title, text, accept)
 end
 
 local function Footer(widget)
-    widget.reset = Setup.Button(widget, "Reset default", function()
+    widget.reset = Setup.ReloadButton(widget, "Reset default", function()
         -- Back to the default modules is a module change like in Save: restore, then reload.
         local reload = ns.DB().enabled and type(ReloadUI) == "function"
             and not Setup.SameModules(Setup.ActiveModules(), Setup.ReadModules({}))
-        if reload and InCombatLockdown() then ns.Print("Leave combat to change modules."); return end
+        if reload and InCombatLockdown() then ns.Print("Leave combat to change modules."); return false end
         if reload and ns.RestoreAll then ns.RestoreAll() end
         if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         ns.Settings.ActivatePreset(nil, {})
         Setup.LoadSavedDraft()
         Setup.Paint()
-        if reload then ReloadUI(); return end
+        if reload then return true, true end
         if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
         if ns.ApplyAll then ns.ApplyAll() end
+        return true
     end)
     widget.import = Setup.Button(widget, "Import layout", function()
         ns.Layout.Force()
     end)
-    widget.save = Setup.Button(widget, "Save", function()
-        Setup.Write()
-    end)
+    widget.save = Setup.ReloadButton(widget, "Save", Setup.Write)
     -- Save is the main action: accent edge and label.
     Setup.EdgeColor(widget.save, Setup.Colors().accent)
     widget.save.label:SetTextColor(unpack(Setup.Colors().accent))

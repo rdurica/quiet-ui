@@ -256,26 +256,27 @@ local function ModernState()
 end
 
 -- A module change reloads. The old set is restored while it is still in effect; Layout turning off selects
--- the previous layout again, which needs the client out of combat.
+-- the previous layout again, which needs the client out of combat. Returns handled, wantsReload for
+-- Setup.ReloadButton: the reload is a secure macro armed by the click, not a ReloadUI call.
 function Setup.Write()
     local wasModern = ModernState()
     local wasModules = Setup.ActiveModules()
     local settings, err = DraftSettings()
-    if not settings then ns.Print(err); return end
+    if not settings then ns.Print(err); return false end
     if not Setup.AnyModule(draft.modules) then
         ns.Print("Choose at least one module, or turn QuietUI off with /quiet off.")
-        return
+        return false
     end
     local modulesChanged = not Setup.SameModules(wasModules, draft.modules)
     local live = ns.DB().enabled and type(ReloadUI) == "function"
     if modulesChanged and live and InCombatLockdown() then
         ns.Print("Leave combat to change modules.")
-        return
+        return false
     end
     local layoutOn = draft.modules.layout
     if S.presetName and layoutOn and not S.presetLayout then
         ns.Print("Choose an Edit Mode layout before saving.")
-        return
+        return false
     end
     if modulesChanged and live and ns.RestoreAll then ns.RestoreAll() end
     if S.presetName then
@@ -284,7 +285,7 @@ function Setup.Write()
             ns.Print(err)
             -- The old set was restored above and nothing reloads, so bring it back.
             if modulesChanged and live and ns.ApplyAll then ns.ApplyAll() end
-            return
+            return false
         end
         if layoutOn and ns.Layout.CommitPreview then ns.Layout.CommitPreview(true) end
         ns.Settings.ActivatePreset(id)
@@ -296,12 +297,13 @@ function Setup.Write()
     Setup.Paint()
     if ns.Layout.SettingsChanged and not modulesChanged then ns.Layout.SettingsChanged() end
     -- A Modernize change reloads instead of restyling in place: frames Blizzard built earlier keep some of the
-    -- other look, and the client does not give every restyled region back.
+    -- other look, and the client does not give every restyled region back. In combat the reload cannot be armed.
     if live and (modulesChanged or wasModern ~= ModernState()) then
-        ReloadUI()
-        return
+        if not InCombatLockdown() then return true, true end
+        ns.Print("type /reload to finish the new look")
     end
     if ns.ApplyAll then ns.ApplyAll() end
+    return true
 end
 
 local NOTICE_SIZES = { "smaller", "default", "larger" }
