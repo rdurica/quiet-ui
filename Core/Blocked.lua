@@ -5,7 +5,7 @@ local _, ns = ...
 local function Reported(kind, event)
     return function(addon, fn)
         if addon ~= "QuietUI" then return end
-        fn = tostring(fn)
+        fn = fn ~= nil and tostring(fn) or "?"
         ns.Report("action " .. kind .. ": " .. fn, event .. " " .. fn, "")
     end
 end

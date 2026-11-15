@@ -74,15 +74,13 @@ end
 -- `stack` (a string, "" included) replaces the captured one: events have no useful stack.
 function ns.Report(name, err, stack)
     -- A record failure must never hide the error itself.
-    if type(stack) == "string" then
-        -- used as is
-    elseif type(debugstack) == "function" then
+    if type(stack) ~= "string" then
         stack = ""
-        -- level 1 is pcall (C frames count), 2 is Report, 3 is the reporting caller
-        local ok, text = pcall(debugstack, 3)
-        if ok and type(text) == "string" then stack = text end
-    else
-        stack = ""
+        if type(debugstack) == "function" then
+            -- level 1 is pcall (C frames count), 2 is Report, 3 is the reporting caller
+            local ok, text = pcall(debugstack, 3)
+            if ok and type(text) == "string" then stack = text end
+        end
     end
     pcall(Record, name, err, stack)
     if reported[name] then return end
