@@ -272,7 +272,7 @@ local function AddonList()
             if enabled == nil then enabled = Call(state, name) end
             if enabled == nil then enabled = loadable and 2 or 0 end
             if type(enabled) == "boolean" then enabled = enabled and 2 or 0 end
-            if enabled > 0 then
+            if (tonumber(enabled) or 0) > 0 then
                 lines[#lines + 1] = Plain(title or name) .. " " .. Show(Call(meta, name, "Version"))
             end
         end

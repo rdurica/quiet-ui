@@ -13,7 +13,10 @@ local function Lock(box, close)
     local text = ""
     box.lock = function(value) text = value or "" end
     box:SetScript("OnTextChanged", function(self, user)
-        if user and self:GetText() ~= text then self:SetText(text) end
+        if user and self:GetText() ~= text then
+            if type(self.IsInIMECompositionMode) == "function" and self:IsInIMECompositionMode() then return end
+            self:SetText(text)
+        end
     end)
     local function select() box:HighlightText() end
     local gained = box:GetScript("OnEditFocusGained")
@@ -23,6 +26,38 @@ local function Lock(box, close)
     end)
     box:SetScript("OnMouseUp", select)
     box:SetScript("OnEscapePressed", close)
+end
+
+local LINE = 14
+
+local function Range(scroll)
+    local range = type(scroll.GetVerticalScrollRange) == "function" and scroll:GetVerticalScrollRange()
+    return type(range) == "number" and range > 0 and range or 0
+end
+
+local function ScrollTo(scroll, value)
+    scroll:SetVerticalScroll(math.max(0, math.min(Range(scroll), value)))
+end
+
+-- Wheel scrolling, the cursor kept in view and a box as tall as its text.
+local function Scrollable(scroll, report, measure)
+    scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        ScrollTo(self, self:GetVerticalScroll() - delta * LINE * 3)
+    end)
+    report:SetScript("OnCursorChanged", function(_, _, y, _, height)
+        local top, view = -(tonumber(y) or 0), scroll:GetHeight() or 0
+        local offset = scroll:GetVerticalScroll()
+        if top < offset then
+            ScrollTo(scroll, top)
+        elseif view > 0 and top + (tonumber(height) or LINE) > offset + view then
+            ScrollTo(scroll, top + (tonumber(height) or LINE) - view)
+        end
+    end)
+    report.fit = function()
+        measure:SetText(report:GetText())
+        report:SetHeight(math.max(scroll:GetHeight() or 0, (measure:GetStringHeight() or 0) + LINE))
+    end
 end
 
 local function Create()
@@ -67,6 +102,10 @@ local function Create()
     report:SetWidth(inner - 12)
     report:SetHeight(HEIGHT)
     scroll:SetScrollChild(report)
+    local measure = scroll:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    measure:SetWidth(inner - 12)
+    measure:Hide()
+    Scrollable(scroll, report, measure)
     Lock(report, close)
 
     local link = Setup.Field(win, inner, 2000)
@@ -83,6 +122,8 @@ function Setup.ShowDump()
     local win = S.dump
     local text, url = ns.Dump.Build(), ns.Dump.IssueURL()
     win.report.lock(text); win.report:SetText(text)
+    win.report.fit()
+    win.report:GetParent():SetVerticalScroll(0)
     win.link.lock(url); win.link:SetText(url)
     win:Show()
     ns.RaiseDialog(win)
