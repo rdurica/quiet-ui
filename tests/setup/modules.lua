@@ -364,6 +364,17 @@ h.test("A preset save that fails after a module change brings the old set back",
     A.eq(table.concat(log.events, ","), "restore,apply", "restored, then applied again, no reload")
 end)
 
+h.test("Save arms the reload only for the click that needs it and disarms it afterwards", function(t)
+    local A = t.assert
+    local ui, log = open(t)
+    A.eq(ui.save:GetAttribute("type"), nil, "not armed ahead of a click")
+    click(moduleBox(ui, "Fading"))
+    A.eq(ui.save:GetAttribute("type"), nil, "a changed draft arms nothing either")
+    click(ui.save)
+    A.eq(table.concat(log.events, ","), "restore,reload")
+    A.eq(ui.save:GetAttribute("type"), nil, "disarmed after the click")
+end)
+
 local REFUSAL = "Leave combat to change modules."
 
 h.test("Save with a changed module set in combat is refused and saves nothing", function(t)
@@ -410,4 +421,14 @@ h.test("Reset default in combat still resets when the module set is already the 
     A.falsy(said(t.mock, REFUSAL), "no refusal")
     A.eq(QuietUICharDB.chatFade, nil, "the setting is reset")
     A.eq(table.concat(log.events, ","), "apply", "applied in place, no reload")
+end)
+
+h.test("Reset default arms the reload only for its click and disarms it afterwards", function(t)
+    local ns, A = t.ns, t.assert
+    local ui, log = open(t, { modules = { fading = false } })
+    A.eq(ui.reset:GetAttribute("type"), nil, "not armed ahead of a click")
+    click(ui.reset)
+    A.eq(table.concat(log.events, ","), "restore,reload")
+    A.ok(ns.Settings.Module("fading"), "the default modules are back")
+    A.eq(ui.reset:GetAttribute("type"), nil, "disarmed after the click")
 end)

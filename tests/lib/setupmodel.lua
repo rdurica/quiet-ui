@@ -158,6 +158,17 @@ local function scenario(t, mode)
                 object.SetBackdropBorderColor = function(self, ...) self.borderColor = {...} end
             end
         elseif kind == 'Button' or kind == 'CheckButton' then object.font = object:CreateFontString() end
+        if template == 'SecureActionButtonTemplate' then
+            object.attributes = {}
+            object.SetAttribute = function(self, key, value) self.attributes[key] = value end
+            object.GetAttribute = function(self, key) return self.attributes[key] end
+            -- The template's own OnClick: PreClick, the secure action (a /reload macro), PostClick.
+            object.scripts.OnClick = function(self)
+                if self.scripts.PreClick then self.scripts.PreClick(self) end
+                if self.attributes.type == 'macro' and self.attributes.macrotext == '/reload' and ReloadUI then ReloadUI() end
+                if self.scripts.PostClick then self.scripts.PostClick(self) end
+            end
+        end
         if template == 'UIPanelButtonTemplate' then
             object.nativeNormal = object:CreateTexture(nil, 'ARTWORK')
             object.nativeNormal.texture = 'native-panel-normal'

@@ -297,6 +297,28 @@ h.test("a Save that reloads leaves applying to the reload", function(t)
     A.eq(applies, 1, "a Save without a Modernize change applies")
 end)
 
+h.test("a new Modernize look saved in combat applies in place and asks for /reload", function(t)
+    local A, ns = t.assert, t.ns
+    local reloads, applies = 0, 0
+    ReloadUI = function() reloads = reloads + 1 end
+    local ui = fixture(t, { modules = { modernize = true }, modernize = { theme = "dark" } })
+    QuietUIDB.enabled = true
+    ns.ApplyAll = function() applies = applies + 1 end
+    click(stepper(t, "Theme").plus)
+    local was = InCombatLockdown
+    InCombatLockdown = function() return true end
+    local ok, err = pcall(click, ui.save)
+    InCombatLockdown = was
+    if not ok then error(err, 0) end
+    A.eq(reloads, 0, "no reload can be armed in combat")
+    A.eq(applies, 1, "applied in place")
+    local said = false
+    for _, line in ipairs(t.mock.printed) do
+        if line:find("type /reload to finish the new look", 1, true) then said = true end
+    end
+    A.ok(said, "chat asks for /reload")
+end)
+
 h.test("saving Modernize on while QuietUI is off does not reload", function(t)
     local A = t.assert
     local reloads = 0

@@ -84,6 +84,13 @@ local function newFrame(mock, kind, name, parent, template)
         f.SetAttribute = function(self, key, value) self._attributes[key] = value end
         f.GetAttribute = function(self, key) return self._attributes[key] end
         f.RegisterForClicks = function(self, ...) self._clicks = { ... } end
+        -- The template's own OnClick: PreClick, the secure action (a /reload macro calls ReloadUI), PostClick.
+        f._scripts.OnClick = function(self, ...)
+            if self._scripts.PreClick then self._scripts.PreClick(self, ...) end
+            if self._attributes.type == "macro" and self._attributes.macrotext == "/reload"
+                and type(_G.ReloadUI) == "function" then _G.ReloadUI() end
+            if self._scripts.PostClick then self._scripts.PostClick(self, ...) end
+        end
     end
     return f
 end
