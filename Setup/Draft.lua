@@ -273,13 +273,19 @@ function Setup.Write()
         return
     end
     local layoutOn = draft.modules.layout
-    if S.presetName then
-        if layoutOn and not S.presetLayout then ns.Print("Choose an Edit Mode layout before saving."); return end
+    if S.presetName and layoutOn and not S.presetLayout then
+        ns.Print("Choose an Edit Mode layout before saving.")
+        return
     end
     if modulesChanged and live and ns.RestoreAll then ns.RestoreAll() end
     if S.presetName then
         local id, err = ns.Settings.SavePreset(S.selectedPresetId, S.presetName, S.presetLayout or ns.Layout.CurrentRef(), settings)
-        if not id then ns.Print(err); return end
+        if not id then
+            ns.Print(err)
+            -- The old set was restored above and nothing reloads, so bring it back.
+            if modulesChanged and live and ns.ApplyAll then ns.ApplyAll() end
+            return
+        end
         if layoutOn and ns.Layout.CommitPreview then ns.Layout.CommitPreview(true) end
         ns.Settings.ActivatePreset(id)
     else
