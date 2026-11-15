@@ -27,6 +27,24 @@ local function Text(value)
     return ok and text or "?"
 end
 
+-- Where the error happened; each API may be missing or throw, so a field is left out then.
+local function Context(entry)
+    local function call(fn, ...)
+        if type(fn) ~= "function" then return end
+        local ok, a, b = pcall(fn, ...)
+        if ok then return a, b end
+    end
+    local combat = call(InCombatLockdown)
+    if combat ~= nil then entry.combat = combat and true or false end
+    local inInstance, kind = call(IsInInstance)
+    if inInstance ~= nil or kind ~= nil then
+        entry.instance = (inInstance and type(kind) == "string" and kind ~= "") and kind or "none"
+    end
+    if type(IsInGroup) == "function" or type(IsInRaid) == "function" then
+        entry.group = call(IsInRaid) and "raid" or call(IsInGroup) and "party" or "solo"
+    end
+end
+
 local recordedList  -- the errors list `recorded` belongs to; a replaced list starts the map over
 
 -- Every call is kept in QuietUIDB.errors (newest last) so /quiet dump can show it after a /reload.
@@ -44,6 +62,7 @@ local function Record(name, err, stack)
     end
     entry = { name = Text(name), message = Text(err), stack = stack, time = date("%Y-%m-%d %H:%M:%S"),
         version = ns.Dump and ns.Dump.Version() or "?", count = 1 }
+    Context(entry)
     list[#list + 1] = entry
     recorded[name] = entry
     while #list > MAX_ERRORS do
@@ -52,13 +71,18 @@ local function Record(name, err, stack)
     end
 end
 
-function ns.Report(name, err)
+-- `stack` (a string, "" included) replaces the captured one: events have no useful stack.
+function ns.Report(name, err, stack)
     -- A record failure must never hide the error itself.
-    local stack = ""
-    if type(debugstack) == "function" then
+    if type(stack) == "string" then
+        -- used as is
+    elseif type(debugstack) == "function" then
+        stack = ""
         -- level 1 is pcall (C frames count), 2 is Report, 3 is the reporting caller
         local ok, text = pcall(debugstack, 3)
         if ok and type(text) == "string" then stack = text end
+    else
+        stack = ""
     end
     pcall(Record, name, err, stack)
     if reported[name] then return end
