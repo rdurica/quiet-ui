@@ -2,7 +2,7 @@
 local h = ...
 
 local PATH = ".github/ISSUE_TEMPLATE/bug.yml"
-local IDS = { "what", "expected", "steps", "setup", "report" }
+local IDS = { "what", "expected", "steps", "screenshot", "setup", "report" }
 
 -- The text of each form field block, keyed by its id, and the ids in file order.
 local function fields(text)
@@ -33,26 +33,26 @@ h.test("The bug form has the title Bug: and the label bug", function(t)
         "label bug")
 end)
 
-h.test("The bug form has the fields what, expected, steps, setup, report in this order", function(t)
+h.test("The bug form has the fields what, expected, steps, screenshot, setup, report in this order", function(t)
     local A = t.assert
     local _, order = fields(read(t))
     A.deep(order, IDS)
 end)
 
-h.test("The fields what, expected and report are required, steps and setup are optional", function(t)
+h.test("The fields what, expected and report are required, steps, screenshot and setup are optional", function(t)
     local A = t.assert
     local blocks = fields(read(t))
     for _, id in ipairs({ "what", "expected", "report" }) do
         A.ok(blocks[id], "field " .. id)
         A.ok(blocks[id] and blocks[id]:find("required:%s*true"), id .. " is required")
     end
-    for _, id in ipairs({ "steps", "setup" }) do
+    for _, id in ipairs({ "steps", "screenshot", "setup" }) do
         A.ok(blocks[id], "field " .. id)
         A.falsy(blocks[id] and blocks[id]:find("required:%s*true"), id .. " is optional")
     end
 end)
 
-h.test("The form field kinds: what, expected, steps and report are textareas, setup is an input", function(t)
+h.test("The form field kinds: what, expected, steps, screenshot and report are textareas, setup is an input", function(t)
     local A = t.assert
     local blocks = fields(read(t))
     -- The type line precedes the id line in a form field, so look at the text up to the next field's type line.
@@ -64,7 +64,7 @@ h.test("The form field kinds: what, expected, steps and report are textareas, se
         local id = line:match("^%s*id:%s*[\"']?([%w_%-]+)[\"']?%s*$")
         if id and last then kinds[id] = last end
     end
-    for _, id in ipairs({ "what", "expected", "steps", "report" }) do A.eq(kinds[id], "textarea", id .. " kind") end
+    for _, id in ipairs({ "what", "expected", "steps", "screenshot", "report" }) do A.eq(kinds[id], "textarea", id .. " kind") end
     A.eq(kinds.setup, "input", "setup kind")
     A.ok(blocks.report, "dependency: report field")
 end)
@@ -74,7 +74,7 @@ h.test("The report field renders as text", function(t)
     local blocks = fields(read(t))
     A.ok(blocks.report and blocks.report:find("render:%s*[\"']?text[\"']?%s*\n") or
         blocks.report and blocks.report:find("render:%s*[\"']?text[\"']?%s*$"), "report has render: text")
-    for _, id in ipairs({ "what", "expected", "steps", "setup" }) do
+    for _, id in ipairs({ "what", "expected", "steps", "screenshot", "setup" }) do
         A.falsy(blocks[id] and blocks[id]:find("render:"), id .. " has no render")
     end
 end)
