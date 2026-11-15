@@ -335,6 +335,7 @@ function Frame:IsMouseWheelEnabled() return false end
 -- Scroll frame surface (the setup window reads it back).
 function Frame:SetVerticalScroll(v) self._vscroll = v end
 function Frame:GetVerticalScroll() return self._vscroll or 0 end
+function Frame:GetVerticalScrollRange() return self._vrange or 0 end
 
 ------------------------------------------------------------------------------
 
