@@ -80,7 +80,7 @@ Type `/quiet setup` or click the minimap button. Everything is in one window, wi
 
 ## Feedback
 
-Reporting a bug: type `/quiet dump`, copy the report with Ctrl+C and open the link to create an issue.
+Reporting a bug: type `/quiet dump`, open the link (Ctrl+C, then your browser) to get the bug form, then copy the report with Ctrl+C and paste it into the form. The form asks what happened, what you expected and how to see it.
 
 Found something odd, especially in Modern? Please [open an issue](https://github.com/rdurica/quiet-ui/issues).
 
