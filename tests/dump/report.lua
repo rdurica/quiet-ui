@@ -123,7 +123,8 @@ end)
 h.test("The recorded stack starts at the reporting caller", function(t)
     local ns, A = t.ns, t.assert
     -- Like the client: level 1 is the function calling debugstack, then its callers outward.
-    local calls = { "closure", "ns.Report", "CALLER", "outer" }
+    -- C functions are their own levels: pcall sits between debugstack and ns.Report.
+    local calls = { "pcall", "ns.Report", "CALLER", "outer" }
     _G.debugstack = function(level)
         local out = {}
         for i = level, #calls do out[#out + 1] = calls[i] end
