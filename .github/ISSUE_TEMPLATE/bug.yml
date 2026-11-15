@@ -7,7 +7,7 @@ body:
     id: what
     attributes:
       label: What happened?
-      description: What do you see? Say where on the screen, which window or bar, and when it happens (combat, group, instance, after /reload). A screenshot helps.
+      description: What do you see? Say where on the screen, which window or bar, and when it happens (combat, group, instance, after /reload).
     validations:
       required: true
   - type: textarea
@@ -20,6 +20,13 @@ body:
     id: steps
     attributes:
       label: How can we see it?
+    validations:
+      required: false
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag a screenshot here or paste it with Ctrl+V. Screenshots are in the game's Screenshots folder.
     validations:
       required: false
   - type: input
