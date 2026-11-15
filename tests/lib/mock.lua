@@ -309,7 +309,8 @@ function Frame:Enable() self._enabled = true end
 function Frame:Disable() self._enabled = false end
 function Frame:IsEnabled() return self._enabled ~= false end
 function Frame:SetCursorPosition() end
-function Frame:HighlightText() end
+-- Records the last selection: _highlight = { n = argument count, ... } (no arguments selects all).
+function Frame:HighlightText(...) self._highlight = { n = select("#", ...), ... } end
 function Frame:SetFocus() self._mock.state.focus = self end
 -- Native input history: newest last.
 function Frame:AddHistoryLine(line)
