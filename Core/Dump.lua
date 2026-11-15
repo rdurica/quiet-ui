@@ -7,7 +7,6 @@ local Dump = {}
 ns.Dump = Dump
 
 local REPO_URL = "https://github.com/rdurica/quiet-ui/issues/new"
-local PASTE = "Paste the /quiet dump report below, then describe what you did and what you expected."
 local MODULES = { "fading", "modernize", "chat", "helpers", "layout" }
 local FRAMES = { "MainActionBar", "PlayerFrame", "PetFrame", "TargetFrame", "Minimap", "ChatFrame1",
     "PersonalResourceDisplayFrame", "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCooldownViewer",
@@ -138,10 +137,13 @@ local function Preset()
     return "<no preset>"
 end
 
+-- The UI interface style decides the mode, not gamepad input.
 local function InterfaceMode()
-    local pad = type(C_GamePad) == "table" and Call(C_GamePad.IsEnabled)
-    if pad == nil then pad = Call(GetCVar, "GamePadEnable") == "1" end
-    return pad and "gamepad" or "mouse and keyboard"
+    local ok, style = pcall(function() return ns.Layout.CurrentStyle() end)
+    local pad = type(Enum) == "table" and type(Enum.InputDeviceInterfaceType) == "table"
+        and Enum.InputDeviceInterfaceType.Gamepad
+    if ok and pad ~= nil and style == pad then return "gamepad" end
+    return "mouse and keyboard"
 end
 
 local function ModuleList()
@@ -317,22 +319,19 @@ local function Encode(text)
     return (text:gsub("[^A-Za-z0-9%-_%.~]", function(char) return string.format("%%%02X", char:byte()) end))
 end
 
--- The link to a new GitHub issue with a short summary; the player pastes the report.
+-- The link to the bug issue form with a one-line setup summary; the player pastes the report into the form.
 function Dump.IssueURL()
     local version, build = ClientInfo()
     local function try(fn, fallback)
         local ok, text = pcall(fn)
         return ok and text or fallback
     end
-    local modules = try(function() return table.concat(ModuleList(), ", ") end, "?")
-    local body = table.concat({
-        "QuietUI: " .. Dump.Version(),
-        "Client: " .. version .. " (build " .. build .. ")",
+    local setup = table.concat({
+        "QuietUI " .. Dump.Version(),
+        "Client " .. version .. " (build " .. build .. ")",
         "Interface mode: " .. InterfaceMode(),
         "Preset: " .. try(Preset, "?"),
-        "Modules: " .. modules,
-        "",
-        PASTE,
-    }, "\n")
-    return REPO_URL .. "?title=" .. Encode("Bug: ") .. "&body=" .. Encode(body)
+        "Modules: " .. try(function() return table.concat(ModuleList(), ", ") end, "?"),
+    }, "; ")
+    return REPO_URL .. "?template=bug.yml&title=" .. Encode("Bug: ") .. "&setup=" .. Encode(setup)
 end

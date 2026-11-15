@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in QuietUI looks or works wrong.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What do you see? Say where on the screen, which window or bar, and when it happens (combat, group, instance, after /reload). A screenshot helps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we see it?
+    validations:
+      required: false
+  - type: input
+    id: setup
+    attributes:
+      label: Setup
+      description: Filled in by the /quiet dump link.
+    validations:
+      required: false
+  - type: textarea
+    id: report
+    attributes:
+      label: /quiet dump report
+      description: Paste the report from step 2 of /quiet dump.
+      render: text
+    validations:
+      required: true

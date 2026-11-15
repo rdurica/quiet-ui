@@ -1,13 +1,13 @@
 local _, ns = ...
 
--- The /quiet dump window: the report in a selected read-only box and the issue link.
+-- The /quiet dump window: the issue link (step 1) and the report in a read-only box (step 2).
 -- Named so UISpecialFrames can close it on Escape; no saved point, it opens centred.
 
 local Setup = ns.Setup
 
 local WIDTH, HEIGHT, SIDE = 640, 440, 20
-local NOTE = "Press Ctrl+C to copy the report, then open the link to create an issue."
-local LINK_NOTE = "Issue link: click it, press Ctrl+C and paste it into your browser."
+local STEP1 = "1. Click the link, press Ctrl+C, and open it in your browser."
+local STEP2 = "2. Click the report, press Ctrl+C, and paste it into the issue."
 
 -- The text is read-only: any change puts the original back.
 local function Lock(box, close)
@@ -85,13 +85,21 @@ local function Create()
     if type(win.SetClampedToScreen) == "function" then win:SetClampedToScreen(true) end
 
     local inner = WIDTH - 2 * SIDE
-    local note = Setup.Note(win, NOTE)
-    note:SetWidth(inner)
-    note:SetPoint("TOPLEFT", SIDE, -(Setup.HEADER + 14))
+    local step1 = Setup.Muted(win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"))
+    step1:SetPoint("TOPLEFT", SIDE, -(Setup.HEADER + 14))
+    step1:SetText(STEP1)
+
+    local link = Setup.Field(win, inner, 2000)
+    link:SetPoint("TOPLEFT", SIDE, -(Setup.HEADER + 34))
+    Lock(link, close)
+
+    local step2 = Setup.Muted(win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"))
+    step2:SetPoint("TOPLEFT", SIDE, -(Setup.HEADER + 72))
+    step2:SetText(STEP2)
 
     local back = CreateFrame("Frame", nil, win)
-    back:SetPoint("TOPLEFT", SIDE, -(Setup.HEADER + 40))
-    back:SetSize(inner, HEIGHT - Setup.HEADER - 40 - 80)
+    back:SetPoint("TOPLEFT", SIDE, -(Setup.HEADER + 92))
+    back:SetSize(inner, HEIGHT - Setup.HEADER - 92 - 24)
     Setup.Control(back, Setup.Colors().track)
     local scroll = CreateFrame("ScrollFrame", nil, back)
     scroll:SetPoint("TOPLEFT", 6, -6)
@@ -120,14 +128,6 @@ local function Create()
         if lost then lost(self, ...) end
     end)
 
-    local linkNote = Setup.Muted(win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"))
-    linkNote:SetPoint("BOTTOMLEFT", SIDE, 52)
-    linkNote:SetText(LINK_NOTE)
-
-    local link = Setup.Field(win, inner, 2000)
-    link:SetPoint("BOTTOMLEFT", SIDE, 24)
-    Lock(link, close)
-
     win.report, win.link = report, link
     return win
 end
@@ -148,6 +148,6 @@ function Setup.ShowDump()
         for _, name in ipairs(UISpecialFrames) do if name == "QuietUIDump" then listed = true end end
         if not listed then UISpecialFrames[#UISpecialFrames + 1] = "QuietUIDump" end
     end
-    win.report:SetFocus()
-    win.report:HighlightText()
+    win.link:SetFocus()
+    win.link:HighlightText()
 end
