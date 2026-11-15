@@ -102,6 +102,7 @@ local function Create()
     report:SetWidth(inner - 12)
     report:SetHeight(HEIGHT)
     scroll:SetScrollChild(report)
+    -- The box has no text insets, so the measure wraps at the same width.
     local measure = scroll:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     measure:SetWidth(inner - 12)
     measure:Hide()

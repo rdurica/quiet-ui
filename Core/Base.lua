@@ -56,8 +56,8 @@ function ns.Report(name, err)
     -- A record failure must never hide the error itself.
     local stack = ""
     if type(debugstack) == "function" then
-        -- level 1 is this closure, 2 is Report, 3 is the reporting caller
-        local ok, text = pcall(function() return debugstack(3) end)
+        -- level 1 is pcall (C frames count), 2 is Report, 3 is the reporting caller
+        local ok, text = pcall(debugstack, 3)
         if ok and type(text) == "string" then stack = text end
     end
     pcall(Record, name, err, stack)
