@@ -28,7 +28,7 @@ end
 local function Reapply(self, alpha)
     if self._quietApplying then return end
     if not ns.DB().enabled then return end
-    if self._quietChat and ns.Settings.ModernChat and not ns.Settings.ModernChat() then return end
+    if self._quietChat and ns.Settings.Module and not ns.Settings.Module("chat") then return end
     local want = self._quietSecret
     if want == nil then
         want = self._quietAlpha

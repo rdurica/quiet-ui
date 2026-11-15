@@ -237,7 +237,7 @@ local function BindBubbles(frame)
         if self._quietScrollHook and not bottom then
             self._quietScroll = (self._quietScroll or 0) + 1
         end
-        PushLine(self, text, r, g, b, ns.DB().enabled and ns.Settings.ModernChat() and bottom)
+        PushLine(self, text, r, g, b, ns.DB().enabled and ns.Settings.Module("chat") and bottom)
         Chat.HideNativeText(self)
         if self._quietScrollHook then
             self._quietScroll = Chat.ClampScroll(self, self._quietScroll or 0)
@@ -260,7 +260,7 @@ local function BindBubbles(frame)
     if frame.HookScript and not frame._quietWheel then
         frame._quietWheel = true
         frame:HookScript("OnMouseWheel", function(self, delta)
-            if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
+            if not ns.DB().enabled or not ns.Settings.Module("chat") then return end
             Chat.Wheel(self, delta)
         end)
     end

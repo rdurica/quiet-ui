@@ -251,6 +251,7 @@ end
 
 -- True when the switch has been applied. False asks the caller to try again.
 function Layout.SelectQuiet()
+    if not ns.Settings.Module("layout") then return false end
     if InCombatLockdown() or not Layout.Ready() then return false end
     local info = Layout.Load()
     if not info then return false end
@@ -274,6 +275,7 @@ function Layout.SelectQuiet()
 end
 
 function Layout.SelectPreset()
+    if not ns.Settings.Module("layout") then return false end
     if InCombatLockdown() or not Layout.Ready() then return false end
     local preset = ns.Settings.ActivePreset()
     if not preset then return Layout.SelectQuiet() end
@@ -343,6 +345,7 @@ end
 -- Layouts are not loaded right at login and are locked in combat, so this
 -- retries on every apply until it has run once per session.
 function Layout.Ensure()
+    if not ns.Settings.Module("layout") then return end
     if ns.Settings.ActivePreset and ns.Settings.ActivePreset() then return end
     -- The welcome answers first; the layout prompt follows on the next apply.
     if ns.Setup.WelcomeOpen() then return end

@@ -40,8 +40,10 @@ end
 -- Boot and its delayed retries: the same scan, outside the rescan phase.
 local function BootScan()
     ns.World.RefreshWorld()
-    ns.Faders.Find(true)
-    ns.Bars.ScanSwing()
+    if ns.Settings.Module("fading") then
+        ns.Faders.Find(true)
+        ns.Bars.ScanSwing()
+    end
     ApplyAll()
 end
 

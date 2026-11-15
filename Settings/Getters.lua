@@ -91,9 +91,13 @@ function ns.Settings.ChatTabs()
     return "bottom"
 end
 
--- Missing means on. Only an explicit false turns the modern chat off.
-function ns.Settings.ModernChat()
-    return ns.Settings.Effective().chat ~= false
+-- Chat, fading, helpers and layout are on unless an explicit false; modernize only on explicit true.
+function ns.Settings.Module(name)
+    local stored = ns.Settings.Effective().modules
+    local value
+    if type(stored) == "table" then value = stored[name] end
+    if name == "modernize" then return value == true end
+    return value ~= false
 end
 
 -- Lines sent from the chat input, oldest first. Kept per character, outside presets.
@@ -105,6 +109,7 @@ end
 
 -- Missing means off. Only an explicit true selects the QuietUI layout when the addon turns on.
 function ns.Settings.ForceQuietLayout()
+    if not ns.Settings.Module("layout") then return false end
     return (ns.Settings.ActivePreset and ns.Settings.ActivePreset()) ~= nil
         or ns.Settings.Effective().forceLayout == true
 end

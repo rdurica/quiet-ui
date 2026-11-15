@@ -36,8 +36,8 @@ Area colours outside the theme: health bar dark grey `#33363B` over the darker b
 
 ## Settings
 
-- Modernize is off unless checked (`modernize.enabled`). It is shared through presets; Reset default turns it off.
-- While checked, the tab shows Theme and one checkbox per area; unchecked, they are hidden and keep their values. Nothing is stored until Save. A Save that changes what Modernize draws (on, off, theme or an area) while QuietUI is on reloads the UI instead of restyling in place, so every frame takes the full new look; a Save that changes nothing there does not.
+- Modernize is the Modernize module (see [modules.md](modules.md)), off by default; there is no checkbox on this tab. The module set is shared through presets; Reset default turns it off.
+- The Modern tab only shows while the module is on, with Theme and one checkbox per area, always enabled; they keep their values while the module is off. Nothing is stored until Save. A Save that changes what Modernize draws (the module, theme or an area) while QuietUI is on reloads the UI instead of restyling in place, so every frame takes the full new look; a Save that changes nothing there does not.
 - Theme: one theme today, Dark (`modernize.theme`; missing or unknown means Dark).
 - Areas: one checkbox per registered area, in registration order; on unless unchecked (`modernize.<area key>`). Saving stores only values that differ from the defaults.
 - The XP area heads its own section with Show on big XP gain (`modernize.xpGain`, on by default, disabled while the XP area is off): quest XP and any single gain of at least 5 % of the level show the XP bar for 5 s, even when the XP row is Only on hover; see [visible.md](visible.md).

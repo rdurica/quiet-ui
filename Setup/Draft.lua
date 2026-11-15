@@ -37,7 +37,7 @@ local RANGE_YARDS = { 10, 28, "spell" }
 
 local function ReadModern(source)
     local stored = type(source.modernize) == "table" and source.modernize or {}
-    draft.modernize = stored.enabled == true
+    draft.modules = Setup.ReadModules(source)
     draft.modernTheme = "dark"
     for _, name in ipairs(ns.Modern.Themes()) do
         if name == stored.theme then draft.modernTheme = name end
@@ -47,14 +47,15 @@ local function ReadModern(source)
     for _, area in ipairs(ns.Modern.Areas()) do draft.modernAreas[area.key] = stored[area.key] ~= false end
 end
 
--- Only values that differ from the defaults are stored. Unchecked Modernize keeps the rest.
+-- Only values that differ from the defaults are stored. A module that is off keeps the rest.
 local function WriteModern()
-    local stored
-    local function put(key, value)
-        stored = stored or {}
-        stored[key] = value
+    -- Its page is hidden while the module is off, so the stored options stay as they are.
+    if not draft.modules.modernize then
+        local kept = ns.Settings.Effective().modernize
+        return type(kept) == "table" and ns.Copy(kept) or nil
     end
-    if draft.modernize then put("enabled", true) end
+    local stored = {}
+    local function put(key, value) stored[key] = value end
     if draft.modernTheme ~= "dark" then put("theme", draft.modernTheme) end
     if not draft.modernXPGain then put("xpGain", false) end
     for _, area in ipairs(ns.Modern.Areas()) do
@@ -98,7 +99,6 @@ function Setup.ReadDraft(source)
     draft.highlightHerb = highlights.herb == true
     draft.highlightOre = highlights.ore == true
     draft.highlightQuest = highlights.quest == true
-    draft.chat = source.chat ~= false
     local fade = source.chatFade
     draft.chatFade = type(fade) == "number" and fade == fade and math.floor(math.max(0, math.min(60, fade)) / 5) * 5 or 10
     local range = type(source.range) == "table" and source.range or {}
@@ -213,11 +213,6 @@ local function DraftSettings()
         db.highlights = { herb = draft.highlightHerb or nil, ore = draft.highlightOre or nil,
             quest = draft.highlightQuest or nil }
     end
-    if draft.chat then
-        db.chat = nil
-    else
-        db.chat = false
-    end
     if draft.chatFade == 10 then
         db.chatFade = nil
     else
@@ -245,7 +240,8 @@ local function DraftSettings()
     db.hostile = SavedFlags(draft.hostile)
     db.friendly = SavedFlags(draft.friendly)
     db.modernize = WriteModern()
-    if S.presetName then db.forceLayout = nil end
+    db.modules = Setup.StoredModules(draft.modules)
+    if S.presetName or not draft.modules.layout then db.forceLayout = nil end
     return db
 end
 
@@ -259,15 +255,32 @@ local function ModernState()
     return table.concat(parts, ",")
 end
 
+-- A module change reloads. The old set is restored while it is still in effect; Layout turning off selects
+-- the previous layout again, which needs the client out of combat.
 function Setup.Write()
     local wasModern = ModernState()
+    local wasModules = Setup.ActiveModules()
     local settings, err = DraftSettings()
     if not settings then ns.Print(err); return end
+    if not Setup.AnyModule(draft.modules) then
+        ns.Print("Choose at least one module, or turn QuietUI off with /quiet off.")
+        return
+    end
+    local modulesChanged = not Setup.SameModules(wasModules, draft.modules)
+    local live = ns.DB().enabled and type(ReloadUI) == "function"
+    if modulesChanged and live and InCombatLockdown() then
+        ns.Print("Leave combat to change modules.")
+        return
+    end
+    local layoutOn = draft.modules.layout
     if S.presetName then
-        if not S.presetLayout then ns.Print("Choose an Edit Mode layout before saving."); return end
-        local id, err = ns.Settings.SavePreset(S.selectedPresetId, S.presetName, S.presetLayout, settings)
+        if layoutOn and not S.presetLayout then ns.Print("Choose an Edit Mode layout before saving."); return end
+    end
+    if modulesChanged and live and ns.RestoreAll then ns.RestoreAll() end
+    if S.presetName then
+        local id, err = ns.Settings.SavePreset(S.selectedPresetId, S.presetName, S.presetLayout or ns.Layout.CurrentRef(), settings)
         if not id then ns.Print(err); return end
-        if ns.Layout.CommitPreview then ns.Layout.CommitPreview(true) end
+        if layoutOn and ns.Layout.CommitPreview then ns.Layout.CommitPreview(true) end
         ns.Settings.ActivatePreset(id)
     else
         if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
@@ -275,10 +288,10 @@ function Setup.Write()
     end
     Setup.LoadSavedDraft()
     Setup.Paint()
-    if ns.Layout.SettingsChanged then ns.Layout.SettingsChanged() end
+    if ns.Layout.SettingsChanged and not modulesChanged then ns.Layout.SettingsChanged() end
     -- A Modernize change reloads instead of restyling in place: frames Blizzard built earlier keep some of the
     -- other look, and the client does not give every restyled region back.
-    if wasModern ~= ModernState() and ns.DB().enabled and type(ReloadUI) == "function" then
+    if live and (modulesChanged or wasModern ~= ModernState()) then
         ReloadUI()
         return
     end

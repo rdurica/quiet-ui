@@ -64,7 +64,7 @@ function Chat.Wake()
 end
 
 function Chat.Update(elapsed)
-    if not ns.DB().enabled or not ns.Settings.ModernChat() then return end
+    if not ns.DB().enabled or not ns.Settings.Module("chat") then return end
     local now = GetTime()
     local still = Chat.PointerStill()
     local state = Chat.state
@@ -129,9 +129,9 @@ function Chat.Update(elapsed)
 end
 ns.Feature({
     name = "chat",
-    -- No gate: apply also takes the chrome off again when Modern chat is switched off.
+    enabled = function() return ns.Settings.Module("chat") end,
     apply = function()
-        if ns.Settings.ModernChat() then Chat.StripAll() else Chat.Restore() end
+        Chat.StripAll()
         Chat.ApplyHistory()
     end,
     restore = function()
@@ -139,14 +139,16 @@ ns.Feature({
         Chat.RestoreHistory()
     end,
     frame = function(elapsed)
-        if ns.Settings.ModernChat() then Chat.Update(elapsed) end
+        Chat.Update(elapsed)
     end,
     tick = function()
-        if ns.Settings.ModernChat() then Chat.SyncVisibleEdits() end
+        Chat.SyncVisibleEdits()
     end,
     rescan = function(deep)
-        if not deep and ns.Settings.ModernChat() then Chat.StripAll() end
-        if not deep then Chat.ApplyHistory() end
+        if not deep then
+            Chat.StripAll()
+            Chat.ApplyHistory()
+        end
     end,
     events = {
         UPDATE_CHAT_WINDOWS = function()

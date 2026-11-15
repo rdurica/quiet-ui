@@ -16,7 +16,7 @@ function ns.ForceTextureHidden(tex)
         tex._quietTexHook = true
         pcall(hooksecurefunc, tex, "SetAlpha", function(self, alpha)
             if self._quietApplying or not ns.DB().enabled then return end
-            if self._quietChat and ns.Settings.ModernChat and not ns.Settings.ModernChat() then return end
+            if self._quietChat and ns.Settings.Module and not ns.Settings.Module("chat") then return end
             if type(alpha) == "number" and not ns.IsSecret(alpha) and alpha < 0.01 then return end
             self._quietApplying = true
             self:SetAlpha(0)

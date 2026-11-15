@@ -10,7 +10,7 @@ end
 
 -- Missing means off. Only an explicit true turns Modernize on.
 function ns.Settings.Modernize()
-    return Stored().enabled == true
+    return ns.Settings.Module("modernize")
 end
 
 -- Missing means on while Modernize is on. Only an explicit false turns one area off.

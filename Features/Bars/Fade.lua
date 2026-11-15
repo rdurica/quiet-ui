@@ -251,6 +251,7 @@ end
 
 ns.Feature({
     name = "bars",
+    enabled = function() return ns.Settings.Module("fading") end,
     apply = function() Bars.ForgetButtons() end,
     restore = function() Bars.HideCatchers() end,
     -- The idle pass (no focus change, nothing hot) skips bars.

@@ -289,6 +289,7 @@ end
 
 ns.Feature({
     name = "menu",
+    enabled = function() return ns.Settings.Module("fading") end,
     apply = function()
         Menu.RefreshChrome()
         Menu.UpdateBagSlots()

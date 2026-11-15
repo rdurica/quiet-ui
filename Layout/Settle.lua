@@ -77,6 +77,7 @@ end
 
 -- Boot arms the first settle; the login event arms it once if boot skipped it.
 function Layout.BootSettle()
+    if not ns.Settings.Module("layout") then return end
     S.armed = true
     Layout.ArmSettle()
 end
@@ -96,6 +97,7 @@ end
 -- Registers last of the features: it restores first of them but finishes after RestoreAlpha.
 ns.Feature({
     name = "layout",
+    enabled = function() return ns.Settings.Module("layout") end,
     apply = function()
         if ns.Settings.ForceQuietLayout() then
             if not S.chosen then
@@ -111,6 +113,7 @@ ns.Feature({
     end,
     restore = function()
         Layout.CancelPreview()
+        if S.prompt then S.prompt:Hide() end
         S.settleToken = S.settleToken + 1
         S.settleUntil = 0
         S.chosen = false

@@ -39,6 +39,7 @@ end
 
 ns.Feature({
     name = "faders",
+    enabled = function() return ns.Settings.Module("fading") end,
     apply = function()
         Faders.Find(false)
         Faders.UpdateParty(0)
