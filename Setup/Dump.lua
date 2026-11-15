@@ -7,24 +7,26 @@ local Setup = ns.Setup
 
 local WIDTH, HEIGHT, SIDE = 640, 440, 20
 local NOTE = "Press Ctrl+C to copy the report, then open the link to create an issue."
+local LINK_NOTE = "Issue link: click it, press Ctrl+C and paste it into your browser."
 
 -- The text is read-only: any change puts the original back.
 local function Lock(box, close)
+    local function selectAll() box:HighlightText() end
     local text = ""
     box.lock = function(value) text = value or "" end
     box:SetScript("OnTextChanged", function(self, user)
         if user and self:GetText() ~= text then
             if type(self.IsInIMECompositionMode) == "function" and self:IsInIMECompositionMode() then return end
             self:SetText(text)
+            selectAll()
         end
     end)
-    local function select() box:HighlightText() end
     local gained = box:GetScript("OnEditFocusGained")
     box:SetScript("OnEditFocusGained", function(self, ...)
         if gained then gained(self, ...) end
-        select()
+        selectAll()
     end)
-    box:SetScript("OnMouseUp", select)
+    box:SetScript("OnMouseUp", selectAll)
     box:SetScript("OnEscapePressed", close)
 end
 
@@ -89,7 +91,7 @@ local function Create()
 
     local back = CreateFrame("Frame", nil, win)
     back:SetPoint("TOPLEFT", SIDE, -(Setup.HEADER + 40))
-    back:SetSize(inner, HEIGHT - Setup.HEADER - 40 - 70)
+    back:SetSize(inner, HEIGHT - Setup.HEADER - 40 - 80)
     Setup.Control(back, Setup.Colors().track)
     local scroll = CreateFrame("ScrollFrame", nil, back)
     scroll:SetPoint("TOPLEFT", 6, -6)
@@ -108,6 +110,19 @@ local function Create()
     measure:Hide()
     Scrollable(scroll, report, measure)
     Lock(report, close)
+    local gained, lost = report:GetScript("OnEditFocusGained"), report:GetScript("OnEditFocusLost")
+    report:SetScript("OnEditFocusGained", function(self, ...)
+        Setup.EdgeColor(back, Setup.Colors().accent)
+        if gained then gained(self, ...) end
+    end)
+    report:SetScript("OnEditFocusLost", function(self, ...)
+        Setup.EdgeColor(back, Setup.Colors().border)
+        if lost then lost(self, ...) end
+    end)
+
+    local linkNote = Setup.Muted(win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"))
+    linkNote:SetPoint("BOTTOMLEFT", SIDE, 52)
+    linkNote:SetText(LINK_NOTE)
 
     local link = Setup.Field(win, inner, 2000)
     link:SetPoint("BOTTOMLEFT", SIDE, 24)
