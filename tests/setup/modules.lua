@@ -1,5 +1,5 @@
 -- Setup: the Modules tab, the sidebar following the modules in the draft, the split Chat and Helpers
--- tabs, and Save with a changed module set. Behaviour of the modules in combat is not covered here.
+-- tabs, Save with a changed module set, and refusing a module change in combat.
 local h = ...
 
 local function click(b) b._scripts.OnClick(b) end
@@ -61,6 +61,15 @@ local function said(mock, text)
         if line:find(text, 1, true) then return true end
     end
     return false
+end
+
+-- Runs fn with InCombatLockdown stubbed to true, then puts the old function back, also when fn fails.
+local function inCombat(fn)
+    local was = InCombatLockdown
+    InCombatLockdown = function() return true end
+    local ok, err = pcall(fn)
+    InCombatLockdown = was
+    if not ok then error(err, 0) end
 end
 
 -- Opens the window on a booted addon. ApplyAll, RestoreAll and ReloadUI are recorders, in call order.
@@ -340,4 +349,52 @@ h.test("Save into a shared preset with a changed module set restores everything,
     click(ui.save)
     A.deep(QuietUIDB.presets[id].settings.modules, { fading = false }, "the preset holds the set")
     A.eq(table.concat(log.events, ","), "restore,reload")
+end)
+
+local REFUSAL = "Leave combat to change modules."
+
+h.test("Save with a changed module set in combat is refused and saves nothing", function(t)
+    local ns, A = t.ns, t.assert
+    local ui, log = open(t)
+    click(stepper(page(ui, "chat"), "Fade after").plus)
+    click(moduleBox(ui, "Fading"))
+    inCombat(function() click(ui.save) end)
+    A.ok(said(t.mock, REFUSAL), "the refusal is printed")
+    A.eq(#log.events, 0, "no RestoreAll, no ReloadUI, no apply")
+    A.eq(QuietUICharDB.modules, nil, "no module set is saved")
+    A.eq(QuietUICharDB.chatFade, nil, "no other setting is saved either")
+    A.ok(ns.Settings.Module("fading"), "the saved set is untouched")
+    -- Out of combat the same draft saves.
+    click(ui.save)
+    A.eq(table.concat(log.events, ","), "restore,reload", "the draft stays and saves after combat")
+    A.deep(QuietUICharDB.modules, { fading = false })
+end)
+
+h.test("Save with an unchanged module set in combat still applies", function(t)
+    local A = t.assert
+    local ui, log = open(t)
+    click(stepper(page(ui, "chat"), "Fade after").plus)
+    inCombat(function() click(ui.save) end)
+    A.falsy(said(t.mock, REFUSAL), "no refusal")
+    A.eq(QuietUICharDB.chatFade, 15, "the other setting is saved")
+    A.eq(table.concat(log.events, ","), "apply", "applied in place, no restore, no reload")
+end)
+
+h.test("Reset default in combat is refused when it would change the module set", function(t)
+    local A = t.assert
+    local ui, log = open(t, { modules = { modernize = true }, chatFade = 15 })
+    inCombat(function() click(ui.reset) end)
+    A.ok(said(t.mock, REFUSAL), "the refusal is printed")
+    A.eq(#log.events, 0, "no RestoreAll, no ReloadUI, no apply")
+    A.deep(QuietUICharDB.modules, { modernize = true }, "the saved set is untouched")
+    A.eq(QuietUICharDB.chatFade, 15, "nothing else is reset")
+end)
+
+h.test("Reset default in combat still resets when the module set is already the default", function(t)
+    local A = t.assert
+    local ui, log = open(t, { chatFade = 15 })
+    inCombat(function() click(ui.reset) end)
+    A.falsy(said(t.mock, REFUSAL), "no refusal")
+    A.eq(QuietUICharDB.chatFade, nil, "the setting is reset")
+    A.eq(table.concat(log.events, ","), "apply", "applied in place, no reload")
 end)
