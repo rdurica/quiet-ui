@@ -263,24 +263,52 @@ h.test("A section whose builder throws shows <error: ...> and the others still a
     A.eq(QuietUIDB.lastDump, text, "the report with errors is still saved")
 end, { beforeLoad = withClient })
 
-h.test("IssueURL is the prefilled new-issue link with the report summary in the body", function(t)
+h.test("IssueURL opens the bug form with the title and the setup summary, and no body parameter", function(t)
     local ns, A = t.ns, t.assert
     QuietUIDB.presets = { ["1"] = { name = "Healer Deluxe", layout = {}, settings = {}, interfaceStyle = 0 } }
     QuietUICharDB.presetId = "1"
     local url = ns.Dump.IssueURL()
-    local prefix = "https://github.com/rdurica/quiet-ui/issues/new?title=Bug%3A%20&body="
+    local prefix = "https://github.com/rdurica/quiet-ui/issues/new?template=bug.yml&title=Bug%3A%20&setup="
     A.type(url, "string", "IssueURL result")
     A.eq(url:sub(1, #prefix), prefix, "link start")
+    A.falsy(url:find("body=", 1, true), "no body parameter: " .. url)
     local raw = url:sub(#prefix + 1)
-    A.ok(#raw > 0, "empty body")
-    A.falsy(raw:find("[^A-Za-z0-9%-_%.~%%]"), "unencoded character in the body: " .. raw)
+    A.ok(#raw > 0, "empty setup")
+    A.falsy(raw:find("[^A-Za-z0-9%-_%.~%%]"), "unencoded character in the setup value: " .. raw)
+    A.falsy(raw:find("%%%x?[^%x]") or raw:find("%%%x?$"), "a broken %XX escape: " .. raw)
     A.ok(#url < 2000, "link too long: " .. #url)
-    local body = raw:gsub("%%(%x%x)", function(x) return string.char(tonumber(x, 16)) end)
-    A.ok(body:find("9.8.7", 1, true), "QuietUI version in: " .. body)
-    A.ok(body:find("54321", 1, true), "client build")
-    A.ok(body:find("12.0.1", 1, true), "client version")
-    A.ok(body:find("Healer Deluxe", 1, true), "preset")
-    A.ok(body:lower():find("fading", 1, true), "modules")
-    A.ok(body:find("Paste the /quiet dump report below, then describe what you did and what you expected.", 1, true),
-        "paste instruction")
+    local setup = raw:gsub("%%(%x%x)", function(x) return string.char(tonumber(x, 16)) end)
+    A.ok(setup:find("9.8.7", 1, true), "QuietUI version in: " .. setup)
+    A.ok(setup:find("54321", 1, true), "client build")
+    A.ok(setup:find("12.0.1", 1, true), "client version")
+    A.ok(setup:lower():find("interface mode", 1, true), "interface mode")
+    A.ok(setup:find("Healer Deluxe", 1, true), "preset")
+    A.ok(setup:lower():find("fading", 1, true), "modules")
+end, { beforeLoad = withClient })
+
+-- The UI style decides the interface mode, not gamepad input.
+local function interfaceStyles(gamepadInput)
+    Enum.InputDeviceInterfaceType = { Mkb = 0, Gamepad = 1 }
+    _G.C_GamePad = _G.C_GamePad or {}
+    _G.C_GamePad.IsEnabled = function() return gamepadInput end
+end
+
+h.test("Header says mouse and keyboard for the keyboard interface style, even with gamepad input enabled", function(t)
+    local ns, A = t.ns, t.assert
+    interfaceStyles(true)
+    _G.InputUtil = { GetCurrentInterfaceStyle = function() return Enum.InputDeviceInterfaceType.Mkb end }
+    local header = sections(build(ns)).Header
+    A.ok(header:find("Interface mode: mouse and keyboard", 1, true), "mode in: " .. header)
+    A.falsy(header:find("Interface mode: gamepad", 1, true), "gamepad reported while the UI is keyboard")
+    local setup = ns.Dump.IssueURL():gsub("%%(%x%x)", function(x) return string.char(tonumber(x, 16)) end)
+    A.ok(setup:find("Interface mode: mouse and keyboard", 1, true), "the link says the same")
+end, { beforeLoad = withClient })
+
+h.test("Header says gamepad for the gamepad interface style", function(t)
+    local ns, A = t.ns, t.assert
+    interfaceStyles(false)
+    _G.InputUtil = { GetCurrentInterfaceStyle = function() return Enum.InputDeviceInterfaceType.Gamepad end }
+    local header = sections(build(ns)).Header
+    A.ok(header:find("Interface mode: gamepad", 1, true), "mode in: " .. header)
+    A.falsy(header:find("Interface mode: mouse and keyboard", 1, true), "keyboard reported while the UI is gamepad")
 end, { beforeLoad = withClient })

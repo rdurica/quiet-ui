@@ -2,8 +2,9 @@
 -- Expectations come from what ns.Dump returns (QuietUIDB.lastDump, IssueURL), never from report internals.
 local h = ...
 
-local NOTE = "Press Ctrl+C to copy the report, then open the link to create an issue."
-local LINK_NOTE = "Issue link: click it, press Ctrl+C and paste it into your browser."
+local OLD_NOTE = "Press Ctrl+C to copy the report, then open the link to create an issue."
+local STEP1 = "1. Click the link, press Ctrl+C, and open it in your browser."
+local STEP2 = "2. Click the report, press Ctrl+C, and paste it into the issue."
 local INFO = "Found a bug? Type /quiet dump and send the report."
 
 local function start(t)
@@ -53,18 +54,55 @@ local function texts(t, win)
     return out
 end
 
-h.test("/quiet dump opens QuietUIDump with the report, all of it highlighted and the box focused", function(t)
+-- Distance of a frame's top edge below the top of the window, read from its first anchor. A nested frame is measured
+-- through its ancestor that is a direct child of the window. Understands plain and relative anchors.
+local unpack = unpack or table.unpack
+
+local function vertical(point)
+    point = point or ""
+    return point:find("TOP", 1, true) and "T" or point:find("BOTTOM", 1, true) and "B" or "M"
+end
+
+local function depth(f, win)
+    while f._parent and f._parent ~= win and within(f._parent, win) do f = f._parent end
+    local point, rel, relPoint, x, y = unpack(f._points[1] or {})
+    if type(rel) ~= "table" then rel, relPoint, x, y = nil, nil, rel, relPoint end
+    y = type(y) == "number" and y or 0
+    local side = vertical(relPoint or point)
+    local base
+    if rel == nil or rel == win then
+        base = side == "T" and 0 or side == "B" and win:GetHeight() or win:GetHeight() / 2
+    else
+        local top, height = depth(rel, win), rel:GetHeight() or 0
+        base = side == "T" and top or side == "B" and top + height or top + height / 2
+    end
+    local anchor = base - y
+    local height = f:GetHeight() or 0
+    local mine = vertical(point)
+    return mine == "T" and anchor or mine == "B" and anchor - height or anchor - height / 2
+end
+
+local function find(t, win, text)
+    for _, f in ipairs(texts(t, win)) do
+        if f._text == text then return f end
+    end
+end
+
+h.test("/quiet dump opens QuietUIDump with the link focused and all highlighted, and the report in the report box", function(t)
     local A = t.assert
     start(t)
     local win = open(t)
     A.ok(win and win:IsShown(), "the QuietUIDump window is open")
-    local report = fields(t, win)
+    local report, link = fields(t, win)
     A.ok(report, "the window has a report box")
+    A.ok(link, "the window has a link field")
+    A.eq(link:GetText(), t.ns.Dump.IssueURL(), "the link field holds the issue link")
+    A.ok(link:HasFocus(), "the link field has focus")
+    A.falsy(report:HasFocus(), "the report box does not have focus")
+    A.ok(allHighlighted(link), "the whole link is highlighted")
     A.type(QuietUIDB.lastDump, "string")
     A.ok(#QuietUIDB.lastDump > 0, "the report has text")
     A.eq(report:GetText(), QuietUIDB.lastDump, "the box shows the report")
-    A.ok(allHighlighted(report), "all report text is highlighted")
-    A.ok(report:HasFocus(), "the report box has focus")
 end)
 
 h.test("The saved copy equals the text in the window, on every open", function(t)
@@ -92,7 +130,8 @@ h.test("Each open rebuilds the report", function(t)
     local report = fields(t, win)
     A.ne(report:GetText(), first, "a changed setting shows in the next report")
     A.ok(report:GetText():find("33", 1, true), "the new value is in the report")
-    A.ok(report:IsVisible() and report:HasFocus() and allHighlighted(report), "the reopened box is selected and focused")
+    local _, link = fields(t, win)
+    A.ok(link:IsVisible() and link:HasFocus() and allHighlighted(link), "the reopened link field is selected and focused")
 end)
 
 h.test("The link field holds the prefilled GitHub issue link", function(t)
@@ -102,7 +141,8 @@ h.test("The link field holds the prefilled GitHub issue link", function(t)
     local _, link = fields(t, win)
     A.ok(link, "the window has a link field")
     A.eq(link:GetText(), t.ns.Dump.IssueURL())
-    A.eq(link:GetText():find("https://github.com/rdurica/quiet-ui/issues/new?title=Bug%3A%20&body=", 1, true), 1, "link shape")
+    A.eq(link:GetText():find("https://github.com/rdurica/quiet-ui/issues/new?template=bug.yml&title=Bug%3A%20&setup=", 1, true), 1,
+        "link shape")
 end)
 
 h.test("Typing into the report box leaves its text unchanged", function(t)
@@ -208,17 +248,11 @@ h.test("Opening and closing the window changes no frame alpha and no setting", f
     A.deep(copy(QuietUICharDB), char, "QuietUICharDB is untouched")
 end)
 
-h.test("The window carries the grey note about Ctrl+C and the link", function(t)
+h.test("The old Ctrl+C note is gone from the window", function(t)
     local A = t.assert
     start(t)
     local win = open(t)
-    local note
-    for _, f in ipairs(texts(t, win)) do
-        if f._text == NOTE then note = f end
-    end
-    A.ok(note, "the note is on the window")
-    local r, g, b = note:GetTextColor()
-    A.ok(r == g and g == b and r < 1, "the note is grey")
+    A.falsy(find(t, win, OLD_NOTE), "the old note is still on the window")
 end)
 
 h.test("The Info tab tells how to report a bug", function(t)
@@ -265,15 +299,29 @@ h.test("After a user change the whole text is highlighted again", function(t)
     end
 end)
 
-h.test("The link field has a muted label on the window", function(t)
+h.test("The window shows the two numbered steps, each muted, the link step first", function(t)
     local A = t.assert
     start(t)
     local win = open(t)
-    local label
-    for _, f in ipairs(texts(t, win)) do
-        if f._text == LINK_NOTE then label = f end
+    local step1, step2 = find(t, win, STEP1), find(t, win, STEP2)
+    A.ok(step1, "step 1 label is on the window")
+    A.ok(step2, "step 2 label is on the window")
+    for _, label in ipairs({ step1, step2 }) do
+        local r, g, b = label:GetTextColor()
+        A.ok(r == g and g == b and r < 1, "the label is muted")
     end
-    A.ok(label, "the link label is on the window")
-    local r, g, b = label:GetTextColor()
-    A.ok(r == g and g == b and r < 1, "the label is muted")
+end)
+
+h.test("The link field sits above the report box, each under its step label", function(t)
+    local A = t.assert
+    start(t)
+    local win = open(t)
+    local report, link = fields(t, win)
+    local step1, step2 = find(t, win, STEP1), find(t, win, STEP2)
+    A.ok(step1 and step2, "dependency: both step labels exist")
+    local d1, dLink, d2, dReport = depth(step1, win), depth(link, win), depth(step2, win), depth(report, win)
+    A.ok(dLink < dReport, "the link field is above the report box, got " .. dLink .. " vs " .. dReport)
+    A.ok(d1 < dLink, "step 1 is above the link field, got " .. d1 .. " vs " .. dLink)
+    A.ok(dLink < d2, "the link field is above step 2, got " .. dLink .. " vs " .. d2)
+    A.ok(d2 < dReport, "step 2 is above the report box, got " .. d2 .. " vs " .. dReport)
 end)
