@@ -30,7 +30,6 @@ local function benchmark(path, bursts)
     ns.Modern.NoMask = noop
     ns.Profiler = { Run = function(_, fn, ...) fn(...) end }
     assert(loadfile('Features/Modern/Theme.lua'))('QuietUI', ns)
-    assert(loadfile('Features/Modern/Areas/BagPaintCache.lua'))('QuietUI', ns)
     C_Container = { GetContainerItemInfo = function()
         queries = queries + 1
         return nil
@@ -42,6 +41,7 @@ local function benchmark(path, bursts)
         regions[button] = regions[button] or create()
         return regions[button]
     end
+    assert(loadfile('Features/Modern/Areas/BagPaintCache.lua'))('QuietUI', ns)
     assert(loadfile(path))('QuietUI', ns)
     local buttons = {}
     for i = 1, 100 do
@@ -73,10 +73,9 @@ end
 for _, bursts in ipairs({1, 3, 10}) do
     local old = benchmark(baseline, bursts)
     local new = benchmark('Features/Modern/Areas/Bags.lua', bursts)
-    -- The paint cache skips unchanged slots, so the optimized run paints at most once per slot and frame.
-    assert(new.paints <= 20000)
+    assert(new.paints == 0, 'unchanged slots must reuse their painted state')
     assert(old.paints == 20000 * bursts * 3)
-    assert(new.queries <= 20000)
+    assert(new.queries == 20000, 'each queued slot must read its latest item state once per frame')
     assert(old.queries == old.paints * 2)
     print(string.format('%d bursts/slot/frame: baseline %.1f ms, optimized %.1f ms; paints %d -> %d; item reads %d -> %d',
         bursts, old.ms, new.ms, old.paints, new.paints, old.queries, new.queries))
