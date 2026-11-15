@@ -107,6 +107,7 @@ h.test("pooled gossip options are lightened on show and on GOSSIP_SHOW, and hook
     W.enable(ns)
     local late = ink(CreateFrame("Button", nil, f.target), "Inn")
     f.gossip:Hide(); f.gossip:Show()
+    t.mock:tick(0)
     A.ok(light(late), "an option built after apply is lightened on show")
     local later = ink(CreateFrame("Button", nil, f.target), "Bank")
     mock:fire("GOSSIP_SHOW")
@@ -115,6 +116,7 @@ h.test("pooled gossip options are lightened on show and on GOSSIP_SHOW, and hook
     A.deep({ late:GetTextColor() }, INK, "the ink returns on restore")
     local after = ink(CreateFrame("Button", nil, f.target), "Stable")
     f.gossip:Hide(); f.gossip:Show()
+    t.mock:tick(0)
     mock:fire("GOSSIP_SHOW")
     late:SetTextColor(unpack(INK))
     A.deep({ after:GetTextColor() }, INK, "show and events do nothing after restore")
@@ -225,4 +227,25 @@ h.test("the item text page buttons become bare accent chevrons and restore their
     end
     ns.Modern.Restore()
     A.eq(buttons.ItemTextNextPageButton:GetNormalTexture():GetAlpha(), 1, "the page art comes back")
+end)
+
+
+h.test("Gossip show callbacks share one ink walk and cancel on restore", function(t)
+    local ns, A = t.ns, t.assert
+    local f = fixture()
+    W.enable(ns)
+    t.mock:tick(0)
+    local ink, walks = ns.Modern.InkTree, 0
+    ns.Modern.InkTree = function(skin, target, ...)
+        if target == f.gossip then walks = walks + 1 end
+        return ink(skin, target, ...)
+    end
+    for _ = 1, 100 do f.gossip:Hide(); f.gossip:Show() end
+    A.eq(walks, 0)
+    t.mock:tick(0)
+    A.eq(walks, 1)
+    f.gossip:Hide(); f.gossip:Show()
+    ns.Modern.Restore()
+    t.mock:tick(0)
+    A.eq(walks, 1)
 end)

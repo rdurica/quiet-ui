@@ -184,6 +184,7 @@ h.test("Windows gives new and reused pooled rows the same bare look when the lis
         { kind = "friend", FriendName = "Ks8", Name = "Dessa", Level = "Lvl 44", Class = "Druid", Location = "Ashenvale",
             online = false } }
     local fresh = Rows.refill(f, data)
+    t.mock:tick(0)
     A.eq(#fresh.rows, 2, "two rows were created")
     A.eq(Q.unheld(fresh.art), "", "the new rows' card backgrounds, highlights and plates are held")
     A.eq(Q.heldKeep(fresh.keep), "", "their icons and texts stay")
@@ -201,6 +202,7 @@ h.test("Windows gives new and reused pooled rows the same bare look when the lis
     local reused = f.pool.friend[2]
     A.alpha(reused.Background, 0, "a reused row whose card Blizzard re-pointed stays held")
     Rows.refill(f, { Rows.data[1], Rows.data[3] })
+    t.mock:tick(0)
     A.eq(Q.unheld(f.pool.friend[1].lists.art), "", "fewer rows later change nothing")
 end)
 

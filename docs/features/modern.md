@@ -47,10 +47,10 @@ Area colours outside the theme: health bar dark grey `#33363B` over the darker b
 - An area is one file under `Features/Modern/Areas/` registered through `ns.Modern.Register{ key, label, apply, restore, events, onEvent, addons }`. A bad entry is reported once and skipped.
 - Apply runs once per enabled area. Unchecking an area or Modernize restores only what changed. Changing theme or background restores and applies again (from Save this happens through the reload).
 - Every change goes through the area's journal (`Skin`); restore undoes it in reverse, so one area never touches another's frames. `/quiet off` and Reset restore all areas in reverse order.
-- An area's events reach its `onEvent` only while it is applied. `ADDON_LOADED` for a listed addon applies it again, so load-on-demand frames get skinned.
+- An area's events reach its `onEvent` only while it is applied. `ADDON_LOADED` for a listed addon skins the windows it loaded, so unrelated windows are not walked again.
 - Blizzard art is held at alpha 0 (also against `SetAlphaFromBoolean` and vertex alpha), never hidden. No `Hide()`, `Show()` or state drivers on bars or unit frames; fade rules keep owning alpha.
 - Hooks use `hooksecurefunc` / `HookScript`, are set once and do nothing while the area is off. No script is replaced.
-- Pooled rows and rebuilt pages are skinned again on the update that refills them. A window is also skinned again when it shows.
+- Initial styling is immediate. Repeated show, page and list refresh callbacks are combined on the next rendered frame, using the latest content. A full window refresh includes its pending list updates. Bag, equipment, talent and mail slot paints also use the latest state once per frame. Restoring an area cancels queued work and blocks new refresh requests from undo hooks.
 - Blizzard's shared templates (tabs, scroll bars, item buttons, three-piece buttons and input boxes, dropdowns, insets, dialog borders) are recognised by their keys, so a window file names only its own art. A dropdown becomes a dark field whose arrow is a bare grey chevron, light under the mouse; its reset button stays.
 - Protected regions and window points change only out of combat; a wanted point is applied when combat ends.
 - Secret values (health, power, XP, unit identity) go straight to widgets and are never compared or used as keys.

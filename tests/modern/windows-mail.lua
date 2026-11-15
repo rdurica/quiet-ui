@@ -156,6 +156,7 @@ h.test("Windows frames a mail attachment in its quality colour and crops it", fu
     c.slot:SetNormalTexture("Interface\\Icons\\INV_Fabric_Linen")
     slot.IconBorder:SetVertexColor(0.12, 1, 0, 1)
     slot.IconBorder:Show()
+    t.mock:tick(0)
     A.ok(L.zoomed(slot:GetNormalTexture()), "the attached item is square-cropped")
     A.ok(not R.invisible(slot:GetNormalTexture(), c.frame), "the attached item stays visible")
     local border
@@ -167,8 +168,10 @@ h.test("Windows frames a mail attachment in its quality colour and crops it", fu
     A.ok(border and border[2] == 1 and border[1] == 0.12, "the slot border takes the uncommon green")
     slot.IconBorder:Hide()
     slot:ClearNormalTexture()
+    t.mock:tick(0)
     ns.Modern.Restore()
     slot:SetNormalTexture("Interface\\Icons\\INV_Fabric_Wool")
+    t.mock:tick(0)
     A.eq(#t.mock.printed, 0, "a send slot changed while the area is off reports nothing")
 end)
 
@@ -189,4 +192,32 @@ h.test("the letter body edit box takes the light ink but keeps Blizzard's font, 
     A.eq(fontCalls, 0, "changing an edit box's font crashes the client on restore")
     A.eq(body:GetFont(), "Fonts\\FRIZQT__.TTF", "Blizzard's face stays")
     A.eq(select(1, body:GetTextColor()), 0.18, "Blizzard's ink is back")
+end)
+
+
+h.test("Mail attachment callbacks paint the latest state once and cancel on restore", function(t)
+    local ns, A = t.ns, t.assert
+    local c = mailbox()
+    W.enable(ns)
+    t.mock:tick(0)
+    local skin = ns.Modern.Skin("windows")
+    local border, paints = skin.Border, 0
+    skin.Border = function(self, target, ...)
+        if target == c.slot then paints = paints + 1 end
+        return border(self, target, ...)
+    end
+    for _ = 1, 100 do
+        c.slot:SetNormalTexture("Interface\\Icons\\INV_Fabric_Linen")
+        c.slot.IconBorder:SetVertexColor(0.12, 1, 0, 1)
+        c.slot.IconBorder:Show()
+    end
+    c.slot.IconBorder:SetVertexColor(0.64, 0.21, 0.93, 1)
+    A.eq(paints, 0)
+    t.mock:tick(0)
+    A.eq(paints, 1)
+    A.ok(B.same(B.border(c.slot), { 0.64, 0.21, 0.93 }), "the latest quality wins")
+    c.slot:ClearNormalTexture()
+    ns.Modern.Restore()
+    t.mock:tick(0)
+    A.eq(paints, 1)
 end)

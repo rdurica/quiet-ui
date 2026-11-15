@@ -162,6 +162,7 @@ h.test("Windows replaces the character window art with flat chrome, keeps conten
     local c = character()
     local before = L.snapshot(R.all(c.frame))
     W.enable(ns)
+    t.mock:tick(0)
     A.eq(visibleArt(c), "", "pane, slot, model button, stats, scroll bar and tab art are all hidden")
     for _, tab in ipairs(c.modes) do
         A.ok(tab.HighlightTexture._alpha == 0, tab:GetName() .. " gold hover art is held")
@@ -237,6 +238,7 @@ h.test("Windows moves the accent line with Blizzard's tab selection and skins po
     W.area(ns, "windows")
     local c = character()
     W.enable(ns)
+    t.mock:tick(0)
     c.modes[1].SelectedTexture:Hide()
     c.modes[2].SelectedTexture:Show()
     A.ok(not accent(ns, c.modes[1]) and accent(ns, c.modes[2]), "mode tab accent follows SelectedTexture")
@@ -246,6 +248,7 @@ h.test("Windows moves the accent line with Blizzard's tab selection and skins po
     local list = {}
     local late = statLine(c.pane.ScrollBox.ScrollTarget, list)
     c.pane.ScrollBox:Update()
+    t.mock:tick(0)
     A.ok(R.invisible(late.Background, c.frame), "a row acquired after apply loses its stripe on the next update")
     ns.Modern.Restore()
     c.modes[1].SelectedTexture:Show()
@@ -272,16 +275,41 @@ h.test("Windows frames equipped items in their quality colour, also slots nested
     ring.icon:SetTexture("Interface\\Icons\\Ring")
     function ring:GetID() return 11 end
     W.enable(ns)
+    t.mock:tick(0)
     local theme = ns.Modern.Theme().border
     A.ok(B.same(B.border(ring), GREEN), "a nested equipment slot is framed in its quality colour")
     A.ok(B.same(B.border(c.slot), theme), "a poor equipped item keeps the theme border")
     quality[11] = 3
     mock:fire("PLAYER_EQUIPMENT_CHANGED")
     mock:drain()
+    t.mock:tick(0)
     A.ok(B.same(B.border(ring), BLUE), "the border follows a changed item")
     quality[1] = 2
     PaperDollItemSlotButton_Update(c.slot)
+    t.mock:tick(0)
     A.ok(B.same(B.border(c.slot), GREEN), "Blizzard's slot update repaints the border")
     ns.Modern.Restore()
     A.ok(B.border(ring) == nil, "restore removes the border")
+end)
+
+
+h.test("Character stat callbacks share one refresh and cancel on restore", function(t)
+    local ns, A = t.ns, t.assert
+    local c = character()
+    W.enable(ns)
+    t.mock:tick(0)
+    local slots, scans = ns.Modern.Character.Slots, 0
+    ns.Modern.Character.Slots = function(...)
+        scans = scans + 1
+        return slots(...)
+    end
+    for _ = 1, 100 do c.pane.ScrollBox:Update() end
+    c.frame:Hide(); c.frame:Show()
+    A.eq(scans, 0)
+    t.mock:tick(0)
+    A.eq(scans, 1)
+    c.pane.ScrollBox:Update()
+    ns.Modern.Restore()
+    t.mock:tick(0)
+    A.eq(scans, 1)
 end)

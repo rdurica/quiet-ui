@@ -26,6 +26,7 @@ h.test("Bags zoom item icons, hold IconBorder hidden and draw a border in the cu
     local plain = B.item(bag, "ContainerFrame1Item2")
     local other = B.item(combined, "ContainerFrameCombinedBagsItem1", RARE)
     W.enable(ns)
+    t.mock:tick(0)
     local theme = ns.Modern.Theme().border
     for _, button in ipairs({ epic, plain, other }) do
         A.ok(L.zoomed(button.icon), button:GetName() .. " icon is square-cropped")
@@ -36,11 +37,14 @@ h.test("Bags zoom item icons, hold IconBorder hidden and draw a border in the cu
     A.ok(B.same(B.border(plain), theme), "an item without quality gets the theme border")
     -- Blizzard updates the item: quality changes, then clears.
     B.quality(epic, RARE)
+    t.mock:tick(0)
     A.ok(R.invisible(epic.IconBorder, bag), "IconBorder is still hidden after Blizzard shows it again")
     A.ok(B.same(B.border(epic), RARE), "the border follows the new quality colour")
     B.quality(epic, nil)
+    t.mock:tick(0)
     A.ok(B.same(B.border(epic), theme), "the border returns to the theme colour when the quality goes")
     B.quality(plain, EPIC)
+    t.mock:tick(0)
     A.ok(B.same(B.border(plain), EPIC), "an item that gains quality gets that colour")
     A.ok(R.invisible(plain.IconBorder, bag), "its IconBorder stays hidden")
 end)
@@ -50,6 +54,7 @@ h.test("Bags hide the 12.0 bag chrome behind a dark panel; separate bags keep Bl
     local bag, combined = setup(ns)
     B.item(bag, "ContainerFrame1Item1", EPIC)
     W.enable(ns)
+    t.mock:tick(0)
     for _, frame in ipairs({ bag, combined }) do
         A.eq(R.visibleChrome(frame), "", frame:GetName() .. " chrome is hidden")
         A.ok(R.dark(frame), frame:GetName() .. " has a dark panel")
@@ -63,10 +68,12 @@ h.test("Bags opened or updated after Modernize applied are skinned too", functio
     local bag = setup(ns)
     local first = B.item(bag, "ContainerFrame1Item1", EPIC)
     W.enable(ns)
+    t.mock:tick(0)
     local late = B.bag("ContainerFrame2")
     ContainerFrame2 = late
     local lateItem = B.item(late, "ContainerFrame2Item1", RARE)
     B.refresh(mock, late)
+    t.mock:tick(0)
     A.ok(R.dark(late), "a bag created later gets the dark panel")
     A.eq(R.visibleChrome(late), "", "its chrome is hidden")
     A.ok(L.zoomed(lateItem.icon), "its icon is zoomed")
@@ -74,6 +81,7 @@ h.test("Bags opened or updated after Modernize applied are skinned too", functio
     A.ok(B.same(B.border(lateItem), RARE), "its border shows the quality")
     local added = B.item(bag, "ContainerFrame1Item2", EPIC)
     B.refresh(mock, bag)
+    t.mock:tick(0)
     A.ok(L.zoomed(added.icon), "an item button added to an existing bag is zoomed")
     A.ok(B.same(B.border(added), EPIC), "and gets its quality border")
     A.ok(B.same(B.border(first), EPIC), "existing items keep theirs")
@@ -88,18 +96,23 @@ h.test("Bags restore icons, IconBorder and chrome when the area turns off or Mod
     for _, root in ipairs({ bag, combined }) do for _, object in ipairs(R.all(root)) do list[#list + 1] = object end end
     before = L.snapshot(list)
     W.enable(ns)
+    t.mock:tick(0)
     A.ok(L.zoomed(item.icon) and B.same(B.border(item), EPIC), "the bag was skinned before turning off")
     QuietUICharDB.modernize.windows = false
     ns.Modern.Apply()
     A.deep(L.diff(before), {}, "area off restores bags")
     B.quality(item, RARE)
+    t.mock:tick(0)
     A.eq(item.IconBorder._shown, true, "Blizzard's IconBorder works normally again")
     A.eq(item.IconBorder._alpha, 1)
     A.eq(B.border(item), nil, "no addon border remains after area off")
     B.quality(other, nil)
+    t.mock:tick(0)
     W.enable(ns)
+    t.mock:tick(0)
     ns.Modern.Restore()
     B.quality(item, EPIC)
+    t.mock:tick(0)
     A.eq(B.border(item), nil, "no addon border after Restore either")
 end)
 
@@ -111,6 +124,7 @@ h.test("Bags skin the buttons of a pool style iterator that yields (button, true
     function bag:EnumerateValidItems() return pairs(pool) end
     bag.Items = {}
     W.enable(ns)
+    t.mock:tick(0)
     A.ok(L.zoomed(epic.icon), "the pooled button icon is square-cropped")
     A.ok(B.same(B.border(epic), EPIC), "the pooled button gets its quality border")
 end)
@@ -134,19 +148,23 @@ h.test("Bags draw square slots and a flat search box, leave bare money text and 
     local dropdown = CreateFrame("Button", nil, backpack)
     dropdown:EnableMouse(true)
     B.quest(quest, true)
+    t.mock:tick(0)
     local list = {}
     for _, object in ipairs(R.all(combined)) do list[#list + 1] = object end
     for _, object in ipairs(R.all(bag)) do list[#list + 1] = object end
     local before = L.snapshot(list)
     W.enable(ns)
+    t.mock:tick(0)
     for _, texture in ipairs(art) do
         A.ok(R.invisible(texture, texture._parent._parent), tostring(texture._texture) .. " is held hidden")
     end
     for _, button in ipairs({ quest, empty }) do A.ok(R.dark(button), button:GetName() .. " has a dark slot fill") end
     A.ok(B.same(B.border(quest), ns.Modern.Theme().accent), "a quest item gets the accent border")
     B.quest(quest, false)
+    t.mock:tick(0)
     A.ok(B.same(B.border(quest), RARE), "the quality colour returns when the quest mark goes")
     B.quest(quest, true)
+    t.mock:tick(0)
     A.ok(B.same(B.border(quest), ns.Modern.Theme().accent), "and the accent when Blizzard marks it again")
     for _, field in ipairs({ BagItemSearchBox, combined.MoneyFrame.Border }) do
         for _, key in ipairs({ "Left", "Middle", "Right" }) do
@@ -162,6 +180,7 @@ h.test("Bags draw square slots and a flat search box, leave bare money text and 
     A.eq(backpack:IsMouseEnabled(), false, "the invisible backpack button lets clicks through to the sort button")
     A.eq(dropdown:IsMouseEnabled(), false, "and so does its bag dropdown")
     B.quest(quest, true)
+    t.mock:tick(0)
     ns.Modern.Restore()
     A.deep(L.diff(before), {}, "Restore returns the slot and field art")
 
@@ -174,6 +193,7 @@ h.test("The combined bag is dragged by its title, keeps the saved point when Bli
     local _, combined = setup(ns)
     L.blizzardPoint(combined, "BOTTOMRIGHT", -20, 100)
     W.enable(ns)
+    t.mock:tick(0)
     L.drag(combined, "CENTER", "CENTER", 40, -30)
     A.deep(QuietUICharDB.windowPoints.ContainerFrameCombinedBags, { "CENTER", "CENTER", 40, -30 }, "the point is saved")
     L.blizzardPoint(combined, "BOTTOMRIGHT", -20, 100)
@@ -190,6 +210,7 @@ h.test("The combined bag drag handle lies over a TitleContainer that sits far ab
     local _, combined = setup(ns)
     combined.TitleContainer:SetFrameLevel(510)
     W.enable(ns)
+    t.mock:tick(0)
     local handle = L.handle(combined)
     A.ok(handle, "the combined bag has a drag handle")
     A.ok(handle:GetFrameLevel() > 510, "the handle is above the title container")
@@ -200,8 +221,10 @@ h.test("Item buttons a bag acquires when it opens are skinned on show", function
     local A, ns = t.assert, t.ns
     local bag = setup(ns)
     W.enable(ns)
+    t.mock:tick(0)
     local late = B.item(bag, "ContainerFrame1Item1", EPIC)
     bag:Hide(); bag:Show()
+    t.mock:tick(0)
     A.ok(L.zoomed(late.icon), "the button acquired on open is square-cropped")
     A.ok(B.same(B.border(late), EPIC), "and gets its quality border")
 end)
@@ -213,22 +236,30 @@ h.test("An empty slot's wing atlas on the icon is held invisible and an item pla
     local item = B.item(bag, "ContainerFrame1Item2", EPIC)
     B.atlas(slot); B.atlas(item)
     B.empty(slot)
+    t.mock:tick(0)
     item.icon:SetAlpha(1)
     W.enable(ns)
+    t.mock:tick(0)
     A.ok(R.invisible(slot.icon, slot), "the empty-slot wing is invisible")
     A.alpha(item.icon, 1, "a filled slot keeps its icon")
     B.fill(slot, "Interface\\Icons\\INV_Misc_Bag")
+    t.mock:tick(0)
     A.alpha(slot.icon, 1, "an item placed in the slot shows its icon")
     B.empty(item)
+    t.mock:tick(0)
     A.ok(R.invisible(item.icon, item), "a slot that empties hides the wing")
     item.icon:SetAlpha(1)
     A.ok(R.invisible(item.icon, item), "Blizzard's SetAlpha does not bring the wing back")
     B.fill(item, "Interface\\Icons\\ContainerFrame1Item2")
+    t.mock:tick(0)
     B.empty(slot)
+    t.mock:tick(0)
     ns.Modern.Restore()
     B.empty(item); B.fill(slot, "Interface\\Icons\\ContainerFrame1Item1")
+    t.mock:tick(0)
     A.alpha(item.icon, 1, "after Restore the wing is Blizzard's again")
     B.fill(item, "Interface\\Icons\\ContainerFrame1Item2"); B.empty(slot)
+    t.mock:tick(0)
 end)
 
 h.test("Bags colour the border from the item's own quality, uncommon and up; poor and common items keep the theme border", function(t)
@@ -253,6 +284,7 @@ h.test("Bags colour the border from the item's own quality, uncommon and up; poo
     -- Blizzard leaves IconBorder alone on the green item and colours the poor one grey.
     local green, poor, common, empty = item(1), item(2, GREY), item(3), item(4)
     W.enable(ns)
+    t.mock:tick(0)
     local theme = ns.Modern.Theme().border
     A.ok(B.same(B.border(green), GREEN), "an uncommon item is framed green without IconBorder")
     A.ok(B.same(B.border(common), theme), "a common item keeps the theme border, not white")
@@ -260,6 +292,7 @@ h.test("Bags colour the border from the item's own quality, uncommon and up; poo
     A.ok(B.same(B.border(empty), ns.Modern.Theme().wellEdge), "an empty slot is a socket with the well edge")
     quality[4] = 2
     B.refresh(mock, bag)
+    t.mock:tick(0)
     A.ok(B.same(B.border(empty), GREEN), "an item put into the slot gets its colour on the next bag update")
 end)
 
@@ -269,7 +302,9 @@ h.test("An empty slot is a lit socket with a quiet edge; a filled slot drops the
     local slot = B.item(bag, "ContainerFrame1Item1")
     B.atlas(slot)
     B.empty(slot)
+    t.mock:tick(0)
     W.enable(ns)
+    t.mock:tick(0)
     local theme = ns.Modern.Theme()
     local function shown(button, layer, color)
         for _, region in ipairs(button._regions) do
@@ -282,7 +317,9 @@ h.test("An empty slot is a lit socket with a quiet edge; a filled slot drops the
     A.ok(shown(slot, "BACKGROUND", theme.well), "and the socket fill behind it")
     A.ok(not shown(slot, "ARTWORK"), "no light over an empty slot")
     B.fill(slot, "Interface\\Icons\\INV_Misc_Bag")
+    t.mock:tick(0)
     B.quality(slot, EPIC)
+    t.mock:tick(0)
     A.ok(B.same(B.border(slot), EPIC), "an item placed there gets its quality border")
     A.ok(not shown(slot, "BACKGROUND", theme.well), "the socket goes")
     A.ok(shown(slot, "ARTWORK"), "a soft light lies over the icon")
@@ -303,16 +340,20 @@ h.test("An empty bag slot with Blizzard's placeholder art, not the wing atlas, i
     function slot:GetID() return 1 end
     B.atlas(slot)
     B.fill(slot, "Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+    t.mock:tick(0)
     W.enable(ns)
+    t.mock:tick(0)
     local theme = ns.Modern.Theme()
     A.ok(B.same(B.border(slot), theme.wellEdge), "the empty slot has the well edge")
     A.alpha(slot.icon, 0, "and its placeholder is held invisible")
     items[1] = "Interface\\Icons\\INV_Misc_Bag"
     B.fill(slot, items[1])
+    t.mock:tick(0)
     A.ok(B.same(B.border(slot), theme.border), "an item placed there drops the well edge")
     A.alpha(slot.icon, 1, "and shows its icon")
     items[1] = nil
     B.fill(slot, "Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+    t.mock:tick(0)
     A.alpha(slot.icon, 0, "taking it out holds the placeholder again")
     ns.Modern.Restore()
     A.alpha(slot.icon, 1, "after Restore the placeholder is Blizzard's again")
@@ -326,6 +367,7 @@ h.test("Forever's EmptyBagIcon, the bag silhouette over an empty slot, is held a
     slot.EmptyBagIcon:SetTexture(133622)
     slot.EmptyBagIcon:SetAlpha(0.5)
     W.enable(ns)
+    t.mock:tick(0)
     A.alpha(slot.EmptyBagIcon, 0, "the bag silhouette is held invisible")
     ns.Modern.Restore()
     A.alpha(slot.EmptyBagIcon, 0.5, "Restore gives it back")

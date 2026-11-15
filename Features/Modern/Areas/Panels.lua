@@ -126,6 +126,8 @@ local function Window(skin, def)
     end
 end
 
-function Panels.Apply(skin)
-    for _, def in ipairs(WINDOWS) do ns.Profiler.Run("modern panels", Window, skin, def) end
+function Panels.Apply(skin, only)
+    for _, def in ipairs(WINDOWS) do
+        if not only or def.name == only then ns.Profiler.Run("modern panels", Window, skin, def) end
+    end
 end
