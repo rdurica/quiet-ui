@@ -19,10 +19,52 @@ function ns.Print(msg)
     print(PREFIX .. tostring(msg))
 end
 
+local MAX_ERRORS = 20
+local recorded = {}  -- name -> entry of this session, so only a repeat in the session counts up
+
+local function Text(value)
+    local ok, text = pcall(tostring, value)
+    return ok and text or "?"
+end
+
+-- Every call is kept in QuietUIDB.errors (newest last) so /quiet dump can show it after a /reload.
+local function Record(name, err)
+    local db = ns.DB()
+    if type(db.errors) ~= "table" then
+        db.errors = {}
+        recorded = {}
+    end
+    local list = db.errors
+    local entry = recorded[name]
+    if entry then
+        local found = false
+        for i = 1, #list do
+            if list[i] == entry then found = true break end
+        end
+        if not found then entry = nil end
+    end
+    if entry then
+        entry.count = (tonumber(entry.count) or 1) + 1
+        return
+    end
+    local stack = ""
+    if type(debugstack) == "function" then
+        local ok, text = pcall(debugstack, 3)
+        if ok and type(text) == "string" then stack = text end
+    end
+    entry = { name = Text(name), message = Text(err), stack = stack, time = date("%Y-%m-%d %H:%M:%S"),
+        version = ns.Dump and ns.Dump.Version() or "?", count = 1 }
+    list[#list + 1] = entry
+    recorded[name] = entry
+    while #list > MAX_ERRORS do table.remove(list, 1) end
+end
+
 function ns.Report(name, err)
+    -- A record failure must never hide the error itself.
+    pcall(Record, name, err)
     if reported[name] then return end
     reported[name] = true
-    print(PREFIX .. name .. " error (shown once): " .. tostring(err))
+    print(PREFIX .. name .. " error (shown once): " .. tostring(err) .. " Type /quiet dump to report it.")
 end
 
 function ns.Run(label, fn, ...)
