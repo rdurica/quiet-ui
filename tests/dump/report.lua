@@ -134,3 +134,75 @@ h.test("The recorded stack starts at the reporting caller", function(t)
     caller()
     A.ok(tostring(QuietUIDB.errors[1].stack):find("^CALLER"), "stack: " .. tostring(QuietUIDB.errors[1].stack))
 end)
+
+-- Context at the first occurrence (R2) --------------------------------------------------------
+
+local function entryLine(text, name)
+    for line in (text .. "\n"):gmatch("(.-)\n") do
+        if line:find(name, 1, true) and line:find("x%d") then return line end
+    end
+end
+
+h.test("An error in combat inside a party in a dungeon records combat, instance and group", function(t)
+    local ns, A = t.ns, t.assert
+    t.mock.state.combat, t.mock.state.instance, t.mock.state.instanceType = true, true, "party"
+    t.mock.state.group, t.mock.state.raid = true, false
+    ns.Report("ctx", "boom")
+    local e = QuietUIDB.errors[1]
+    A.eq(e.combat, true, "combat")
+    A.eq(e.instance, "party", "instance")
+    A.eq(e.group, "party", "group")
+end)
+
+h.test("An error out of combat, solo, outside records the quiet context", function(t)
+    local ns, A = t.ns, t.assert
+    ns.Report("ctx", "boom")
+    local e = QuietUIDB.errors[1]
+    A.eq(e.combat, false, "combat")
+    A.eq(e.instance, "none", "instance")
+    A.eq(e.group, "solo", "group")
+end)
+
+h.test("An error in a raid group records group raid", function(t)
+    local ns, A = t.ns, t.assert
+    t.mock.state.group, t.mock.state.raid = true, true
+    ns.Report("ctx", "boom")
+    A.eq(QuietUIDB.errors[1].group, "raid")
+end)
+
+h.test("A repeat keeps the context of the first occurrence", function(t)
+    local ns, A = t.ns, t.assert
+    t.mock.state.combat, t.mock.state.instance, t.mock.state.instanceType = true, true, "party"
+    t.mock.state.group = true
+    ns.Report("ctx", "boom")
+    t.mock.state.combat, t.mock.state.instance, t.mock.state.instanceType = false, false, "none"
+    t.mock.state.group, t.mock.state.raid = true, true
+    ns.Report("ctx", "boom")
+    local e = QuietUIDB.errors[1]
+    A.eq(e.count, 2)
+    A.eq(e.combat, true, "combat")
+    A.eq(e.instance, "party", "instance")
+    A.eq(e.group, "party", "group")
+end)
+
+h.test("Missing context APIs do not break Report", function(t)
+    local ns, A = t.ns, t.assert
+    _G.InCombatLockdown, _G.IsInInstance, _G.IsInGroup, _G.IsInRaid = nil, nil, nil, nil
+    A.noThrow(ns.Report, "ctx", "boom")
+    A.eq(#QuietUIDB.errors, 1, "the entry is still recorded")
+    A.eq(QuietUIDB.errors[1].name, "ctx")
+    _G.IsInInstance = function() error("api broke") end
+    A.noThrow(ns.Report, "ctx2", "boom")
+    A.eq(#QuietUIDB.errors, 2, "a failing API still records")
+end)
+
+h.test("The Errors section shows the context on the entry's line", function(t)
+    local ns, A = t.ns, t.assert
+    t.mock.state.combat, t.mock.state.instance, t.mock.state.instanceType = true, true, "party"
+    t.mock.state.group, t.mock.state.raid = true, false
+    ns.Report("ctxline", "boom")
+    local line = entryLine(ns.Dump.Build(), "ctxline")
+    A.type(line, "string", "entry line")
+    A.ok(line:find("combat", 1, true), "combat on the line: " .. tostring(line))
+    A.ok(line:find("party", 1, true), "party on the line: " .. tostring(line))
+end)
