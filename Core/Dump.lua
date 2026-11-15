@@ -141,8 +141,8 @@ end
 local function InterfaceMode()
     local ok, style = pcall(function() return ns.Layout.CurrentStyle() end)
     local pad = type(Enum) == "table" and type(Enum.InputDeviceInterfaceType) == "table"
-        and Enum.InputDeviceInterfaceType.Gamepad
-    if ok and pad ~= nil and style == pad then return "gamepad" end
+        and Enum.InputDeviceInterfaceType.Gamepad or 1 -- the fallback Layout.CurrentStyle uses
+    if ok and style == pad then return "gamepad" end
     return "mouse and keyboard"
 end
 
