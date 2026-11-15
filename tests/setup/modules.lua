@@ -375,6 +375,21 @@ h.test("Save arms the reload only for the click that needs it and disarms it aft
     A.eq(ui.save:GetAttribute("type"), nil, "disarmed after the click")
 end)
 
+-- A physical click reaches PreClick and PostClick twice, but the secure action runs on one event only.
+for _, keyDown in ipairs({ false, true }) do
+    h.test("A press and release reload exactly once with key-down " .. tostring(keyDown), function(t)
+        local ns, A = t.ns, t.assert
+        local ui, log = open(t)
+        t.mock.cvars.ActionButtonUseKeyDown = keyDown and "1" or "0"
+        click(moduleBox(ui, "Fading"))
+        ui.save:ClickPressRelease()
+        A.eq(table.concat(log.events, ","), "restore,reload", "one restore, one reload, nothing applied in place")
+        A.eq(ui.save:GetAttribute("type"), nil, "disarmed")
+        A.deep(QuietUICharDB.modules, { fading = false })
+        A.ok(not ns.Settings.Module("fading"))
+    end)
+end
+
 local REFUSAL = "Leave combat to change modules."
 
 h.test("Save with a changed module set in combat is refused and saves nothing", function(t)

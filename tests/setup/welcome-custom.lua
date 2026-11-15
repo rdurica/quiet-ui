@@ -311,3 +311,18 @@ h.test("Nothing is armed before a click, so combat starting after the screen was
     A.eq(reloads.n, 1, "reloads out of combat")
     A.eq(save:GetAttribute("type"), nil, "disarmed after the click")
 end)
+
+h.test("Custom Save reloads exactly once on a press and release", function(t)
+    local mock, A = t.mock, t.assert
+    t.boot()
+    local reloads = counter()
+    local frame = welcome(mock)
+    click(custom(frame))
+    click(box(frame, "Fading"))
+    local save = control(frame, "Save")
+    save:ClickPressRelease()
+    A.eq(reloads.n, 1, "one reload")
+    A.eq(QuietUICharDB.welcomed, true, "answered")
+    A.eq(save:GetAttribute("type"), nil, "disarmed")
+end)
+

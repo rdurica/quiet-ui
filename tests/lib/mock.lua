@@ -84,12 +84,14 @@ local function newFrame(mock, kind, name, parent, template)
         f.SetAttribute = function(self, key, value) self._attributes[key] = value end
         f.GetAttribute = function(self, key) return self._attributes[key] end
         f.RegisterForClicks = function(self, ...) self._clicks = { ... } end
-        -- The template's own OnClick: PreClick, the secure action (a /reload macro calls ReloadUI), PostClick.
-        f._scripts.OnClick = function(self, ...)
-            if self._scripts.PreClick then self._scripts.PreClick(self, ...) end
-            if self._attributes.type == "macro" and self._attributes.macrotext == "/reload"
-                and type(_G.ReloadUI) == "function" then _G.ReloadUI() end
-            if self._scripts.PostClick then self._scripts.PostClick(self, ...) end
+        -- The template's own OnClick: PreClick and PostClick run for the press and the release, the secure action
+        -- (a /reload macro calls ReloadUI) only for the one that matches ActionButtonUseKeyDown. A bare call is a release.
+        f._scripts.OnClick = function(self, btn, down)
+            if self._scripts.PreClick then self._scripts.PreClick(self, btn, down) end
+            local keyDown = mock.G.GetCVarBool and mock.G.GetCVarBool("ActionButtonUseKeyDown") or false
+            if (down and true or false) == keyDown and self._attributes.type == "macro"
+                and self._attributes.macrotext == "/reload" and type(_G.ReloadUI) == "function" then _G.ReloadUI() end
+            if self._scripts.PostClick then self._scripts.PostClick(self, btn, down) end
         end
     end
     return f
@@ -294,6 +296,11 @@ function Frame:GetChecked() return self._checked end
 function Frame:Click(...)
     local fn = self._scripts.OnClick
     if fn then fn(self, ...) end
+end
+-- One physical click: the press, then the release.
+function Frame:ClickPressRelease()
+    local fn = self._scripts.OnClick
+    if fn then fn(self, "LeftButton", true); fn(self, "LeftButton", false) end
 end
 function Frame:SetValue(v) self._value = v end
 function Frame:GetValue() return self._value end
