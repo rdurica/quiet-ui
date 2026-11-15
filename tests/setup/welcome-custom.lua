@@ -1,5 +1,5 @@
 -- The welcome: the Custom choice under the Classic and Modern cards, its second screen of module
--- checkboxes, and what each answer writes. Combat is not covered here.
+-- checkboxes, what each answer writes, and Custom Save refusing a module change in combat.
 local h = ...
 
 local MODULES = { "Chat", "Fading", "Helpers", "Layout", "Modernize" }
@@ -56,6 +56,22 @@ local function press(button)
     else
         click(button)
     end
+end
+
+-- Runs fn with InCombatLockdown stubbed to true, then puts the old function back, also when fn fails.
+local function inCombat(fn)
+    local was = InCombatLockdown
+    InCombatLockdown = function() return true end
+    local ok, err = pcall(fn)
+    InCombatLockdown = was
+    if not ok then error(err, 0) end
+end
+
+local function said(mock, text)
+    for _, line in ipairs(mock.printed) do
+        if line:find(text, 1, true) then return true end
+    end
+    return false
 end
 
 local function counter()
@@ -252,4 +268,26 @@ h.test("A character that answered with nothing changed keeps the Classic set", f
     A.falsy(ns.Setup.WelcomeOpen())
     A.deep(modules(ns), { Chat = true, Fading = true, Helpers = true, Layout = true, Modernize = false })
     A.eq(#mock:find(function(f) return f.cards and f.note and f:IsShown() end), 0)
+end)
+
+h.test("Custom Save in combat is refused: nothing written, not welcomed, no reload", function(t)
+    local ns, mock, A = t.ns, t.mock, t.assert
+    t.boot()
+    local reloads = counter()
+    local restored = 0
+    ns.RestoreAll = function() restored = restored + 1 end
+    local frame = welcome(mock)
+    -- Combat from the start: the Save button is never armed with /reload.
+    inCombat(function()
+        click(custom(frame))
+        click(box(frame, "Fading"))
+        press(control(frame, "Save"))
+    end)
+    A.ok(said(mock, "Leave combat to change modules."), "the refusal is printed")
+    A.eq(QuietUICharDB.modules, nil, "no modules are written")
+    A.eq(QuietUICharDB.welcomed, nil, "the welcome is not marked answered")
+    A.eq(reloads.n, 0, "no reload")
+    A.eq(restored, 0, "nothing is restored")
+    A.ok(frame:IsShown(), "the welcome stays open")
+    A.ok(box(frame, "Fading").box._checked, "the second screen keeps the picks")
 end)
