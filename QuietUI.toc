@@ -32,6 +32,7 @@ Features\Bars\Frames.lua
 Features\Bars\Buttons.lua
 Features\Bars\Catchers.lua
 Features\Bars\Swing.lua
+Features\Bars\Peek.lua
 Features\Bars\Fade.lua
 Features\Faders\Discovery.lua
 Features\Faders\Curves.lua

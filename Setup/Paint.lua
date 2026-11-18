@@ -81,6 +81,9 @@ function Setup.Paint()
         if row.edit:GetText() ~= draft.playerThresholdPercent then row.edit:SetText(draft.playerThresholdPercent) end
         if draft.player then row:Show() else row.edit:ClearFocus(); row:Hide() end
     end
+    if S.frame.gamepadPeek then
+        Setup.PaintBox(S.frame.gamepadPeek.box, draft.gamepadPeek)
+    end
     if S.frame.requireLivingTarget then
         Setup.PaintBox(S.frame.requireLivingTarget.box, draft.requireLivingTarget)
     end

@@ -48,4 +48,9 @@ Setup.Pages.bars = function(widget, bars)
     widget.enemyHeader:SetPoint("TOP", first.hostile, "TOP", 0, 26)
     widget.friendHeader:SetPoint("TOP", first.friendly, "TOP", 0, 26)
     widget.groupColumn:SetPoint("TOP", first.step, "TOP", 0, 26)
+    widget.gamepadPeek = Setup.Choice(bars, "Show the gamepad bar while a trigger is held", function()
+        draft.gamepadPeek = not draft.gamepadPeek
+        Setup.Paint()
+    end)
+    widget.gamepadPeek:SetPoint("TOPLEFT", bars, "TOPLEFT", 0, y - Setup.GAP)
 end

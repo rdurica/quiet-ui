@@ -5,7 +5,7 @@ local _, ns = ...
 local snapshotChar, snapshotPreset
 
 local KEYS = { "visible", "hoverOnly", "groupVisibility", "forceLayout", "player", "playerThresholdKind", "playerThresholdPercent", "requireLivingTarget", "groupAuras", "alwaysShowDebuffs", "questNotice", "questNoticeSize", "chatTabs", "questMobs",
-    "chat", "modules", "chatFade", "groups", "hostile", "friendly", "range", "autoHideParty", "highlights", "modernize" }
+    "chat", "modules", "chatFade", "groups", "hostile", "friendly", "range", "autoHideParty", "gamepadPeek", "highlights", "modernize" }
 
 function ns.Settings.CopySettings(source, target)
     target = target or {}
