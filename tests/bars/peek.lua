@@ -27,10 +27,11 @@ local function gamepad()
 end
 
 local function pad()
-    local held = {}
+    local held = { polls = 0 }
     C_GamePad = {
         GetActiveDeviceID = function() return 1 end,
         GetDeviceMappedState = function()
+            held.polls = held.polls + 1
             local buttons = {}
             for i, name in ipairs(BUTTONS) do buttons[i] = held[name] == true end
             return { buttons = buttons }
@@ -40,9 +41,9 @@ local function pad()
     return held
 end
 
-local function boot(t, on)
+local function boot(t)
     QuietUIDB = { enabled = true }
-    QuietUICharDB = { gamepadPeek = on or nil }
+    QuietUICharDB = {}
     local bar, z = gamepad()
     local held = pad()
     t.boot()
@@ -60,19 +61,9 @@ local function zones(A, z, want, label)
     end
 end
 
-h.test("gamepad peek is off by default", function(t)
-    local A = t.assert
-    local bar, _, held = boot(t, false)
-    settle(t)
-    A.alpha(bar, 0, "The gamepad bar did not fade out of combat")
-    held.PADLTRIGGER = true
-    settle(t)
-    A.alpha(bar, 0, "LT showed the gamepad bar with the option off")
-end)
-
 h.test("LT shows only the left zone", function(t)
     local A = t.assert
-    local bar, z, held = boot(t, true)
+    local bar, z, held = boot(t)
     settle(t)
     held.PADLTRIGGER = true
     settle(t)
@@ -82,7 +73,7 @@ end)
 
 h.test("RT shows the right zone with the stance bar", function(t)
     local A = t.assert
-    local bar, z, held = boot(t, true)
+    local bar, z, held = boot(t)
     settle(t)
     held.PADRTRIGGER = true
     settle(t)
@@ -92,7 +83,7 @@ end)
 
 h.test("both triggers or a shoulder button show the centre", function(t)
     local A = t.assert
-    local _, z, held = boot(t, true)
+    local _, z, held = boot(t)
     settle(t)
     held.PADLTRIGGER, held.PADRTRIGGER = true, true
     settle(t)
@@ -108,7 +99,7 @@ end)
 
 h.test("release fades the bar out before freeing the zones", function(t)
     local A = t.assert
-    local bar, z, held = boot(t, true)
+    local bar, z, held = boot(t)
     settle(t)
     held.PADLTRIGGER = true
     settle(t)
@@ -122,23 +113,56 @@ h.test("release fades the bar out before freeing the zones", function(t)
     zones(A, z, { left = 1, right = 1, bottom = 1, top = 1, stance = 1 }, "Released")
 end)
 
-h.test("a bar shown by the usual rules keeps every zone", function(t)
+h.test("a bar shown by the usual rules keeps every zone and skips pad polling", function(t)
     local A = t.assert
-    local bar, z, held = boot(t, true)
+    local bar, z, held = boot(t)
     t.ns.World.ShowAll = function() return true end
+    settle(t)
+    local touches = 0
+    local origTouch = t.ns.World.TouchHud
+    t.ns.World.TouchHud = function(...)
+        touches = touches + 1
+        return origTouch(...)
+    end
+    held.polls = 0
     held.PADLTRIGGER = true
     settle(t)
+    A.eq(held.polls, 0, "Pad polling ran while ShowAll was active")
+    A.eq(touches, 0, "Trigger changes touched the HUD while ShowAll was active")
     A.alpha(bar, 1, "Show-all did not show the gamepad bar")
     zones(A, z, { left = 1, right = 1, bottom = 1, top = 1, stance = 1 }, "Show-all")
 end)
 
-h.test("turning QuietUI off releases the zones", function(t)
+h.test("absent or hidden gamepad bar skips pad polling", function(t)
     local A = t.assert
-    local _, z, held = boot(t, true)
+    local bar, z, held = boot(t)
+    settle(t)
+    bar:Hide()
+    held.polls = 0
+    held.PADLTRIGGER = true
+    settle(t)
+    A.eq(held.polls, 0, "Pad polling ran while GamepadMainActionBarFrame was hidden")
+
+    _G.GamepadMainActionBarFrame = nil
+    settle(t)
+    A.eq(held.polls, 0, "Pad polling ran when GamepadMainActionBarFrame was absent")
+    zones(A, z, { left = 1, right = 1, bottom = 1, top = 1, stance = 1 }, "Hidden")
+end)
+
+h.test("turning QuietUI off and back on resets peek state cleanly", function(t)
+    local A = t.assert
+    local bar, z, held = boot(t)
     settle(t)
     held.PADRTRIGGER = true
     settle(t)
     A.alpha(z.left, 0, "RT did not hide the left zone")
     SlashCmdList.QUIETUI("off")
     zones(A, z, { left = 1, right = 1, bottom = 1, top = 1, stance = 1 }, "Off")
+    held.PADRTRIGGER = nil
+    SlashCmdList.QUIETUI("on")
+    t.mock:tick(0.01)
+    A.ok(bar:GetAlpha() < 1, "Stale peek kept the gamepad bar at alpha 1 after re-enabling")
+    zones(A, z, { left = 1, right = 1, bottom = 1, top = 1, stance = 1 }, "Re-enabled")
+    settle(t)
+    A.alpha(bar, 0, "The gamepad bar did not fade out after re-enabling")
 end)

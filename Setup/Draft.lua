@@ -88,7 +88,6 @@ function Setup.ReadDraft(source)
     else draft.playerThresholdPercent = "70" end
     if S.frame and S.frame.playerThresholdPercent then S.frame.playerThresholdPercent.edit:ClearFocus() end
     draft.requireLivingTarget = source.requireLivingTarget == true
-    draft.gamepadPeek = source.gamepadPeek == true
     draft.groupAuras = source.groupAuras ~= false
     draft.alwaysShowDebuffs = source.alwaysShowDebuffs ~= false
     draft.questNotice = source.questNotice ~= false
@@ -198,7 +197,6 @@ local function DraftSettings()
         if n ~= 70 then db.playerThresholdPercent = n end
     end
     db.requireLivingTarget = draft.requireLivingTarget and true or nil
-    db.gamepadPeek = draft.gamepadPeek and true or nil
     if draft.groupAuras then
         db.groupAuras = nil
     else

@@ -21,11 +21,6 @@ function ns.Settings.VisibilityShow(name, usual, hovered)
     return ns.Settings.Pinned(name) or usual or hovered or false
 end
 
--- Missing means off. Only an explicit true shows the gamepad bar zone of a held trigger or shoulder button.
-function ns.Settings.GamepadPeek()
-    return ns.Settings.Effective().gamepadPeek == true
-end
-
 function ns.Settings.AutoHideParty()
     return ns.Settings.Effective().autoHideParty == true
 end

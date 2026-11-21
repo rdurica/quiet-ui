@@ -224,8 +224,8 @@ function Bars.Update(showAll, elapsed, rescan)
     for _, entry in ipairs(resolved) do
         local show = RowForced(entry.id, showAllForced) or barShow[entry.id]
         for _, bar in ipairs(entry.frames) do
-            local barShow = PeekShow(bar, show)
-            local want = Wanted(bar, barShow)
+            local showBar = PeekShow(bar, show)
+            local want = Wanted(bar, showBar)
             if full or applied[bar] ~= want or not done[bar] then
                 applied[bar] = want
                 done[bar] = true
@@ -233,9 +233,9 @@ function Bars.Update(showAll, elapsed, rescan)
                 want = "skip"
             end
             if want ~= "hidden" and want ~= "skip" then
-                local name, alpha = ApplyBar(bar, barShow, elapsed)
-                if name == GAMEPAD then Bars.ApplyPeek(bar, show) end
-                if type(alpha) == "number" and alpha ~= (barShow and 1 or 0) then
+                local name, alpha = ApplyBar(bar, showBar, elapsed)
+                if name == GAMEPAD then Bars.ApplyPeek(bar, show, alpha) end
+                if type(alpha) == "number" and alpha ~= (showBar and 1 or 0) then
                     settled = false
                     done[bar] = nil
                 end
@@ -265,7 +265,7 @@ ns.Feature({
     apply = function() Bars.ForgetButtons() end,
     restore = function()
         Bars.HideCatchers()
-        Bars.ReleasePeek()
+        Bars.ResetPeek()
     end,
     -- The idle pass (no focus change, nothing hot) skips bars.
     fade = function(elapsed, rescan, showAll, idle)

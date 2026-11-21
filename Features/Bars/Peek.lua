@@ -6,6 +6,7 @@ local S = Bars.state
 -- button drives. Alpha only. The client sends no gamepad button events, so the pad is polled.
 
 local POLL = 0.05
+local GAMEPAD = "GamepadMainActionBarFrame"
 local PAGE = "GamepadMainActionBarFramePageUnit"
 
 -- Page children by zone. The stance bar hangs under the top anchor but is drawn in the right zone.
@@ -69,7 +70,17 @@ function Bars.PollPad(elapsed)
     pollAcc = pollAcc + (elapsed or 0)
     if pollAcc < POLL then return end
     pollAcc = 0
-    local key = ns.Settings.GamepadPeek() and ReadPad() or ""
+    local bar = _G[GAMEPAD]
+    if not (ns.Usable(bar) and bar:IsShown()) then
+        S.peekKey = ""
+        if next(held) then Bars.ReleasePeek() end
+        return
+    end
+    if ns.World.ShowAll() then
+        S.peekKey = ""
+        return
+    end
+    local key = ReadPad()
     if key == S.peekKey then return end
     S.peekKey = key
     S.peekDirty = true
@@ -97,17 +108,25 @@ end
 
 function Bars.ReleasePeek()
     for frame in pairs(held) do
-        ns.ReleaseAlpha(frame)
+        ns.ReleaseAlpha(frame, true)
         held[frame] = nil
     end
 end
 
+function Bars.ResetPeek()
+    S.peekKey = ""
+    S.peekDirty = false
+    pollAcc = 0
+    Bars.ReleasePeek()
+end
+
 -- show is the bar's usual rule. Only a bar that would fade shows a single zone; the other zones keep
 -- alpha 0 until the bar has faded out, so they do not flash while it goes.
-function Bars.ApplyPeek(bar, show)
+function Bars.ApplyPeek(bar, show, alpha)
     local key = S.peekKey
     if show or key == "" then
-        if next(held) and (show or (bar._quietAlpha or 0) <= 0) then Bars.ReleasePeek() end
+        local current = type(alpha) == "number" and alpha or (bar._quietAlpha or 0)
+        if next(held) and (show or current <= 0) then Bars.ReleasePeek() end
         return
     end
     EachZoneFrame(function(frame, zone)
