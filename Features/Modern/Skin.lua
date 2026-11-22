@@ -11,6 +11,7 @@ local journals = {}
 
 local EDGES = { "TOP", "BOTTOM", "LEFT", "RIGHT" }
 local BUTTON_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }
+local panelState = setmetatable({}, { __mode = "k" })
 
 local function Pack(...)
     return { n = select("#", ...), ... }
@@ -214,51 +215,93 @@ function Skin:Border(frame, color, anchor)
     anchor = anchor or frame
     local owner = BorderOwner(frame)
     if not Ready("Border", owner, "CreateTexture") or not ns.Usable(anchor) then return end
-    local theme = Modern.Theme()
-    local edges = OwnRegion(self, owner, "border:" .. tostring(anchor), function()
-        local list = {}
-        for _, edge in ipairs(EDGES) do
+    local key = anchor == owner and "border" or ("border:" .. tostring(anchor))
+    local own = self.regions[owner]
+    if not own then
+        own = {}
+        self.regions[owner] = own
+    end
+    local edges = own[key]
+    if not edges then
+        edges = {}
+        for i = 1, 4 do
+            local edge = EDGES[i]
             local line = owner:CreateTexture(nil, "OVERLAY", nil, 7)
             if type(line.SetSnapToPixelGrid) == "function" then pcall(line.SetSnapToPixelGrid, line, false) end
             if type(line.SetTexelSnappingBias) == "function" then pcall(line.SetTexelSnappingBias, line, 0) end
             if edge == "TOP" or edge == "BOTTOM" then
-                line:SetHeight(1)
                 line:SetPoint(edge .. "LEFT", anchor, edge .. "LEFT", 0, 0)
                 line:SetPoint(edge .. "RIGHT", anchor, edge .. "RIGHT", 0, 0)
             else
-                line:SetWidth(1)
                 line:SetPoint("TOP" .. edge, anchor, "TOP" .. edge, 0, 0)
                 line:SetPoint("BOTTOM" .. edge, anchor, "BOTTOM" .. edge, 0, 0)
             end
-            list[#list + 1] = line
+            edges[i] = line
         end
-        return list
-    end)
-    for index, line in ipairs(edges) do
-        local edge = EDGES[index]
-        if edge == "TOP" or edge == "BOTTOM" then
-            line:SetHeight(Modern.Hairline(line))
-        else
-            line:SetWidth(Modern.Hairline(line))
-        end
-        line:SetColorTexture(unpack(color or theme.border))
-        line:Show()
+        own[key] = edges
     end
-    Hideable(self, owner, "border:" .. tostring(anchor), edges)
+    local size = Modern.Hairline(edges[1])
+    local sizeChanged = edges.size ~= size
+    local c = color or Modern.Theme().border
+    local r, g, b, a = c[1], c[2], c[3], c[4]
+    local colorChanged = edges.r ~= r or edges.g ~= g or edges.b ~= b or edges.a ~= a
+    local needShow = not edges.shown
+    if sizeChanged or colorChanged or needShow then
+        edges.size = size
+        edges.r, edges.g, edges.b, edges.a = r, g, b, a
+        edges.shown = true
+        for i = 1, 4 do
+            local line = edges[i]
+            if sizeChanged then
+                if i <= 2 then line:SetHeight(size) else line:SetWidth(size) end
+            end
+            if colorChanged then line:SetColorTexture(r, g, b, a) end
+            if needShow then line:Show() end
+        end
+    end
+    if First(self, owner, key) then
+        Push(self, function()
+            edges.shown = false
+            for i = 1, 4 do edges[i]:Hide() end
+        end)
+    end
 end
 
 -- Themed fill (or `color`) behind a frame whose own art is held hidden; returns the fill.
 function Skin:Panel(frame, color)
     if not Ready("Panel", frame, "CreateTexture") then return end
-    local theme = Modern.Theme()
-    local fill = OwnRegion(self, frame, "panel", function()
-        local texture = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
-        texture:SetAllPoints(frame)
-        return texture
-    end)
-    fill:SetColorTexture(unpack(color or theme.bg))
-    fill:Show()
-    Hideable(self, frame, "panel", { fill })
+    local own = self.regions[frame]
+    if not own then
+        own = {}
+        self.regions[frame] = own
+    end
+    local fill = own.panel
+    if not fill then
+        fill = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+        fill:SetAllPoints(frame)
+        own.panel = fill
+    end
+    local st = panelState[fill]
+    if not st then
+        st = {}
+        panelState[fill] = st
+    end
+    local c = color or Modern.Theme().bg
+    local r, g, b, a = c[1], c[2], c[3], c[4]
+    if st.r ~= r or st.g ~= g or st.b ~= b or st.a ~= a then
+        st.r, st.g, st.b, st.a = r, g, b, a
+        fill:SetColorTexture(r, g, b, a)
+    end
+    if not st.shown then
+        st.shown = true
+        fill:Show()
+    end
+    if First(self, frame, "panel") then
+        Push(self, function()
+            st.shown = false
+            fill:Hide()
+        end)
+    end
     return fill
 end
 

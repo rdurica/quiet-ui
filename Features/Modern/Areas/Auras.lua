@@ -9,6 +9,10 @@ local Modern = ns.Modern
 
 local active = false
 local hooked = setmetatable({}, { __mode = "k" })
+local AURA_FRAMES = { "BuffFrame", "DebuffFrame", "TemporaryEnchantFrame" }
+local BORDER_KEYS = { "DebuffBorder", "TempEnchantBorder" }
+local LEGACY_PREFIXES = { "BuffButton", "DebuffButton", "TempEnchant" }
+local dispelColor = { 0, 0, 0, 1 }
 
 local function Texture(region)
     return ns.Usable(region) and type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
@@ -23,11 +27,14 @@ end
 local function Rgb(color)
     if type(color) ~= "table" then return end
     if type(color.GetRGB) == "function" then
-        local r, g, b = color:GetRGB()
-        return { r, g, b, 1 }
+        dispelColor[1], dispelColor[2], dispelColor[3] = color:GetRGB()
+        return dispelColor
     end
     local r, g, b = color.r or color[1], color.g or color[2], color.b or color[3]
-    if r then return { r, g, b, 1 } end
+    if r then
+        dispelColor[1], dispelColor[2], dispelColor[3] = r, g, b
+        return dispelColor
+    end
 end
 
 -- The dispel colour of a debuff; nil for everything else (the theme border).
@@ -51,33 +58,31 @@ local function Aura(skin, button)
     if not Texture(icon) then return end
     skin:Icon(icon)
     skin:Border(button, Dispel(button), icon)
-    for _, key in ipairs({ "DebuffBorder", "TempEnchantBorder" }) do
-        if Texture(button[key]) then skin:Hold(button[key]) end
+    for i = 1, #BORDER_KEYS do
+        local border = button[BORDER_KEYS[i]]
+        if Texture(border) then skin:Hold(border) end
     end
     Font(skin, button.Duration or button.duration, icon)
 end
 
-local function Frames()
-    local list = {}
-    for _, name in ipairs({ "BuffFrame", "DebuffFrame", "TemporaryEnchantFrame" }) do
-        if ns.Usable(_G[name]) then list[#list + 1] = _G[name] end
-    end
-    return list
-end
-
 local function Scan(skin)
     local listed
-    for _, frame in ipairs(Frames()) do
-        if type(frame.auraFrames) == "table" then
-            listed = true
-            for _, button in ipairs(frame.auraFrames) do Aura(skin, button) end
-        elseif type(frame.GetChildren) == "function" then
-            for _, child in ipairs({ frame:GetChildren() }) do Aura(skin, child) end
+    for i = 1, #AURA_FRAMES do
+        local frame = _G[AURA_FRAMES[i]]
+        if ns.Usable(frame) then
+            if type(frame.auraFrames) == "table" then
+                listed = true
+                local buttons = frame.auraFrames
+                for j = 1, #buttons do Aura(skin, buttons[j]) end
+            elseif type(frame.GetChildren) == "function" then
+                for _, child in ipairs({ frame:GetChildren() }) do Aura(skin, child) end
+            end
         end
     end
     if listed then return end
-    for _, prefix in ipairs({ "BuffButton", "DebuffButton", "TempEnchant" }) do
-        for i = 1, 40 do Aura(skin, _G[prefix .. i]) end
+    for i = 1, #LEGACY_PREFIXES do
+        local prefix = LEGACY_PREFIXES[i]
+        for j = 1, 40 do Aura(skin, _G[prefix .. j]) end
     end
 end
 
@@ -86,8 +91,9 @@ local function Updated()
 end
 
 local function Watch()
-    for _, frame in ipairs(Frames()) do
-        if not hooked[frame] and type(frame.UpdateAuraButtons) == "function"
+    for i = 1, #AURA_FRAMES do
+        local frame = _G[AURA_FRAMES[i]]
+        if ns.Usable(frame) and not hooked[frame] and type(frame.UpdateAuraButtons) == "function"
             and pcall(hooksecurefunc, frame, "UpdateAuraButtons", Updated) then
             hooked[frame] = true
         end

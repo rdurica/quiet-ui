@@ -21,7 +21,8 @@ function ns.Settings.Presets()
 end
 
 local function PresetFor(char)
-    local preset = char.presetId and ns.Settings.Presets()[char.presetId]
+    if not char.presetId then return nil end
+    local preset = ns.Settings.Presets()[char.presetId]
     if type(preset) ~= "table" then
         char.presetId = nil
         return nil

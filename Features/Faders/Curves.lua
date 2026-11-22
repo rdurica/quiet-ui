@@ -154,9 +154,9 @@ function Faders.TakeWeight(curved, weight, show, elapsed, useCurve)
 end
 
 function Faders.EvalPower(weight)
+    if weight >= 1 then return 1 end
     local kind = Faders.RestingPower()
     if kind == nil then return nil end
-    if weight >= 1 then return 1 end
     -- Weights are plain numbers; the cached result may be secret and is never compared.
     if state.samplingPower then
         for i = 1, state.powerSampleCount do

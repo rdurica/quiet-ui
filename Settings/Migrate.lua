@@ -58,7 +58,9 @@ end
 
 function ns.Settings.MigrateOnce(settings)
     if type(settings) ~= "table" then return end
-    ns.Settings.MigrateModules(settings)
+    if settings.chat ~= nil or (type(settings.modernize) == "table" and settings.modernize.enabled ~= nil) then
+        ns.Settings.MigrateModules(settings)
+    end
     local visible = settings.visible
     if type(visible) ~= "table" or migrated[visible] then return end
     migrated[visible] = true

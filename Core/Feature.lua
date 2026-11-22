@@ -14,6 +14,7 @@ ns.Registry = Registry
 local features = {}
 local byName = {}
 local handlers = {}  -- event -> { { feature =, fn = }, ... } in registration order
+local phaseLists = { apply = {}, fade = {}, frame = {}, tick = {}, rescan = {} }
 local frame
 
 local FUNCTIONS = { "enabled", "apply", "restore", "fade", "frame", "tick", "rescan" }
@@ -130,6 +131,9 @@ function ns.Feature(spec)
     for _, event in ipairs(spec.required or {}) do feature.requiredSet[event] = true end
     features[#features + 1] = feature
     byName[spec.name] = feature
+    for phase, list in pairs(phaseLists) do
+        if spec[phase] then list[#list + 1] = feature end
+    end
     -- Sorted so registration of events does not depend on pairs order.
     local names = {}
     for event in pairs(spec.events or {}) do names[#names + 1] = event end
@@ -168,8 +172,9 @@ end
 
 -- Runs a phase for every feature that has it, in registration order.
 function Registry.Phase(phase, ...)
-    for i = 1, #features do
-        local feature = features[i]
+    local list = phaseLists[phase] or features
+    for i = 1, #list do
+        local feature = list[i]
         local fn = feature.spec[phase]
         if fn and Registry.On(feature) then
             ns.Profiler.Run(feature.labels[phase] or (feature.name .. "." .. phase), fn, ...)

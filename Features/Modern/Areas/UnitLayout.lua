@@ -45,14 +45,16 @@ local function Locked(region)
     return type(region.IsProtected) ~= "function" or region:IsProtected() and true or false
 end
 
+local function PlacePoints(region, points)
+    region:ClearAllPoints()
+    for i = 1, #points do region:SetPoint(unpack(points[i], 1, 5)) end
+end
+
 local function Place(region)
     local points = laid[region]
     if not points or busy or Locked(region) then return end
     busy = true
-    ns.Profiler.Run("modern unit layout", function()
-        region:ClearAllPoints()
-        for _, p in ipairs(points) do region:SetPoint(unpack(p, 1, 5)) end
-    end)
+    ns.Profiler.Run("modern unit layout", PlacePoints, region, points)
     busy = false
 end
 
@@ -164,13 +166,13 @@ local function Movable(region)
     return ns.Usable(region) and type(region.SetPoint) == "function" and type(region.GetPoint) == "function"
 end
 
--- A player target's class icon at the box's left end; hidden for an NPC. Returns it while shown.
+-- A player's class icon at the box's left end; hidden for an NPC. Returns it while shown, plus the owned texture.
 local function Icon(skin, frame, parts)
     local icon = skin:Own(frame, "class icon", function() return frame:CreateTexture(nil, "ARTWORK") end)
     if not icon then return end
     if not parts.icon then
         icon:Hide()
-        return
+        return nil, icon
     end
     icon:ClearAllPoints()
     icon:SetPoint("BOTTOMLEFT", parts.health, "TOPLEFT", -INSET, NAME_GAP + INSET)
@@ -178,7 +180,7 @@ local function Icon(skin, frame, parts)
     icon:SetTexture(parts.icon[1])
     icon:SetTexCoord(unpack(parts.icon, 2, 5))
     icon:Show()
-    return icon
+    return icon, icon
 end
 
 local followed = setmetatable({}, { __mode = "k" }) -- skull -> { level, name }, while applied
@@ -227,11 +229,12 @@ end
 local function Labels(skin, frame, parts)
     local health, level, name = parts.health, parts.level, parts.name
     local start = { "BOTTOMLEFT", health, "TOPLEFT", 0, NAME_GAP + INSET }
-    local icon = parts.right and Icon(skin, frame, parts)
+    local icon, ownIcon
+    if parts.right then icon, ownIcon = Icon(skin, frame, parts) end
     if icon then start = { "LEFT", icon, "RIGHT", 3, 0 } end
     local after = start
     if Movable(level) then
-        Ring(skin, level, skin:Own(frame, "class icon", function() return frame:CreateTexture(nil, "ARTWORK") end))
+        Ring(skin, level, ownIcon)
         local nameFont = ns.Usable(name) and BaseFont(skin, name)
         local base = BaseFont(skin, level)
         if nameFont and base then Font(skin, level, nameFont[1], nameFont[2], base[3]) end
@@ -257,9 +260,8 @@ end
 
 -- The player knows their own name and level; the combat icon sits small above the bar's left end.
 local function PlayerLabels(skin, parts)
-    for _, text in ipairs({ parts.name, parts.level }) do
-        if ns.Usable(text) then skin:Hold(text) end
-    end
+    if ns.Usable(parts.name) then skin:Hold(parts.name) end
+    if ns.Usable(parts.level) then skin:Hold(parts.level) end
     if Movable(parts.level) then Ring(skin, parts.level) end
     local combat = parts.combat
     if not Movable(combat) then return end
@@ -334,9 +336,9 @@ function Modern.UnitLayout(skin, frame, parts)
     -- The PvP and pet battle marks sit on the box's bottom-right corner.
     -- The faction circle carries the visible mark; the PvP icon stays centred on it.
     local circle = Movable(parts.pvpCircle) and parts.pvpCircle or nil
-    for _, mark in ipairs({ circle, parts.prestige, parts.pet }) do
-        if Movable(mark) then Anchor(skin, mark, { "CENTER", health, "BOTTOMRIGHT", INSET + PVP_OFFSET, -INSET }) end
-    end
+    if circle then Anchor(skin, circle, { "CENTER", health, "BOTTOMRIGHT", INSET + PVP_OFFSET, -INSET }) end
+    if Movable(parts.prestige) then Anchor(skin, parts.prestige, { "CENTER", health, "BOTTOMRIGHT", INSET + PVP_OFFSET, -INSET }) end
+    if Movable(parts.pet) then Anchor(skin, parts.pet, { "CENTER", health, "BOTTOMRIGHT", INSET + PVP_OFFSET, -INSET }) end
     if Movable(parts.pvp) then
         if circle then Anchor(skin, parts.pvp, { "CENTER", circle, "CENTER", 0, 0 })
         else Anchor(skin, parts.pvp, { "CENTER", health, "BOTTOMRIGHT", INSET + PVP_OFFSET, -INSET }) end
