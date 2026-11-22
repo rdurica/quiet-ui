@@ -90,6 +90,7 @@ measureLoop("1. Idle scheduler (6000 frames)", function()
         unitPowerTypeCalls = unitPowerTypeCalls + 1
         return origPowerType(...)
     end
+    mock.printed = {}
     return function()
         for _ = 1, 6000 do
             mock.now = mock.now + (1 / 60)
