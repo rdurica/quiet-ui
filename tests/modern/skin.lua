@@ -181,47 +181,114 @@ h.test("a missing method is reported through one message however often it is ski
     A.noThrow(function() skin:Undo() end)
 end)
 
+local function spyTextures(frame)
+    local counts = { color = 0, size = 0, show = 0 }
+    function counts.reset()
+        counts.color, counts.size, counts.show = 0, 0, 0
+    end
+    local origCreate = frame.CreateTexture
+    frame.CreateTexture = function(self, ...)
+        local r = origCreate(self, ...)
+        local oc, oh, ow, os = r.SetColorTexture, r.SetHeight, r.SetWidth, r.Show
+        r.SetColorTexture = function(s, ...) counts.color = counts.color + 1; return oc(s, ...) end
+        r.SetHeight = function(s, ...) counts.size = counts.size + 1; return oh(s, ...) end
+        r.SetWidth = function(s, ...) counts.size = counts.size + 1; return ow(s, ...) end
+        r.Show = function(s, ...) counts.show = counts.show + 1; return os(s, ...) end
+        return r
+    end
+    return counts
+end
+
 h.test("Border and Panel skip unchanged repaints, update when colour or scale changes, and reshow after Undo", function(t)
     local A = t.assert
     local skin = t.ns.Modern.Skin("zz_a")
     local _, frame = tex()
     local pixelScale = 1
     PixelUtil = { GetNearestPixelSize = function() return pixelScale end }
-    local colorCalls, sizeCalls, showCalls = 0, 0, 0
-    local origCreate = frame.CreateTexture
-    frame.CreateTexture = function(self, ...)
-        local r = origCreate(self, ...)
-        local oc, oh, ow, os = r.SetColorTexture, r.SetHeight, r.SetWidth, r.Show
-        r.SetColorTexture = function(s, ...) colorCalls = colorCalls + 1; return oc(s, ...) end
-        r.SetHeight = function(s, ...) sizeCalls = sizeCalls + 1; return oh(s, ...) end
-        r.SetWidth = function(s, ...) sizeCalls = sizeCalls + 1; return ow(s, ...) end
-        r.Show = function(s, ...) showCalls = showCalls + 1; return os(s, ...) end
-        return r
-    end
+    local counts = spyTextures(frame)
     skin:Panel(frame, { 0.1, 0.2, 0.3, 1 })
     skin:Border(frame, { 0.4, 0.5, 0.6, 1 })
-    A.eq(colorCalls, 5, "initial Panel + 4 Border edges coloured")
-    A.eq(sizeCalls, 4, "initial 4 Border edges sized")
-    A.eq(showCalls, 5, "initial Panel + 4 Border edges shown")
-    colorCalls, sizeCalls, showCalls = 0, 0, 0
+    A.eq(counts.color, 5, "initial Panel + 4 Border edges coloured")
+    A.eq(counts.size, 4, "initial 4 Border edges sized")
+    A.eq(counts.show, 5, "initial Panel + 4 Border edges shown")
+    counts.reset()
     skin:Panel(frame, { 0.1, 0.2, 0.3, 1 })
     skin:Border(frame, { 0.4, 0.5, 0.6, 1 })
-    A.eq(colorCalls, 0, "unchanged Panel + Border skip SetColorTexture")
-    A.eq(sizeCalls, 0, "unchanged Border skips SetHeight/SetWidth")
-    A.eq(showCalls, 0, "already shown Panel + Border skip Show")
+    A.eq(counts.color, 0, "unchanged Panel + Border skip SetColorTexture")
+    A.eq(counts.size, 0, "unchanged Border skips SetHeight/SetWidth")
+    A.eq(counts.show, 0, "already shown Panel + Border skip Show")
     skin:Panel(frame, { 0.2, 0.2, 0.3, 1 })
     skin:Border(frame, { 0.7, 0.5, 0.6, 1 })
-    A.eq(colorCalls, 5, "colour change updates Panel + 4 Border edges")
-    A.eq(sizeCalls, 0, "unchanged scale still skips SetHeight/SetWidth")
+    A.eq(counts.color, 5, "colour change updates Panel + 4 Border edges")
+    A.eq(counts.size, 0, "unchanged scale still skips SetHeight/SetWidth")
     pixelScale = 1.5
-    colorCalls, sizeCalls = 0, 0
+    counts.reset()
     skin:Border(frame, { 0.7, 0.5, 0.6, 1 })
-    A.eq(sizeCalls, 4, "scale change updates 4 Border edges")
-    A.eq(colorCalls, 0, "unchanged colour skips SetColorTexture on scale change")
+    A.eq(counts.size, 4, "scale change updates 4 Border edges")
+    A.eq(counts.color, 0, "unchanged colour skips SetColorTexture on scale change")
     skin:Undo()
-    showCalls = 0
+    counts.reset()
     skin:Panel(frame, { 0.2, 0.2, 0.3, 1 })
     skin:Border(frame, { 0.7, 0.5, 0.6, 1 })
-    A.eq(showCalls, 5, "reapply after Undo shows Panel + 4 Border edges again")
+    A.eq(counts.show, 5, "reapply after Undo shows Panel + 4 Border edges again")
     PixelUtil = nil
+end)
+
+local function assertCounts(A, counts, color, size, show, label)
+    A.eq(counts.color, color, label .. ": SetColorTexture")
+    A.eq(counts.size, size, label .. ": SetHeight/SetWidth")
+    A.eq(counts.show, show, label .. ": Show")
+end
+
+h.test("Border and Panel skip repeated repaints when color is omitted (nil)", function(t)
+    local A = t.assert
+    local skin = t.ns.Modern.Skin("zz_a")
+    local _, frame = tex()
+    local counts = spyTextures(frame)
+    skin:Panel(frame)
+    skin:Border(frame)
+    assertCounts(A, counts, 5, 4, 5, "initial nil color")
+    counts.reset()
+    skin:Panel(frame)
+    skin:Border(frame)
+    assertCounts(A, counts, 0, 0, 0, "repeated nil color")
+    skin:Panel(frame, { 0.1, 0.2, 0.3, 1 })
+    skin:Border(frame, { 0.4, 0.5, 0.6, 1 })
+    assertCounts(A, counts, 5, 0, 0, "explicit color from default")
+    counts.reset()
+    skin:Panel(frame)
+    skin:Border(frame)
+    assertCounts(A, counts, 5, 0, 0, "switching back to nil")
+    counts.reset()
+    skin:Panel(frame)
+    skin:Border(frame)
+    assertCounts(A, counts, 0, 0, 0, "repeated nil after reset back to theme")
+end)
+
+h.test("Border and Panel cache 3-element RGB colors without alpha (a == nil)", function(t)
+    local A = t.assert
+    local skin = t.ns.Modern.Skin("zz_a")
+    local _, frame = tex()
+    local counts = spyTextures(frame)
+    skin:Panel(frame, { 0.3, 0.4, 0.5 })
+    skin:Border(frame, { 0.6, 0.7, 0.8 })
+    assertCounts(A, counts, 5, 4, 5, "initial 3-element RGB")
+    counts.reset()
+    skin:Panel(frame, { 0.3, 0.4, 0.5 })
+    skin:Border(frame, { 0.6, 0.7, 0.8 })
+    assertCounts(A, counts, 0, 0, 0, "unchanged 3-element RGB")
+    skin:Panel(frame, { 0.3, 0.4, 0.5, 1 })
+    skin:Border(frame, { 0.6, 0.7, 0.8, 1 })
+    assertCounts(A, counts, 5, 0, 0, "adding alpha")
+    counts.reset()
+    skin:Panel(frame, { 0.3, 0.4, 0.5 })
+    skin:Border(frame, { 0.6, 0.7, 0.8 })
+    assertCounts(A, counts, 5, 0, 0, "omitting alpha back to nil")
+    counts.reset()
+    skin:Panel(frame, { 0.3, 0.4, 0.5 })
+    skin:Border(frame, { 0.6, 0.7, 0.8 })
+    assertCounts(A, counts, 0, 0, 0, "repeated 3-element RGB after alpha removal")
+    skin:Panel(frame, { 0.4, 0.4, 0.5 })
+    skin:Border(frame, { 0.7, 0.7, 0.8 })
+    assertCounts(A, counts, 5, 0, 0, "changed 3-element RGB")
 end)
