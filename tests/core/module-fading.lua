@@ -318,6 +318,7 @@ h.test("Fading off at boot: Glance.EnsureBinding does not run or bind a key", fu
     local bound = {}
     SetBinding = function(key, action)
         bound[#bound + 1] = { key, action }
+        GetBindingKey = function(name) if name == action then return key end end
         return true
     end
 
@@ -335,10 +336,28 @@ h.test("Fading on at boot: Glance.EnsureBinding binds the default Glance key", f
     local bound = {}
     SetBinding = function(key, action)
         bound[#bound + 1] = { key, action }
+        GetBindingKey = function(name) if name == action then return key end end
         return true
     end
 
     t.boot()
-    A.eq(calls["Glance.EnsureBinding"], 1, "Glance.EnsureBinding runs at boot when fading is on")
+    A.ok(calls["Glance.EnsureBinding"] >= 1, "Glance.EnsureBinding runs at boot when fading is on")
     A.deep(bound, { { "`", "QUIETUI_GLANCE" } }, "default Glance key is bound when free")
+end)
+
+h.test("Off at boot, then /quiet on: the default Glance key is bound", function(t)
+    local A = t.assert
+    QuietUIDB = { enabled = false }
+    QuietUICharDB = { welcomed = true }
+    local bound = {}
+    SetBinding = function(key, action)
+        bound[#bound + 1] = { key, action }
+        GetBindingKey = function(name) if name == action then return key end end
+        return true
+    end
+
+    t.boot()
+    A.eq(#bound, 0, "nothing is bound while QuietUI is off")
+    SlashCmdList.QUIETUI("on")
+    A.deep(bound, { { "`", "QUIETUI_GLANCE" } }, "/quiet on binds the free Glance key")
 end)

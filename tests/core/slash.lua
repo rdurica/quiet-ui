@@ -147,6 +147,17 @@ h.test("Unknown /quiet subcommand while disabled keeps QuietUIDB.enabled false a
     A.eq(body(lines[1]), 'Unknown command "NoSuchCmd". ' .. USAGE)
 end)
 
+h.test("Unknown /quiet subcommand escapes UI codes in the echoed text", function(t)
+    local A, mock = t.assert, t.mock
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = { welcomed = true }
+    t.boot()
+
+    local lines = A.capture(mock, SlashCmdList.QUIETUI, "|Tx:0|t")
+    A.eq(#lines, 1)
+    A.eq(body(lines[1]), 'Unknown command "||Tx:0||t". ' .. USAGE)
+end)
+
 h.test("Valid /quiet subcommands dispatch without toggling enabled or printing unknown command", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     QuietUIDB = { enabled = true }

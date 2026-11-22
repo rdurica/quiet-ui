@@ -10,7 +10,7 @@ local Modern = {}
 ns.Modern = Modern
 
 -- Private to the Modern files. Other features never read it.
-local S = { areas = {}, byKey = {}, events = {}, frame = nil, signature = nil }
+local S = { areas = {}, byKey = {}, events = {}, failed = {}, frame = nil, signature = nil }
 Modern.state = S
 
 -- Settings keys of the modernize table that an area key must not shadow.
@@ -92,14 +92,19 @@ local function SyncEvents()
     end
     local add = {}
     for event in pairs(wanted) do
-        if not S.events[event] then add[#add + 1] = event end
+        if not S.events[event] and not S.failed[event] then add[#add + 1] = event end
     end
     if #add > 0 then
         table.sort(add)
         for _, event in ipairs(add) do
             -- An unknown event throws on this client, so each one is registered alone.
-            if type(S.frame.RegisterEvent) == "function" and pcall(S.frame.RegisterEvent, S.frame, event) then
-                S.events[event] = true
+            if type(S.frame.RegisterEvent) == "function" then
+                -- A failed event is never retried, like in the registry.
+                if pcall(S.frame.RegisterEvent, S.frame, event) then
+                    S.events[event] = true
+                else
+                    S.failed[event] = true
+                end
             end
         end
     end

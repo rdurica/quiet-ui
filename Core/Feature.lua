@@ -96,7 +96,7 @@ end
 
 local function Register(feature, event)
     if registered[event] then return end
-    if failed[event] ~= nil then
+    if failed[event] then
         ReportRequired(feature, event, failed[event])
         return
     end
@@ -106,7 +106,7 @@ local function Register(feature, event)
     if ok then
         registered[event] = true
     else
-        failed[event] = err ~= nil and err or false
+        failed[event] = err ~= nil and err or ("RegisterEvent failed for " .. event)
         ReportRequired(feature, event, failed[event])
     end
 end

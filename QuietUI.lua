@@ -85,9 +85,6 @@ local function Boot()
         ns.Setup.Welcome()
     end
     BootScan()
-    if ns.DB().enabled and ns.Settings.Module("fading") then
-        ns.Glance.EnsureBinding()
-    end
     ns.Setup.EnsureMinimap()
     if first and ns.DB().enabled then
         ns.Layout.BootSettle()
@@ -283,7 +280,7 @@ SlashCmdList["QUIETUI"] = function(msg)
         return
     end
     if lower ~= "" and lower ~= "on" and lower ~= "off" then
-        ns.Print('Unknown command "' .. raw .. '". Try /quiet [on|off|setup|glance|preset|profile|dump].')
+        ns.Print('Unknown command "' .. raw:gsub("|", "||") .. '". Try /quiet [on|off|setup|glance|preset|profile|dump].')
         return
     end
     local db = ns.DB()

@@ -221,6 +221,8 @@ end
 
 local function World()
     local W = ns.World
+    -- World state is kept only for Fading; with it off the values are stale.
+    if not ns.Registry.IsOn("world") then return "World: not tracked (Fading off)" end
     return table.concat({
         "World: combat " .. YesNo(W.InCombat()), "group " .. YesNo(W.InGroup()),
         "forced instance " .. YesNo(W.InForcedInstance()), "vehicle " .. YesNo(W.InVehicle()),

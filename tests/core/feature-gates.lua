@@ -313,3 +313,15 @@ h.test("early events are delivered before boot and while off; others are not", f
     t.mock:fire("PLAIN_EVENT")
     A.deep({ early, plain }, { 2, 0 }, "while off only the early event arrives")
 end)
+
+h.test("A module change through ActivatePreset turns its features off at once, before any apply", function(t)
+    local A, ns = t.assert, t.ns
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = { welcomed = true, modules = { modernize = true } }
+    t.boot()
+    A.eq(ns.Registry.IsOn("modern"), true, "Modernize is on after boot")
+
+    ns.RestoreAll()
+    ns.Settings.ActivatePreset(nil, { modules = { modernize = false } })
+    A.eq(ns.Registry.IsOn("modern"), false, "Modernize is off right after the settings change")
+end)

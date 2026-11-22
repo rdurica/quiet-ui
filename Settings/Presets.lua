@@ -112,6 +112,8 @@ function ns.Settings.ActivatePreset(id, settings)
     char.presetId = id
     snapshotChar, snapshotPreset = nil, nil
     if id then ns.Settings.CopySettings(ns.Settings.Presets()[id].settings, char) end
+    -- The modules may have changed: gates, hooks and events follow at once, not at the next apply.
+    if ns.Registry.booted then ns.Registry.Sync() end
     return true
 end
 
