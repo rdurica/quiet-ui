@@ -39,8 +39,8 @@ end
 
 -- Boot and its delayed retries: the same scan, outside the rescan phase.
 local function BootScan()
-    ns.World.RefreshWorld()
     if ns.Settings.Module("fading") then
+        ns.World.RefreshWorld()
         ns.Faders.Find(true)
         ns.Bars.ScanSwing()
     end
@@ -78,6 +78,7 @@ local function Boot()
     if first then ns.Layout.ArmStartupPreset() end
     ns.Settings.CharDB()
     ns.Settings.Effective()
+    ns.Registry.Sync()
     if first then
         local state = ns.DB().enabled and "on, enjoy the quiet" or "off for now"
         ns.Print("is " .. state .. ".")
@@ -86,7 +87,9 @@ local function Boot()
         ns.Setup.Welcome()
     end
     BootScan()
-    ns.Glance.EnsureBinding()
+    if ns.DB().enabled and ns.Settings.Module("fading") then
+        ns.Glance.EnsureBinding()
+    end
     ns.Setup.EnsureMinimap()
     if first and ns.DB().enabled then
         ns.Layout.BootSettle()
@@ -176,10 +179,8 @@ events:SetScript("OnUpdate", function(_, elapsed)
         return
     end
     elapsed = elapsed or 0
-    local flyout = ns.World.FlyoutOpen and ns.World.FlyoutOpen() or false
-    local glance = ns.Glance.Active() and true or false
-    local moved = PointerMoved()
-    local hud = ns.World.ConsumeHud()
+    local fadingOn = ns.Settings.Module("fading")
+    local hoverNeeded = fadingOn or ns.Settings.Module("chat")
     slowAcc = slowAcc + elapsed
     local slow = slowAcc >= 0.1
     if slow then
@@ -187,42 +188,54 @@ events:SetScript("OnUpdate", function(_, elapsed)
             Run("layout", ns.Layout.Finish)
         end
         slowAcc = 0
-        ns.World.ForgetCursor()
-    end
-    local showAll = ns.World.ShowAll()
-    local focusChanged = false
-    if moved or slow then
-        local changed = ns.FocusChanged()
-        if changed == nil then
-            if moved then
-                fallbackAcc = fallbackAcc + elapsed
-                if fallbackAcc >= FALLBACK_RESCAN then
-                    fallbackAcc = 0
-                    focusChanged = true
-                end
-            end
-        else
-            fallbackAcc = 0
-            focusChanged = changed
+        if fadingOn then
+            ns.World.ForgetCursor()
         end
     end
-    local rescan = focusChanged or hud or flyout ~= lastFlyout or glance ~= lastGlance
-        or showAll ~= lastShowAll
-    lastFlyout = flyout
-    lastGlance = glance
-    lastShowAll = showAll
-    hotElapsed = hotElapsed + elapsed
-    if rescan or (wasHot and hotElapsed >= HOT_STEP) then
-        Run(nil, ns.Registry.Fade, wasHot and hotElapsed or elapsed, rescan)
-        hotElapsed = 0
-        wasHot = ns.FrameHot()
+    local focusChanged = false
+    if hoverNeeded then
+        local moved = PointerMoved()
+        if moved or slow then
+            local changed = ns.FocusChanged()
+            if changed == nil then
+                if moved then
+                    fallbackAcc = fallbackAcc + elapsed
+                    if fallbackAcc >= FALLBACK_RESCAN then
+                        fallbackAcc = 0
+                        focusChanged = true
+                    end
+                end
+            else
+                fallbackAcc = 0
+                focusChanged = changed
+            end
+        end
     end
-    if slow then
-        if not rescan and not wasHot then
+    if fadingOn then
+        local flyout = ns.World.FlyoutOpen and ns.World.FlyoutOpen() or false
+        local glance = ns.Glance.Active() and true or false
+        local hud = ns.World.ConsumeHud()
+        local showAll = ns.World.ShowAll()
+        local rescan = focusChanged or hud or flyout ~= lastFlyout or glance ~= lastGlance
+            or showAll ~= lastShowAll
+        lastFlyout = flyout
+        lastGlance = glance
+        lastShowAll = showAll
+        hotElapsed = hotElapsed + elapsed
+        if rescan or (wasHot and hotElapsed >= HOT_STEP) then
+            Run(nil, ns.Registry.Fade, wasHot and hotElapsed or elapsed, rescan)
+            hotElapsed = 0
+            wasHot = ns.FrameHot()
+        end
+        if slow and not rescan and not wasHot then
             Run(nil, ns.Registry.Fade, elapsed, false, true)
             hotElapsed = 0
             if ns.FrameHot() then wasHot = true end
         end
+    else
+        wasHot = false
+    end
+    if slow then
         ns.Registry.Phase("tick")
     end
     ns.Registry.Phase("frame", elapsed)
@@ -244,22 +257,22 @@ ns.Feature({
 SLASH_QUIETUI1 = "/quiet"
 SLASH_QUIETUI2 = "/quietui"
 SlashCmdList["QUIETUI"] = function(msg)
-    msg = (msg or ""):match("^%s*(.-)%s*$")
-    local command, argument = msg:match("^(%S+)%s*(.-)$")
+    local raw = (msg or ""):match("^%s*(.-)%s*$")
+    local command, argument = raw:match("^(%S+)%s*(.-)$")
     if command and command:lower() == "preset" then
         ns.Settings.PresetCommand(argument)
         return
     end
-    msg = msg:lower()
-    if msg == "profile" then
+    local lower = raw:lower()
+    if lower == "profile" then
         ns.Profiler.Start()
         return
     end
-    if msg == "setup" then
+    if lower == "setup" then
         ns.Setup.Show()
         return
     end
-    if msg == "dump" then
+    if lower == "dump" then
         if not ns.DB().enabled then
             ns.Print("QuietUI is off. Turn it on with /quiet on, then type /quiet dump.")
             return
@@ -267,14 +280,18 @@ SlashCmdList["QUIETUI"] = function(msg)
         ns.Setup.ShowDump()
         return
     end
-    if msg == "glance" then
+    if lower == "glance" then
         ns.Glance.Toggle()
         return
     end
+    if lower ~= "" and lower ~= "on" and lower ~= "off" then
+        ns.Print('Unknown command "' .. raw .. '". Try /quiet [on|off|setup|glance|preset|profile|dump].')
+        return
+    end
     local db = ns.DB()
-    if msg == "on" then
+    if lower == "on" then
         db.enabled = true
-    elseif msg == "off" then
+    elseif lower == "off" then
         db.enabled = false
     else
         db.enabled = not db.enabled
