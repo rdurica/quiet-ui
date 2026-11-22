@@ -453,17 +453,66 @@ h.test("bar fills are flat: no light, shade or edge line on them", function(t)
     end
 end)
 
+local function watchTextures(frame)
+    local layers, orig = {}, frame.CreateTexture
+    frame.CreateTexture = function(self, name, layer, ...)
+        layers[#layers + 1] = layer or ""
+        return orig(self, name, layer, ...)
+    end
+    return layers
+end
+
+local function portraitParty(name)
+    local function bar(parent)
+        local b = CreateFrame("StatusBar", nil, parent)
+        b:SetSize(91, 11)
+        local fill = b:CreateTexture(nil, "ARTWORK")
+        b._statusColor = { 0, 1, 0, 1 }
+        b.SetStatusBarTexture = function(_, v) fill:SetTexture(v) end
+        b.GetStatusBarTexture = function() return fill end
+        b.SetStatusBarColor = function(self, ...) self._statusColor = { ... } end
+        b.GetStatusBarColor = function(self) return unpack(self._statusColor) end
+        return b
+    end
+    local frame = CreateFrame("Button", name, UIParent)
+    frame.Texture = frame:CreateTexture(nil, "ARTWORK")
+    frame.Texture:SetTexture("UI-HUD-UnitFrame-Party-PortraitOn")
+    frame.Portrait = frame:CreateTexture(nil, "ARTWORK")
+    frame.Portrait:SetTexture("Interface\\Portrait\\Party")
+    frame.HealthBar = bar(frame)
+    frame.ManaBar = bar(frame)
+    frame.LevelText = frame:CreateFontString(nil, "OVERLAY")
+    frame.LevelText:SetText("20")
+    frame.LevelText:SetFont("Fonts\\FRIZQT__.TTF", 14, "")
+    frame.LevelText:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 4, 4)
+    frame.Name = frame:CreateFontString(nil, "OVERLAY")
+    frame.Name:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+    frame.Name:SetPoint("TOP", frame, "TOP", 0, -5)
+    return frame
+end
+
 h.test("a player target or focus shows its class icon before the level; an NPC shows none", function(t)
     local A, ns, mock = t.assert, t.ns, t.mock
     local frames = U.frames()
+    local party = portraitParty("PartyMemberFrame1")
     U.installColours(mock)
     CLASS_ICON_TCOORDS = { MAGE = { 0.25, 0.5, 0, 0.25 } }
     mock:setUnit("target", { exists = true, player = true })
     mock:setUnit("focus", { exists = true, player = false })
+    mock:setUnit("party1", { exists = true, player = true })
+    local partyBefore = #party._regions
+    local partyCreated = watchTextures(party)
+    local nonRightBefore, nonRightCreated = {}, {}
+    for _, i in ipairs({ 1, 2, 4 }) do
+        nonRightBefore[i] = #frames[i]._regions
+        nonRightCreated[i] = watchTextures(frames[i])
+    end
     enable(ns)
     local target = U.parts(frames[3])
     local icon = U.classIcon(frames[3])
     A.ok(icon, "class icon shown")
+    A.shown(icon, true, "class icon _shown")
+    A.alpha(icon, 1, "class icon alpha 1")
     A.ok(icon._texture:find("CHARACTERCREATE"), "Blizzard's class sheet")
     local c = icon._texCoord
     A.ok(c[1] > 0.25 and c[2] < 0.5 and c[3] > 0 and c[4] < 0.25, "mage cell, rounded corners trimmed")
@@ -473,19 +522,39 @@ h.test("a player target or focus shows its class icon before the level; an NPC s
     A.ok(not U.classIcon(frames[5]), "NPC focus has no icon")
     A.deep(U.points(U.parts(frames[5]).level), { { "BOTTOMLEFT", U.parts(frames[5]).health, "TOPLEFT", 0, 4 } },
         "NPC level at the box's left end")
-    for _, i in ipairs({ 1, 2, 4 }) do A.ok(not U.classIcon(frames[i]), frames[i]:GetName() .. " no icon") end
-    mock:setUnit("target", { exists = true, player = false })
-    mock:fire("PLAYER_TARGET_CHANGED")
-    A.ok(not U.classIcon(frames[3]), "icon gone for an NPC target")
-    A.deep(U.points(target.level), { { "BOTTOMLEFT", target.health, "TOPLEFT", 0, 4 } }, "level back at the start")
+    local expectedLayers = { "BACKGROUND", "OVERLAY", "OVERLAY", "OVERLAY", "OVERLAY" }
+    for _, i in ipairs({ 1, 2, 4 }) do
+        local name = frames[i]:GetName()
+        A.ok(not U.classIcon(frames[i]), name .. " no icon")
+        A.eq(#frames[i]._regions, nonRightBefore[i] + 5, name .. " adds only bar box + 4 border edges")
+        A.deep(nonRightCreated[i], expectedLayers, name .. " creates no extra ARTWORK texture")
+    end
+    A.ok(not U.classIcon(party), "PartyMemberFrame1 no icon")
+    A.deep(U.points(party.LevelText), { { "BOTTOMLEFT", party.HealthBar, "TOPLEFT", 0, 4 } },
+        "PartyMemberFrame1 enters Labels with its level")
+    A.eq(#party._regions, partyBefore + 5, "PartyMemberFrame1 adds only bar box + 4 border edges")
+    A.deep(partyCreated, expectedLayers, "PartyMemberFrame1 creates no extra ARTWORK/class-icon texture")
     for n = 1, 3 do
+        mock:setUnit("target", { exists = true, player = false })
+        mock:fire("PLAYER_TARGET_CHANGED")
+        A.ok(not U.classIcon(frames[3]), "icon gone for an NPC target #" .. n)
+        A.shown(icon, false, "icon region hidden for an NPC target #" .. n)
+        A.deep(U.points(target.level), { { "BOTTOMLEFT", target.health, "TOPLEFT", 0, 4 } },
+            "level back at the start #" .. n)
+
         mock:setUnit("target", { exists = true, player = true })
         mock:fire("PLAYER_TARGET_CHANGED")
-        A.ok(U.classIcon(frames[3]), "icon back for a player target #" .. n)
-        A.alpha(U.classIcon(frames[3]), 1, "icon visible, not taken for level ring art #" .. n)
+        local shownIcon = U.classIcon(frames[3])
+        A.eq(shownIcon, icon, "icon reused for a player target #" .. n)
+        A.shown(icon, true, "icon _shown true for a player target #" .. n)
+        A.alpha(icon, 1, "icon visible, not taken for level ring art #" .. n)
+        A.deep(U.points(target.level), { { "LEFT", icon, "RIGHT", 3, 0 } }, "level after the icon #" .. n)
     end
+    mock:fire("UNIT_FACTION", "party1")
+    A.eq(#party._regions, partyBefore + 5, "PartyMemberFrame1 still creates no extra texture after updates")
     ns.Modern.Restore()
     A.ok(not U.classIcon(frames[3]), "icon hidden on restore")
+    A.shown(icon, false, "icon region hidden on restore")
     CLASS_ICON_TCOORDS = nil
 end)
 
