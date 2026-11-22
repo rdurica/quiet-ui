@@ -189,10 +189,11 @@ end)
 h.test("The combined bag is dragged by its title, keeps the saved point when Blizzard re-anchors bags and returns on area off", function(t)
     local A, ns = t.assert, t.ns
     _G.UpdateContainerFrameAnchors = function() end
-    ns.Registry.InstallHooks()
     local _, combined = setup(ns)
     L.blizzardPoint(combined, "BOTTOMRIGHT", -20, 100)
+    t.boot()
     W.enable(ns)
+    ns.ApplyAll()
     t.mock:tick(0)
     L.drag(combined, "CENTER", "CENTER", 40, -30)
     A.deep(QuietUICharDB.windowPoints.ContainerFrameCombinedBags, { "CENTER", "CENTER", 40, -30 }, "the point is saved")

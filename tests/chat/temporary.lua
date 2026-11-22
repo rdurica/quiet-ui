@@ -27,7 +27,7 @@ end
 h.test("A temporary whisper window gets Modern chat", function(t)
     local ns, A = t.ns, t.assert
     setup()
-    ns.Chat.StripAll()
+    t.boot()
     openWhisper()
     ns.Chat.SyncVisibleEdits()
     ns.Chat.Update(1)
@@ -38,7 +38,7 @@ end)
 h.test("A whisper tab with a new message stays visible", function(t)
     local ns, A = t.ns, t.assert
     setup()
-    ns.Chat.StripAll()
+    t.boot()
     openWhisper()
     ChatFrame11Tab.alerting = true
     ns.Chat.Update(1)

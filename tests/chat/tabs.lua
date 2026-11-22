@@ -78,9 +78,9 @@ h.test("An undocked window's tab sits below that window under its input strip", 
 end)
 
 h.test("Blizzard re-anchoring an undocked tab above is undone", function(t)
-    local ns, A = t.ns, t.assert
+    local A = t.assert
     setup(t)
-    ns.Chat.StripAll()
+    t.boot()
     local function blizzardAbove()
         ChatFrame2Tab:ClearAllPoints()
         ChatFrame2Tab:SetPoint("BOTTOMLEFT", ChatFrame2, "TOPLEFT", 0, 3)
