@@ -17,35 +17,50 @@ local FRAMES = {
     { "Boss4TargetFrame", "boss4", true }, { "Boss5TargetFrame", "boss5", true },
 }
 
+local function SplitPaths(list)
+    local out = {}
+    for i = 1, #list do
+        local parts = {}
+        for key in list[i]:gmatch("[^.]+") do parts[#parts + 1] = key end
+        out[i] = parts
+    end
+    return out
+end
+
+local FRAMES_BY_UNIT = {}
+for i = 1, #FRAMES do FRAMES_BY_UNIT[FRAMES[i][2]] = FRAMES[i] end
+
 -- Places a part can live, relative to the unit frame.
-local ART_ROOTS = { "", "PlayerFrameContainer", "TargetFrameContainer",
-    "PlayerFrameContent.PlayerFrameContentMain", "TargetFrameContent.TargetFrameContentMain" }
+local ART_ROOTS = SplitPaths({ "", "PlayerFrameContainer", "TargetFrameContainer",
+    "PlayerFrameContent.PlayerFrameContentMain", "TargetFrameContent.TargetFrameContentMain" })
 local ART_NAMES = { "FrameTexture", "AlternatePowerFrameTexture", "VehicleFrameTexture", "FrameFlash", "Flash",
     "BossPortraitFrameTexture", "ReputationColor", "Border", "EliteTexture", "PortraitFrame", "StatusTexture",
     -- PartyMemberFrameTemplate keeps its frame art as Texture and VehicleTexture.
     "Texture", "VehicleTexture" }
 local PARTY = 4
+local PARTY_SPECS = {}
+for i = 1, PARTY do PARTY_SPECS[i] = { "PartyMemberFrame" .. i, "party" .. i } end
 local ART_GLOBALS = { "Texture", "Flash" }
-local HEALTH_PATHS = { "healthbar", "HealthBar", "healthBar", "HealthBarContainer.HealthBar",
+local HEALTH_PATHS = SplitPaths({ "healthbar", "HealthBar", "healthBar", "HealthBarContainer.HealthBar",
     "PlayerFrameContent.PlayerFrameContentMain.HealthBarsContainer.HealthBar",
-    "TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar" }
-local POWER_PATHS = { "manabar", "ManaBar", "manaBar", "PowerBar", "powerBar",
+    "TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar" })
+local POWER_PATHS = SplitPaths({ "manabar", "ManaBar", "manaBar", "PowerBar", "powerBar",
     "PlayerFrameContent.PlayerFrameContentMain.ManaBarArea.ManaBar",
-    "TargetFrameContent.TargetFrameContentMain.ManaBar" }
-local PORTRAIT_PATHS = { "portrait", "Portrait", "PlayerFrameContainer.PlayerPortrait", "TargetFrameContainer.Portrait" }
-local LEVEL_PATHS = { "PlayerFrameContent.PlayerFrameContentMain.PlayerLevelText",
-    "TargetFrameContent.TargetFrameContentMain.LevelText", "levelText", "LevelText" }
-local NAME_PATHS = { "name", "Name", "TargetFrameContent.TargetFrameContentMain.Name" }
-local COMBAT_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.AttackIcon" }
-local SKULL_PATHS = { "TargetFrameContent.TargetFrameContentContextual.HighLevelTexture",
-    "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" }
+    "TargetFrameContent.TargetFrameContentMain.ManaBar" })
+local PORTRAIT_PATHS = SplitPaths({ "portrait", "Portrait", "PlayerFrameContainer.PlayerPortrait", "TargetFrameContainer.Portrait" })
+local LEVEL_PATHS = SplitPaths({ "PlayerFrameContent.PlayerFrameContentMain.PlayerLevelText",
+    "TargetFrameContent.TargetFrameContentMain.LevelText", "levelText", "LevelText" })
+local NAME_PATHS = SplitPaths({ "name", "Name", "TargetFrameContent.TargetFrameContentMain.Name" })
+local COMBAT_PATHS = SplitPaths({ "PlayerFrameContent.PlayerFrameContentContextual.AttackIcon" })
+local SKULL_PATHS = SplitPaths({ "TargetFrameContent.TargetFrameContentContextual.HighLevelTexture",
+    "TargetFrameContent.TargetFrameContentMain.HighLevelTexture", "highLevelTexture" })
 -- The faction or prestige mark of a PvP-flagged target; Blizzard places it beside the portrait, far from the box.
-local PVP_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PvpIcon", "pvpIcon" }
-local PRESTIGE_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PrestigePortrait", "prestigePortrait" }
-local PVP_CIRCLE_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PvpBackgroundIcon" }
-local PET_PATHS = { "TargetFrameContent.TargetFrameContentContextual.PetBattleIcon", "petBattleIcon" }
+local PVP_PATHS = SplitPaths({ "TargetFrameContent.TargetFrameContentContextual.PvpIcon", "pvpIcon" })
+local PRESTIGE_PATHS = SplitPaths({ "TargetFrameContent.TargetFrameContentContextual.PrestigePortrait", "prestigePortrait" })
+local PET_PATHS = SplitPaths({ "TargetFrameContent.TargetFrameContentContextual.PetBattleIcon", "petBattleIcon" })
+local PVP_CIRCLE_PATHS = SplitPaths({ "TargetFrameContent.TargetFrameContentContextual.PvpBackgroundIcon" })
 -- The player's resting "zzz" and its glow.
-local REST_PATHS = { "PlayerFrameContent.PlayerFrameContentContextual.PlayerRestLoop" }
+local REST_PATHS = SplitPaths({ "PlayerFrameContent.PlayerFrameContentContextual.PlayerRestLoop" })
 local REST_GLOBALS = { "PlayerRestLoop", "PlayerRestIcon", "PlayerRestGlow" }
 
 local HEALTH = { 0.2, 0.21, 0.23 } -- a quiet dark fill; the missing health shows as the near-black box behind it
@@ -58,18 +73,18 @@ local tracked = setmetatable({}, { __mode = "k" }) -- bar -> { unit, kind, textu
 local hooked = setmetatable({}, { __mode = "k" })
 local hookedUpdate
 
-local function Dig(root, path)
+local function Dig(root, segments)
     local node = root
-    for key in path:gmatch("[^.]+") do
+    for i = 1, #segments do
         if not ns.Usable(node) then return end
-        node = node[key]
+        node = node[segments[i]]
     end
     return node
 end
 
 local function Find(frame, paths, globalName)
-    for _, path in ipairs(paths) do
-        local node = Dig(frame, path)
+    for i = 1, #paths do
+        local node = Dig(frame, paths[i])
         if ns.Usable(node) then return node end
     end
     local node = globalName and _G[globalName]
@@ -144,16 +159,18 @@ local function PowerColour(unit)
 end
 
 -- Puts the theme texture (after Blizzard changed it) and the wanted colour back on a tracked bar.
+local function PaintBar(bar, info, retexture)
+    if retexture then bar:SetStatusBarTexture(info.texture) end
+    local r, g, b
+    if info.kind == "health" then r, g, b = unpack(HEALTH) else r, g, b = PowerColour(info.unit) end
+    if r and g and b then bar:SetStatusBarColor(r, g, b, 1) end
+end
+
 local function Paint(bar, retexture)
     local info = tracked[bar]
     if not info or info.busy then return end
     info.busy = true
-    ns.Profiler.Run("modern units", function()
-        if retexture then bar:SetStatusBarTexture(info.texture) end
-        local r, g, b
-        if info.kind == "health" then r, g, b = unpack(HEALTH) else r, g, b = PowerColour(info.unit) end
-        if r and g and b then bar:SetStatusBarColor(r, g, b, 1) end
-    end)
+    ns.Profiler.Run("modern units", PaintBar, bar, info, retexture)
     info.busy = nil
 end
 
@@ -261,9 +278,9 @@ local function Rest(skin, frame)
     end
 end
 
-local function Unit(skin, spec)
+local function Unit(skin, spec, frameOverride)
     local name, unit = spec[1], spec[2]
-    local frame = spec.frame or _G[name]
+    local frame = frameOverride or spec.frame or _G[name]
     if not ns.Usable(frame) then return end
     Art(skin, frame, name)
     local health, mana = Find(frame, HEALTH_PATHS, name .. "HealthBar"), Find(frame, POWER_PATHS, name .. "ManaBar")
@@ -289,13 +306,15 @@ local function Unit(skin, spec)
 end
 
 -- The 12.0 party frame pools its members under PartyFrame; Forever's classic globals are the fallback.
-local function Party(skin)
+local function PartyMember(skin, index)
     local party = _G.PartyFrame
-    for index = 1, PARTY do
-        local name = "PartyMemberFrame" .. index
-        local frame = ns.Usable(party) and party["MemberFrame" .. index] or _G[name]
-        if ns.Usable(frame) then Unit(skin, { name, "party" .. index, frame = frame }) end
-    end
+    local spec = PARTY_SPECS[index]
+    local frame = ns.Usable(party) and party["MemberFrame" .. index] or _G[spec[1]]
+    if ns.Usable(frame) then Unit(skin, spec, frame) end
+end
+
+local function Party(skin)
+    for index = 1, PARTY do PartyMember(skin, index) end
 end
 
 -- Blizzard shows the health value only on hover by default; on the near-black fill it is the only
@@ -320,11 +339,29 @@ end
 
 -- UNIT_FACTION, UNIT_CLASSIFICATION_CHANGED and UNIT_NAME_UPDATE fire for every unit (nameplates, party): only the skinned
 -- ones matter. A secret token cannot be told apart, so it skins to be safe.
-local function OnEvent(skin, _, unit)
-    if type(unit) == "string" and not ns.IsSecret(unit) then
-        local tracked = unit:sub(1, 5) == "party"
-        for _, spec in ipairs(FRAMES) do tracked = tracked or spec[2] == unit end
-        if not tracked then return end
+local function OnEvent(skin, event, unit)
+    if event == "PLAYER_TARGET_CHANGED" then
+        Unit(skin, FRAMES_BY_UNIT.target)
+        Unit(skin, FRAMES_BY_UNIT.targettarget)
+        return
+    elseif event == "PLAYER_FOCUS_CHANGED" then
+        Unit(skin, FRAMES_BY_UNIT.focus)
+        return
+    elseif event == "GROUP_ROSTER_UPDATE" then
+        Party(skin)
+        Modern.Group.Apply(skin)
+        return
+    elseif event == "UNIT_FACTION" or event == "UNIT_CLASSIFICATION_CHANGED" or event == "UNIT_NAME_UPDATE" then
+        if type(unit) == "string" and not ns.IsSecret(unit) then
+            local spec = FRAMES_BY_UNIT[unit]
+            if spec then
+                Unit(skin, spec)
+            elseif unit:sub(1, 5) == "party" then
+                local idx = tonumber(unit:sub(6))
+                if idx and idx >= 1 and idx <= PARTY then PartyMember(skin, idx) end
+            end
+            return
+        end
     end
     Apply(skin)
 end
