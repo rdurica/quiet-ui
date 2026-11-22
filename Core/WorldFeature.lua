@@ -13,6 +13,7 @@ end
 
 ns.Feature({
     name = "world",
+    enabled = function() return ns.Settings.Module("fading") end,
     apply = function() ns.World.RefreshWorld() end,
     rescan = function() ns.World.RefreshWorld() end,
     events = {

@@ -13,7 +13,9 @@ ns.Registry = Registry
 
 local features = {}
 local byName = {}
-local handlers = {}  -- event -> { { feature =, fn = }, ... } in registration order
+local handlers = {}   -- event -> { { feature =, fn = }, ... } in registration order
+local eventOrder = {} -- event names in first-registered order for deterministic retries
+local registered = {} -- event -> true while registered on `frame`
 local phaseLists = { apply = {}, fade = {}, frame = {}, tick = {}, rescan = {} }
 local frame
 
@@ -84,16 +86,25 @@ function Registry.Frame()
     return frame
 end
 
+local function Register(feature, event)
+    Registry.Frame()
+    -- An unknown event throws on this client, so each one is registered alone.
+    local ok, err = pcall(frame.RegisterEvent, frame, event)
+    if ok then
+        registered[event] = true
+    elseif feature.requiredSet[event] then
+        -- Only events a feature cannot work without are reported; the rest fail silently.
+        ns.Report(feature.name .. " events", err)
+    end
+end
+
 local function Listen(feature, event, fn)
     local list = handlers[event]
     if not list then
         list = {}
         handlers[event] = list
-        Registry.Frame()
-        -- An unknown event throws on this client, so each one is registered alone.
-        local ok, err = pcall(frame.RegisterEvent, frame, event)
-        -- Only events a feature cannot work without are reported; the rest fail silently.
-        if not ok and feature.requiredSet[event] then ns.Report(feature.name .. " events", err) end
+        eventOrder[#eventOrder + 1] = event
+        Register(feature, event)
     end
     list[#list + 1] = { feature = feature, fn = fn }
 end
@@ -102,18 +113,24 @@ local function Hook(feature, global, fn)
     if type(_G[global]) ~= "function" then return end
     feature.labels[global] = feature.labels[global] or (feature.name .. "." .. global)
     local ok = pcall(hooksecurefunc, global, function(...)
-        if not ns.DB().enabled or not Registry.On(feature) then return end
+        if not ns.DB().enabled or not feature.on then return end
         ns.Profiler.Run(feature.labels[global], fn, ...)
     end)
     if ok then feature.hooked[global] = true end
 end
 
+local function InstallFeatureHooks(feature)
+    for global, fn in pairs(feature.spec.hooks or {}) do
+        if not feature.hooked[global] then Hook(feature, global, fn) end
+    end
+end
+
 -- Hooks wait for a global that is not loaded yet; QuietUI calls this again when it boots.
 function Registry.InstallHooks()
-    for _, feature in ipairs(features) do
-        for global, fn in pairs(feature.spec.hooks or {}) do
-            if not feature.hooked[global] then Hook(feature, global, fn) end
-        end
+    if not Registry.booted or not ns.DB().enabled then return end
+    for i = 1, #features do
+        local feature = features[i]
+        if Registry.On(feature) then InstallFeatureHooks(feature) end
     end
 end
 
@@ -131,15 +148,11 @@ function ns.Feature(spec)
     for _, event in ipairs(spec.required or {}) do feature.requiredSet[event] = true end
     features[#features + 1] = feature
     byName[spec.name] = feature
-    for phase, list in pairs(phaseLists) do
-        if spec[phase] then list[#list + 1] = feature end
-    end
     -- Sorted so registration of events does not depend on pairs order.
     local names = {}
     for event in pairs(spec.events or {}) do names[#names + 1] = event end
     table.sort(names)
     for _, event in ipairs(names) do Listen(feature, event, spec.events[event]) end
-    for global, fn in pairs(spec.hooks or {}) do Hook(feature, global, fn) end
 end
 
 function ns.Features()
@@ -149,7 +162,7 @@ function ns.Features()
 end
 
 -- A feature without a gate is always on.
-function Registry.On(feature)
+local function EvaluateGate(feature)
     local gate = feature.spec.enabled
     if not gate then return true end
     local ok, on = pcall(gate)
@@ -160,21 +173,91 @@ function Registry.On(feature)
     return on and true or false
 end
 
+function Registry.On(feature)
+    if feature.on ~= nil then return feature.on end
+    return EvaluateGate(feature)
+end
+
 -- Whether the named feature is on; false for an unknown name.
 function Registry.IsOn(name)
     local feature = byName[name]
     return feature ~= nil and Registry.On(feature)
 end
 
-function Registry.SetBooted(on)
-    Registry.booted = on and true or false
+local function EventWanted(feature, event, addonOn)
+    return feature.earlySet[event]
+        or (Registry.booted and feature.alwaysSet[event])
+        or (addonOn and feature.on)
 end
 
--- Runs a phase for every feature that has it, in registration order.
+local function SyncEvents(addonOn)
+    for i = 1, #eventOrder do
+        local event = eventOrder[i]
+        local list = handlers[event]
+        local wantedFeature
+        for j = 1, #list do
+            local f = list[j].feature
+            if EventWanted(f, event, addonOn) then
+                wantedFeature = wantedFeature or f
+                if f.requiredSet[event] then
+                    wantedFeature = f
+                    break
+                end
+            end
+        end
+        if wantedFeature then
+            if not registered[event] then
+                Register(wantedFeature, event)
+            end
+        elseif registered[event] then
+            if frame then pcall(frame.UnregisterEvent, frame, event) end
+            registered[event] = nil
+        end
+    end
+end
+
+function Registry.Sync()
+    for i = 1, #features do
+        features[i].on = EvaluateGate(features[i])
+    end
+    for _, list in pairs(phaseLists) do
+        ns.Wipe(list)
+    end
+    for i = 1, #features do
+        local feature = features[i]
+        if feature.on then
+            for phase, list in pairs(phaseLists) do
+                if feature.spec[phase] then list[#list + 1] = feature end
+            end
+        end
+    end
+    local addonOn = Registry.booted and ns.DB().enabled and true or false
+    if addonOn then
+        for i = 1, #features do
+            local feature = features[i]
+            if feature.on then InstallFeatureHooks(feature) end
+        end
+    end
+    SyncEvents(addonOn)
+end
+
+function Registry.SetBooted(on)
+    Registry.booted = on and true or false
+    if Registry.booted then Registry.Sync() end
+end
+
+-- Runs a phase for every enabled feature that has it, in registration order.
 function Registry.Phase(phase, ...)
-    local list = phaseLists[phase] or features
-    for i = 1, #list do
-        local feature = list[i]
+    local list = phaseLists[phase]
+    if list then
+        for i = 1, #list do
+            local feature = list[i]
+            ns.Profiler.Run(feature.labels[phase], feature.spec[phase], ...)
+        end
+        return
+    end
+    for i = 1, #features do
+        local feature = features[i]
         local fn = feature.spec[phase]
         if fn and Registry.On(feature) then
             ns.Profiler.Run(feature.labels[phase] or (feature.name .. "." .. phase), fn, ...)
@@ -183,6 +266,7 @@ function Registry.Phase(phase, ...)
 end
 
 function Registry.Apply()
+    Registry.Sync()
     Registry.Phase("apply")
 end
 
@@ -194,4 +278,5 @@ function Registry.Restore()
             ns.Profiler.Run(feature.labels.restore, feature.spec.restore)
         end
     end
+    Registry.Sync()
 end

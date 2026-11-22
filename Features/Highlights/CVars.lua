@@ -45,6 +45,7 @@ function Highlights.Active()
     if S.stopped then return false end
     local db = ns.DB and ns.DB()
     if not (db and db.enabled) then return false end
+    if not ns.Settings.Module("helpers") then return false end
     local flags = Highlights.Flags()
     if not (flags.herb or flags.ore or flags.quest) then return false end
     return not InBlockedInstance()

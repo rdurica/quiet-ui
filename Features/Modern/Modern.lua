@@ -45,15 +45,64 @@ local function OnEvent(_, event, ...)
     end
 end
 
--- An unknown event throws on this client, so each one is registered alone and once.
-local function Listen(event)
-    if S.events[event] then return end
-    S.events[event] = true
+local function UnregisterAll()
+    if not S.frame or next(S.events) == nil then return end
+    if type(S.frame.UnregisterAllEvents) == "function" and pcall(S.frame.UnregisterAllEvents, S.frame) then
+        S.events = {}
+        return
+    end
+    if type(S.frame.UnregisterEvent) == "function" then
+        for event in pairs(S.events) do
+            pcall(S.frame.UnregisterEvent, S.frame, event)
+        end
+    end
+    S.events = {}
+end
+
+-- Keep S.frame subscribed only to events needed by currently applied areas.
+local function SyncEvents()
+    local wanted = {}
+    for _, area in ipairs(S.areas) do
+        if area.applied then
+            for event in pairs(area.eventSet) do
+                wanted[event] = true
+            end
+        end
+    end
+    if next(wanted) == nil then
+        UnregisterAll()
+        return
+    end
     if not S.frame then
         S.frame = CreateFrame("Frame")
         S.frame:SetScript("OnEvent", OnEvent)
     end
-    pcall(S.frame.RegisterEvent, S.frame, event)
+    local drop = {}
+    for event in pairs(S.events) do
+        if not wanted[event] then drop[#drop + 1] = event end
+    end
+    if #drop > 0 then
+        table.sort(drop)
+        for _, event in ipairs(drop) do
+            if type(S.frame.UnregisterEvent) == "function" then
+                pcall(S.frame.UnregisterEvent, S.frame, event)
+            end
+            S.events[event] = nil
+        end
+    end
+    local add = {}
+    for event in pairs(wanted) do
+        if not S.events[event] then add[#add + 1] = event end
+    end
+    if #add > 0 then
+        table.sort(add)
+        for _, event in ipairs(add) do
+            -- An unknown event throws on this client, so each one is registered alone.
+            if type(S.frame.RegisterEvent) == "function" and pcall(S.frame.RegisterEvent, S.frame, event) then
+                S.events[event] = true
+            end
+        end
+    end
 end
 
 function Modern.Register(spec)
@@ -66,7 +115,6 @@ function Modern.Register(spec)
         onEvent = spec.onEvent, addons = spec.addons or {}, eventSet = {}, applied = false }
     for _, event in ipairs(spec.events or {}) do
         area.eventSet[event] = true
-        Listen(event)
     end
     S.areas[#S.areas + 1] = area
     S.byKey[area.key] = area
@@ -110,6 +158,7 @@ function Modern.Apply()
             Restore(area)
         end
     end
+    SyncEvents()
 end
 
 function Modern.Restore()
@@ -117,6 +166,7 @@ function Modern.Restore()
         if S.areas[i].applied then Restore(S.areas[i]) end
     end
     S.signature = nil
+    SyncEvents()
 end
 
 -- A listed addon finished loading: its frames exist now, so the applied area skins them.
