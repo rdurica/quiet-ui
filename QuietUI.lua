@@ -73,12 +73,10 @@ end
 local function Boot()
     local first = not booted
     booted = true
-    ns.Registry.SetBooted(true)
-    ns.Registry.InstallHooks()
     if first then ns.Layout.ArmStartupPreset() end
     ns.Settings.CharDB()
     ns.Settings.Effective()
-    ns.Registry.Sync()
+    ns.Registry.SetBooted(true)
     if first then
         local state = ns.DB().enabled and "on, enjoy the quiet" or "off for now"
         ns.Print("is " .. state .. ".")
@@ -179,8 +177,8 @@ events:SetScript("OnUpdate", function(_, elapsed)
         return
     end
     elapsed = elapsed or 0
-    local fadingOn = ns.Settings.Module("fading")
-    local hoverNeeded = fadingOn or ns.Settings.Module("chat")
+    local fadingOn = ns.Registry.IsOn("world")
+    local hoverNeeded = fadingOn or ns.Registry.IsOn("chat")
     slowAcc = slowAcc + elapsed
     local slow = slowAcc >= 0.1
     if slow then
