@@ -16,6 +16,7 @@ local byName = {}
 local handlers = {}   -- event -> { { feature =, fn = }, ... } in registration order
 local eventOrder = {} -- event names in first-registered order for deterministic retries
 local registered = {} -- event -> true while registered on `frame`
+local failed = {}     -- event -> error when RegisterEvent failed (never retried)
 local phaseLists = { apply = {}, fade = {}, frame = {}, tick = {}, rescan = {} }
 local frame
 
@@ -86,15 +87,27 @@ function Registry.Frame()
     return frame
 end
 
+local function ReportRequired(feature, event, err)
+    if not feature.requiredSet[event] or feature.reportedEvents[event] then return end
+    feature.reportedEvents[event] = true
+    -- Only events a feature cannot work without are reported; the rest fail silently.
+    ns.Report(feature.name .. " events", err)
+end
+
 local function Register(feature, event)
+    if registered[event] then return end
+    if failed[event] ~= nil then
+        ReportRequired(feature, event, failed[event])
+        return
+    end
     Registry.Frame()
     -- An unknown event throws on this client, so each one is registered alone.
     local ok, err = pcall(frame.RegisterEvent, frame, event)
     if ok then
         registered[event] = true
-    elseif feature.requiredSet[event] then
-        -- Only events a feature cannot work without are reported; the rest fail silently.
-        ns.Report(feature.name .. " events", err)
+    else
+        failed[event] = err ~= nil and err or false
+        ReportRequired(feature, event, failed[event])
     end
 end
 
@@ -125,7 +138,7 @@ local function InstallFeatureHooks(feature)
     end
 end
 
--- Hooks wait for a global that is not loaded yet; QuietUI calls this again when it boots.
+-- Hooks wait for a global that is not loaded yet; Sync calls this again when booted.
 function Registry.InstallHooks()
     if not Registry.booted or not ns.DB().enabled then return end
     for i = 1, #features do
@@ -140,7 +153,16 @@ function ns.Feature(spec)
         ns.Report("feature " .. (type(spec) == "table" and type(spec.name) == "string" and spec.name or "spec"), err)
         return
     end
-    local feature = { name = spec.name, spec = spec, alwaysSet = {}, earlySet = {}, requiredSet = {}, hooked = {}, labels = {} }
+    local feature = {
+        name = spec.name,
+        spec = spec,
+        alwaysSet = {},
+        earlySet = {},
+        requiredSet = {},
+        reportedEvents = {},
+        hooked = {},
+        labels = {},
+    }
     -- Profiler labels built once; phases run per frame and per tick.
     for _, key in ipairs(FUNCTIONS) do feature.labels[key] = spec.name .. "." .. key end
     for _, event in ipairs(spec.always or {}) do feature.alwaysSet[event] = true end
@@ -232,12 +254,7 @@ function Registry.Sync()
         end
     end
     local addonOn = Registry.booted and ns.DB().enabled and true or false
-    if addonOn then
-        for i = 1, #features do
-            local feature = features[i]
-            if feature.on then InstallFeatureHooks(feature) end
-        end
-    end
+    if addonOn then Registry.InstallHooks() end
     SyncEvents(addonOn)
 end
 
