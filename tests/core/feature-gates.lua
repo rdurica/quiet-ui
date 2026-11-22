@@ -58,8 +58,149 @@ h.test("a gate that follows live state switches the feature on and off", functio
     t.mock:fire("GATE_EVENT")
     t.assert.eq(c.event, 0)
     on = true
+    t.ns.ApplyAll()
     t.mock:fire("GATE_EVENT")
     t.assert.eq(c.event, 1)
+    on = false
+    t.ns.ApplyAll()
+    t.mock:fire("GATE_EVENT")
+    t.assert.eq(c.event, 1)
+end)
+
+h.test("a disabled gate unregisters its event and skips all phases until re-enabled via ApplyAll", function(t)
+    local A = t.assert
+    local on = false
+    local c = gated(t, function() return on end)
+    t.boot()
+    local regFrame = t.mock:eventFrame("PLAYER_LOGIN")
+    A.ok(regFrame, "registry event frame exists")
+    A.falsy(regFrame:IsEventRegistered("GATE_EVENT"), "event unregistered while gate is off at boot")
+    A.eq(t.mock:eventFrame("GATE_EVENT"), nil, "no frame holds GATE_EVENT while gate is off")
+    runAll(t)
+    A.deep(c, counters(), "no apply, fade, frame, tick, rescan or event ran while off")
+
+    on = true
+    t.ns.ApplyAll()
+    A.ok(regFrame:IsEventRegistered("GATE_EVENT"), "event registered after gate turns on and ApplyAll runs")
+    A.eq(t.mock:eventFrame("GATE_EVENT"), regFrame)
+    runAll(t)
+    A.ok(c.apply >= 1, "apply ran")
+    A.ok(c.fade >= 1, "fade ran")
+    A.ok(c.frame >= 1, "frame ran")
+    A.ok(c.tick >= 1, "tick ran")
+    A.ok(c.rescan >= 1, "rescan ran")
+    A.eq(c.event, 1, "event ran")
+
+    on = false
+    t.ns.ApplyAll()
+    A.falsy(regFrame:IsEventRegistered("GATE_EVENT"), "event unregistered after gate turns off and ApplyAll runs")
+    A.eq(t.mock:eventFrame("GATE_EVENT"), nil, "no frame holds GATE_EVENT after turning off")
+    local snap = { apply = c.apply, restore = c.restore, event = c.event, frame = c.frame,
+        tick = c.tick, rescan = c.rescan, fade = c.fade }
+    runAll(t)
+    A.deep(c, snap, "all phases and events stop once turned off")
+end)
+
+h.test("a shared event stays registered while any gated listener is enabled and unregisters when all are off", function(t)
+    local A = t.assert
+    local aOn, bOn = true, false
+    local seen = { a = 0, b = 0 }
+    t.ns.Feature({
+        name = "sharedA", enabled = function() return aOn end,
+        events = { SHARED_GATE_EVENT = function() seen.a = seen.a + 1 end },
+    })
+    t.ns.Feature({
+        name = "sharedB", enabled = function() return bOn end,
+        events = { SHARED_GATE_EVENT = function() seen.b = seen.b + 1 end },
+    })
+    t.boot()
+    local regFrame = t.mock:eventFrame("PLAYER_LOGIN")
+    A.ok(regFrame:IsEventRegistered("SHARED_GATE_EVENT"), "registered while sharedA is on")
+    t.mock:fire("SHARED_GATE_EVENT")
+    A.deep(seen, { a = 1, b = 0 }, "only enabled listener handles shared event")
+
+    aOn = false
+    t.ns.ApplyAll()
+    A.falsy(regFrame:IsEventRegistered("SHARED_GATE_EVENT"), "unregistered when both listeners are off")
+
+    bOn = true
+    t.ns.ApplyAll()
+    A.ok(regFrame:IsEventRegistered("SHARED_GATE_EVENT"), "re-registered when sharedB turns on")
+    t.mock:fire("SHARED_GATE_EVENT")
+    A.deep(seen, { a = 1, b = 1 })
+end)
+
+h.test("while QuietUI is off, normal events unregister while early and always events stay registered", function(t)
+    local A = t.assert
+    local seen = { plain = 0, always = 0, early = 0 }
+    t.ns.Feature({
+        name = "evlife",
+        enabled = function() return false end,
+        always = { "GATED_ALWAYS_EVENT" },
+        events = { GATED_ALWAYS_EVENT = function() seen.always = seen.always + 1 end },
+    })
+    t.ns.Feature({
+        name = "evplain",
+        early = { "TEST_EARLY_EVENT" },
+        events = {
+            TEST_EARLY_EVENT = function() seen.early = seen.early + 1 end,
+            TEST_PLAIN_EVENT = function() seen.plain = seen.plain + 1 end,
+        },
+    })
+    t.boot()
+    local regFrame = t.mock:eventFrame("PLAYER_LOGIN")
+    A.ok(regFrame:IsEventRegistered("TEST_EARLY_EVENT"), "early registered")
+    A.ok(regFrame:IsEventRegistered("TEST_PLAIN_EVENT"), "plain registered while on")
+    A.ok(regFrame:IsEventRegistered("GATED_ALWAYS_EVENT"), "always registered once booted even with gate off")
+
+    SlashCmdList.QUIETUI("off")
+    A.ok(regFrame:IsEventRegistered("TEST_EARLY_EVENT"), "early stays registered while off")
+    A.ok(regFrame:IsEventRegistered("GATED_ALWAYS_EVENT"), "always stays registered while off")
+    A.falsy(regFrame:IsEventRegistered("TEST_PLAIN_EVENT"), "plain unregisters while QuietUI is off")
+    t.mock:fire("TEST_EARLY_EVENT")
+    t.mock:fire("GATED_ALWAYS_EVENT")
+    t.mock:fire("TEST_PLAIN_EVENT")
+    A.deep(seen, { plain = 0, always = 1, early = 1 })
+
+    SlashCmdList.QUIETUI("on")
+    A.ok(regFrame:IsEventRegistered("TEST_PLAIN_EVENT"), "plain re-registers on /quiet on")
+end)
+
+local DISABLED_MODULE_EVENTS = {
+    "NAME_PLATE_UNIT_ADDED",
+    "PLAYER_SOFT_INTERACT_CHANGED",
+    "QUEST_LOG_UPDATE",
+    "ACTIONBAR_SLOT_CHANGED",
+    "PLAYER_XP_UPDATE",
+    "UNIT_FLAGS",
+    "UNIT_FACTION",
+}
+
+h.test("with only chat enabled, disabled-module events are not registered on the main registry event frame", function(t)
+    local A = t.assert
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = {
+        modules = { chat = true, fading = false, helpers = false, layout = false, modernize = false },
+    }
+    t.boot()
+    local regFrame = t.mock:eventFrame("PLAYER_LOGIN")
+    A.ok(regFrame, "main registry event frame exists")
+    A.ok(regFrame:IsEventRegistered("UPDATE_CHAT_WINDOWS"), "chat event stays registered")
+    for _, event in ipairs(DISABLED_MODULE_EVENTS) do
+        A.falsy(regFrame:IsEventRegistered(event), event .. " must not be registered at boot")
+    end
+
+    t.ns.ApplyAll()
+    for _, event in ipairs(DISABLED_MODULE_EVENTS) do
+        A.falsy(regFrame:IsEventRegistered(event), event .. " must not be registered after ApplyAll")
+    end
+
+    QuietUICharDB.modules.fading = true
+    QuietUICharDB.modules.helpers = true
+    t.ns.ApplyAll()
+    for _, event in ipairs(DISABLED_MODULE_EVENTS) do
+        A.ok(regFrame:IsEventRegistered(event), event .. " registers once its module is re-enabled")
+    end
 end)
 
 h.test("a throwing gate is reported once and treated as off", function(t)
@@ -69,6 +210,13 @@ h.test("a throwing gate is reported once and treated as off", function(t)
     runAll(t)
     t.assert.deep(c, counters())
     t.assert.eq(errors(out) + errors(t.mock.printed), 1, "reports once")
+end)
+
+h.test("a throwing gate unregisters its event from the registry frame", function(t)
+    gated(t, function() error("gate boom") end)
+    t.boot(false)
+    local regFrame = t.mock:eventFrame("PLAYER_LOGIN")
+    t.assert.falsy(regFrame:IsEventRegistered("GATE_EVENT"), "throwing gate does not keep event registered")
 end)
 
 h.test("restore runs even when the gate is off", function(t)
