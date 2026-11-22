@@ -38,8 +38,12 @@ local ART_NAMES = { "FrameTexture", "AlternatePowerFrameTexture", "VehicleFrameT
     -- PartyMemberFrameTemplate keeps its frame art as Texture and VehicleTexture.
     "Texture", "VehicleTexture" }
 local PARTY = 4
-local PARTY_SPECS = {}
-for i = 1, PARTY do PARTY_SPECS[i] = { "PartyMemberFrame" .. i, "party" .. i } end
+local PARTY_SPECS, PARTY_BY_UNIT = {}, {}
+for i = 1, PARTY do
+    local unit = "party" .. i
+    PARTY_SPECS[i] = { "PartyMemberFrame" .. i, unit }
+    PARTY_BY_UNIT[unit] = i
+end
 local ART_GLOBALS = { "Texture", "Flash" }
 local HEALTH_PATHS = SplitPaths({ "healthbar", "HealthBar", "healthBar", "HealthBarContainer.HealthBar",
     "PlayerFrameContent.PlayerFrameContentMain.HealthBarsContainer.HealthBar",
@@ -356,9 +360,9 @@ local function OnEvent(skin, event, unit)
             local spec = FRAMES_BY_UNIT[unit]
             if spec then
                 Unit(skin, spec)
-            elseif unit:sub(1, 5) == "party" then
-                local idx = tonumber(unit:sub(6))
-                if idx and idx >= 1 and idx <= PARTY then PartyMember(skin, idx) end
+            else
+                local idx = PARTY_BY_UNIT[unit]
+                if idx then PartyMember(skin, idx) end
             end
             return
         end

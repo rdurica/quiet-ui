@@ -12,6 +12,7 @@ local journals = {}
 local EDGES = { "TOP", "BOTTOM", "LEFT", "RIGHT" }
 local BUTTON_ART = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }
 local panelState = setmetatable({}, { __mode = "k" })
+local cachedTheme, cachedBorder, cachedBg
 
 local function Pack(...)
     return { n = select("#", ...), ... }
@@ -143,13 +144,18 @@ function Skin:Hold(texture, alpha)
     ns.HoldAlpha(texture, alpha or 0)
 end
 
--- Own regions are created once per frame, hidden by Undo and reused.
-local function OwnRegion(self, frame, name, create)
-    local own = self.regions[frame]
+local function Regions(self, owner)
+    local own = self.regions[owner]
     if not own then
         own = {}
-        self.regions[frame] = own
+        self.regions[owner] = own
     end
+    return own
+end
+
+-- Own regions are created once per frame, hidden by Undo and reused.
+local function OwnRegion(self, frame, name, create)
+    local own = Regions(self, frame)
     if not own[name] then own[name] = create() end
     return own[name]
 end
@@ -179,11 +185,13 @@ function Skin:Owns(frame, region)
     return false
 end
 
-local function Hideable(self, frame, name, regions)
-    if First(self, frame, name) then
-        Push(self, function()
-            for _, region in ipairs(regions) do region:Hide() end
-        end)
+local function DefaultColors()
+    local name = ns.Settings and type(ns.Settings.ModernTheme) == "function" and ns.Settings.ModernTheme() or "dark"
+    if cachedTheme ~= name then
+        local theme = Modern.Theme()
+        cachedTheme = name
+        cachedBorder = theme.border
+        cachedBg = theme.bg
     end
 end
 
@@ -215,12 +223,8 @@ function Skin:Border(frame, color, anchor)
     anchor = anchor or frame
     local owner = BorderOwner(frame)
     if not Ready("Border", owner, "CreateTexture") or not ns.Usable(anchor) then return end
-    local key = anchor == owner and "border" or ("border:" .. tostring(anchor))
-    local own = self.regions[owner]
-    if not own then
-        own = {}
-        self.regions[owner] = own
-    end
+    local key = anchor == owner and "border" or anchor
+    local own = Regions(self, owner)
     local edges = own[key]
     if not edges then
         edges = {}
@@ -242,7 +246,11 @@ function Skin:Border(frame, color, anchor)
     end
     local size = Modern.Hairline(edges[1])
     local sizeChanged = edges.size ~= size
-    local c = color or Modern.Theme().border
+    local c = color
+    if not c then
+        DefaultColors()
+        c = cachedBorder
+    end
     local r, g, b, a = c[1], c[2], c[3], c[4]
     local colorChanged = edges.r ~= r or edges.g ~= g or edges.b ~= b or edges.a ~= a
     local needShow = not edges.shown
@@ -270,11 +278,7 @@ end
 -- Themed fill (or `color`) behind a frame whose own art is held hidden; returns the fill.
 function Skin:Panel(frame, color)
     if not Ready("Panel", frame, "CreateTexture") then return end
-    local own = self.regions[frame]
-    if not own then
-        own = {}
-        self.regions[frame] = own
-    end
+    local own = Regions(self, frame)
     local fill = own.panel
     if not fill then
         fill = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
@@ -286,7 +290,11 @@ function Skin:Panel(frame, color)
         st = {}
         panelState[fill] = st
     end
-    local c = color or Modern.Theme().bg
+    local c = color
+    if not c then
+        DefaultColors()
+        c = cachedBg
+    end
     local r, g, b, a = c[1], c[2], c[3], c[4]
     if st.r ~= r or st.g ~= g or st.b ~= b or st.a ~= a then
         st.r, st.g, st.b, st.a = r, g, b, a
