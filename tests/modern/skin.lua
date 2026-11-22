@@ -180,3 +180,48 @@ h.test("a missing method is reported through one message however often it is ski
     A.ok(L.errors(mock) <= 1, "missing method")
     A.noThrow(function() skin:Undo() end)
 end)
+
+h.test("Border and Panel skip unchanged repaints, update when colour or scale changes, and reshow after Undo", function(t)
+    local A = t.assert
+    local skin = t.ns.Modern.Skin("zz_a")
+    local _, frame = tex()
+    local pixelScale = 1
+    PixelUtil = { GetNearestPixelSize = function() return pixelScale end }
+    local colorCalls, sizeCalls, showCalls = 0, 0, 0
+    local origCreate = frame.CreateTexture
+    frame.CreateTexture = function(self, ...)
+        local r = origCreate(self, ...)
+        local oc, oh, ow, os = r.SetColorTexture, r.SetHeight, r.SetWidth, r.Show
+        r.SetColorTexture = function(s, ...) colorCalls = colorCalls + 1; return oc(s, ...) end
+        r.SetHeight = function(s, ...) sizeCalls = sizeCalls + 1; return oh(s, ...) end
+        r.SetWidth = function(s, ...) sizeCalls = sizeCalls + 1; return ow(s, ...) end
+        r.Show = function(s, ...) showCalls = showCalls + 1; return os(s, ...) end
+        return r
+    end
+    skin:Panel(frame, { 0.1, 0.2, 0.3, 1 })
+    skin:Border(frame, { 0.4, 0.5, 0.6, 1 })
+    A.eq(colorCalls, 5, "initial Panel + 4 Border edges coloured")
+    A.eq(sizeCalls, 4, "initial 4 Border edges sized")
+    A.eq(showCalls, 5, "initial Panel + 4 Border edges shown")
+    colorCalls, sizeCalls, showCalls = 0, 0, 0
+    skin:Panel(frame, { 0.1, 0.2, 0.3, 1 })
+    skin:Border(frame, { 0.4, 0.5, 0.6, 1 })
+    A.eq(colorCalls, 0, "unchanged Panel + Border skip SetColorTexture")
+    A.eq(sizeCalls, 0, "unchanged Border skips SetHeight/SetWidth")
+    A.eq(showCalls, 0, "already shown Panel + Border skip Show")
+    skin:Panel(frame, { 0.2, 0.2, 0.3, 1 })
+    skin:Border(frame, { 0.7, 0.5, 0.6, 1 })
+    A.eq(colorCalls, 5, "colour change updates Panel + 4 Border edges")
+    A.eq(sizeCalls, 0, "unchanged scale still skips SetHeight/SetWidth")
+    pixelScale = 1.5
+    colorCalls, sizeCalls = 0, 0
+    skin:Border(frame, { 0.7, 0.5, 0.6, 1 })
+    A.eq(sizeCalls, 4, "scale change updates 4 Border edges")
+    A.eq(colorCalls, 0, "unchanged colour skips SetColorTexture on scale change")
+    skin:Undo()
+    showCalls = 0
+    skin:Panel(frame, { 0.2, 0.2, 0.3, 1 })
+    skin:Border(frame, { 0.7, 0.5, 0.6, 1 })
+    A.eq(showCalls, 5, "reapply after Undo shows Panel + 4 Border edges again")
+    PixelUtil = nil
+end)
