@@ -25,5 +25,7 @@ end
 ns.Feature({
     name = "glance",
     enabled = function() return ns.Settings.Module("fading") end,
+    -- Every apply, so /quiet on or Fading turned on later also binds the key.
+    apply = function() Glance.EnsureBinding() end,
     restore = function() Glance.state.active = false end,
 })

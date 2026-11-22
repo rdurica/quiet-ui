@@ -49,6 +49,7 @@ local function Write(set)
         if next(settings.modernize) == nil then settings.modernize = nil end
     end
     settings.modules = Setup.StoredModules(set)
+    if ns.Registry.booted then ns.Registry.Sync() end
 end
 
 -- A changed set reloads, so it is complete at once; the same set only closes, and the layout prompt follows.
