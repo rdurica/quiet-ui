@@ -358,3 +358,137 @@ h.test("contract: every registered area applies cleanly and restores everything"
     A.alpha(texB, 1, "no alpha held after restore")
     A.eq(L.errors(mock), 0, "restore reports nothing")
 end)
+
+local function modernEvents(ns)
+    local frame = ns.Modern.state and ns.Modern.state.frame
+    local list = {}
+    if not frame then return list end
+    for event, on in pairs(frame._events) do
+        if on then list[#list + 1] = event end
+    end
+    table.sort(list)
+    return list
+end
+
+local function hasModernEvent(ns, event)
+    local frame = ns.Modern.state and ns.Modern.state.frame
+    return frame ~= nil and frame:IsEventRegistered(event)
+end
+
+local function onlyAreas(ns, enabled)
+    local m = {}
+    for _, area in ipairs(ns.Modern.Areas()) do
+        m[area.key] = enabled[area.key] == true
+    end
+    return m
+end
+
+local function assertNoModernEvents(A, ns, mock, stage)
+    A.eq(mock:eventFrame("UNIT_AURA"), nil, "UNIT_AURA must not be registered " .. stage)
+    A.falsy(hasModernEvent(ns, "UNIT_AURA"), "Modern frame must not register UNIT_AURA " .. stage)
+    A.eq(table.concat(modernEvents(ns), ","), "", "Modern event frame must have no events " .. stage)
+end
+
+h.test("Modernize disabled: no events (including UNIT_AURA) registered at boot, after ApplyAll, or after RestoreAll", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = { modules = { chat = true, modernize = false }, modernize = {} }
+    assertNoModernEvents(A, ns, mock, "before boot")
+    t.boot()
+    assertNoModernEvents(A, ns, mock, "at boot")
+    ns.ApplyAll()
+    assertNoModernEvents(A, ns, mock, "after ApplyAll")
+    ns.RestoreAll()
+    assertNoModernEvents(A, ns, mock, "after RestoreAll")
+end)
+
+h.test("fresh character: Modernize off registers no events at boot, after ApplyAll, or after RestoreAll", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = {}
+    t.boot()
+    assertNoModernEvents(A, ns, mock, "at boot")
+    ns.ApplyAll()
+    assertNoModernEvents(A, ns, mock, "after ApplyAll")
+    ns.RestoreAll()
+    assertNoModernEvents(A, ns, mock, "after RestoreAll")
+end)
+
+h.test("auras unchecked does not register UNIT_AURA; enabling registers it; disabling auras or Modernize unregisters it", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = { modules = { modernize = true }, modernize = { auras = false } }
+    t.boot()
+
+    A.eq(mock:eventFrame("UNIT_AURA"), nil, "UNIT_AURA not registered when auras is unchecked")
+    A.falsy(hasModernEvent(ns, "UNIT_AURA"), "Modern frame does not hold UNIT_AURA while auras is off")
+    A.ok(hasModernEvent(ns, "PLAYER_TARGET_CHANGED"), "other enabled area events stay registered")
+
+    QuietUICharDB.modernize.auras = true
+    ns.ApplyAll()
+    A.ok(hasModernEvent(ns, "UNIT_AURA"), "enabling auras and calling ApplyAll registers UNIT_AURA")
+    A.eq(mock:eventFrame("UNIT_AURA"), ns.Modern.state.frame, "UNIT_AURA lives on Modernize's event frame")
+
+    QuietUICharDB.modernize.auras = false
+    ns.ApplyAll()
+    A.falsy(hasModernEvent(ns, "UNIT_AURA"), "disabling auras and calling ApplyAll unregisters UNIT_AURA")
+    A.eq(mock:eventFrame("UNIT_AURA"), nil, "no frame holds UNIT_AURA after disabling auras")
+    A.ok(hasModernEvent(ns, "PLAYER_TARGET_CHANGED"), "disabling auras keeps other enabled area events")
+
+    QuietUICharDB.modernize.auras = nil
+    ns.ApplyAll()
+    A.ok(hasModernEvent(ns, "UNIT_AURA"), "default-on auras registers UNIT_AURA again")
+
+    QuietUICharDB.modules.modernize = false
+    ns.RestoreAll()
+    assertNoModernEvents(A, ns, mock, "after RestoreAll when disabling Modernize")
+    ns.ApplyAll()
+    assertNoModernEvents(A, ns, mock, "after ApplyAll with Modernize disabled")
+
+    QuietUICharDB.modules.modernize = true
+    ns.ApplyAll()
+    A.ok(hasModernEvent(ns, "UNIT_AURA"), "re-enabling Modernize registers UNIT_AURA again")
+
+    QuietUIDB.enabled = false
+    ns.ApplyAll()
+    assertNoModernEvents(A, ns, mock, "when QuietUI is disabled via ApplyAll")
+end)
+
+h.test("only events of currently applied areas are registered on Modernize's event frame", function(t)
+    local A, ns, mock = t.assert, t.ns, t.mock
+    QuietUIDB = { enabled = true }
+    QuietUICharDB = { modules = { modernize = true }, modernize = onlyAreas(ns, { meter = true }) }
+    t.boot()
+    A.eq(table.concat(modernEvents(ns), ","), "PLAYER_REGEN_DISABLED",
+        "only meter event registered when only meter is applied")
+
+    QuietUICharDB.modernize = onlyAreas(ns, { auras = true })
+    ns.ApplyAll()
+    A.eq(table.concat(modernEvents(ns), ","), "PLAYER_ENTERING_WORLD,UNIT_AURA",
+        "switching to auras replaces meter events with auras events")
+
+    QuietUICharDB.modernize = onlyAreas(ns, { auras = true, status = true })
+    ns.ApplyAll()
+    A.eq(table.concat(modernEvents(ns), ","),
+        "PLAYER_ENTERING_WORLD,PLAYER_LEVEL_UP,PLAYER_XP_UPDATE,UNIT_AURA,UPDATE_EXHAUSTION,UPDATE_FACTION",
+        "enabling status adds status events alongside shared PLAYER_ENTERING_WORLD")
+
+    QuietUICharDB.modernize.auras = false
+    ns.ApplyAll()
+    A.eq(table.concat(modernEvents(ns), ","),
+        "PLAYER_ENTERING_WORLD,PLAYER_LEVEL_UP,PLAYER_XP_UPDATE,UPDATE_EXHAUSTION,UPDATE_FACTION",
+        "disabling auras drops UNIT_AURA while keeping shared PLAYER_ENTERING_WORLD for status")
+
+    QuietUICharDB.modernize = onlyAreas(ns, { bars = true })
+    ns.ApplyAll()
+    assertNoModernEvents(A, ns, mock, "when only eventless areas are applied")
+
+    QuietUICharDB.modernize = onlyAreas(ns, { auras = true })
+    ns.ApplyAll()
+    A.eq(table.concat(modernEvents(ns), ","), "PLAYER_ENTERING_WORLD,UNIT_AURA",
+        "re-enabling auras re-registers its events")
+
+    QuietUICharDB.modules.modernize = false
+    ns.Modern.Apply()
+    assertNoModernEvents(A, ns, mock, "after Modern.Apply with Modernize disabled")
+end)

@@ -181,3 +181,161 @@ h.test("The highlights module is loaded before the runtime boots", function(t)
     t.boot()
     A.ok(env.count("ApplyHighlights") > 0, "boot did not reach the highlights module")
 end)
+
+local CVAR_NAMES = {
+    "SoftTargetInteract",
+    "SoftTargetInteractRange",
+    "SoftTargetNameplateInteract",
+    "SoftTargetIconGameObject",
+    "SoftTargetInteractArc",
+    "SoftTargetIconInteract",
+}
+
+local ORIGINAL_CVARS = {
+    SoftTargetInteract = "1",
+    SoftTargetInteractRange = "10",
+    SoftTargetNameplateInteract = "0",
+    SoftTargetIconGameObject = "0",
+    SoftTargetInteractArc = "0",
+    SoftTargetIconInteract = "0",
+}
+
+local WANT_CVARS = {
+    SoftTargetInteract = "3",
+    SoftTargetInteractRange = "15",
+    SoftTargetNameplateInteract = "1",
+    SoftTargetIconGameObject = "1",
+    SoftTargetInteractArc = "2",
+    SoftTargetIconInteract = "1",
+}
+
+local function seedCVars(t, values)
+    for _, name in ipairs(CVAR_NAMES) do
+        t.mock.cvars[name] = values[name]
+    end
+end
+
+local function copyMap(src)
+    local out = {}
+    for k, v in pairs(src) do out[k] = v end
+    return out
+end
+
+local function assertCVars(A, t, expected, msg)
+    for _, name in ipairs(CVAR_NAMES) do
+        A.eq(t.mock.cvars[name], expected[name], msg .. " (" .. name .. ")")
+    end
+end
+
+h.test("PLAYER_REGEN_ENABLED does not write SoftTargetInteract* CVars when helpers is disabled", function(t)
+    local A = t.assert
+    local env = setup(t)
+    seedCVars(t, ORIGINAL_CVARS)
+    QuietUICharDB.modules = { chat = true, helpers = false }
+    QuietUICharDB.highlights = { herb = true, ore = true, quest = true }
+
+    t.boot()
+    A.eq(#t.mock.cvarLog, 0, "boot must not write CVars when helpers is disabled")
+    A.ok(env.frame():IsEventRegistered("PLAYER_REGEN_ENABLED"),
+        "PLAYER_REGEN_ENABLED must stay registered for deferred CVar restore")
+
+    t.mock.state.combat = true
+    env.dispatch("PLAYER_REGEN_DISABLED")
+    t.mock.state.combat = false
+    env.dispatch("PLAYER_REGEN_ENABLED")
+
+    A.eq(#t.mock.cvarLog, 0, "PLAYER_REGEN_ENABLED must not write SoftTargetInteract* CVars when helpers is disabled")
+    assertCVars(A, t, ORIGINAL_CVARS, "CVars must stay unchanged when helpers is disabled")
+    A.eq(t.ns.DB().highlightCVars, nil, "highlightCVars snapshot must remain nil when helpers is disabled")
+    A.eq(t.ns.Highlights.Active(), false, "ns.Highlights.Active() must be false when helpers is disabled")
+
+    t.ns.Highlights.SyncCVars()
+    A.eq(#t.mock.cvarLog, 0, "SyncCVars must not write CVars when helpers is disabled")
+    env.noErrors()
+end)
+
+h.test("PLAYER_REGEN_ENABLED after disabling helpers restores saved CVars instead of keeping active ones", function(t)
+    local A = t.assert
+    local env = setup(t)
+    seedCVars(t, ORIGINAL_CVARS)
+    QuietUICharDB.modules = { chat = true, helpers = true }
+    QuietUICharDB.highlights = { herb = true, ore = true, quest = true }
+
+    t.boot()
+    env.dispatch("PLAYER_SOFT_INTERACT_CHANGED", unpack(ARGS.PLAYER_SOFT_INTERACT_CHANGED))
+    A.eq(t.ns.Highlights.Active(), true, "precondition: Highlights must be active when helpers is enabled")
+    assertCVars(A, t, WANT_CVARS, "precondition: active WANT CVars must be applied")
+    A.deep(t.ns.DB().highlightCVars, ORIGINAL_CVARS, "precondition: highlightCVars must hold original snapshot")
+
+    t.mock.state.combat = true
+    env.dispatch("PLAYER_REGEN_DISABLED")
+    QuietUICharDB.modules = { chat = true, helpers = false }
+    t.ns.ApplyAll()
+
+    local writesBeforeEnd = #t.mock.cvarLog
+    t.ns.Highlights.SyncCVars()
+    A.eq(#t.mock.cvarLog, writesBeforeEnd, "SyncCVars must defer CVar writes while in combat")
+
+    t.mock.state.combat = false
+    A.ok(env.frame():IsEventRegistered("PLAYER_REGEN_ENABLED"),
+        "PLAYER_REGEN_ENABLED must stay registered when helpers is disabled")
+    env.dispatch("PLAYER_REGEN_ENABLED")
+
+    assertCVars(A, t, ORIGINAL_CVARS, "combat end after disabling helpers must restore original CVars")
+    A.eq(t.ns.DB().highlightCVars, nil, "highlightCVars snapshot must be cleared after restore")
+    A.eq(t.ns.Highlights.Active(), false, "ns.Highlights.Active() must be false after disabling helpers")
+    A.ok(#t.mock.cvarLog > writesBeforeEnd, "combat end must write the restored original CVars")
+    env.noErrors()
+end)
+
+h.test("Stale highlightCVars from prior helpers session are restored on PLAYER_REGEN_ENABLED when helpers is disabled", function(t)
+    local A = t.assert
+    local env = setup(t)
+    seedCVars(t, WANT_CVARS)
+    t.ns.DB().highlightCVars = copyMap(ORIGINAL_CVARS)
+    QuietUICharDB.modules = { chat = true, helpers = false }
+    QuietUICharDB.highlights = { herb = true, ore = true, quest = true }
+
+    t.boot()
+    local writesAtBoot = #t.mock.cvarLog
+    env.dispatch("PLAYER_REGEN_ENABLED")
+
+    assertCVars(A, t, ORIGINAL_CVARS, "PLAYER_REGEN_ENABLED must restore saved original CVars instead of writing active ones")
+    A.eq(t.ns.DB().highlightCVars, nil, "highlightCVars snapshot must be cleared")
+    A.eq(t.ns.Highlights.Active(), false, "ns.Highlights.Active() must be false when helpers is disabled")
+    local writesAfterRestore = #t.mock.cvarLog
+    A.ok(writesAfterRestore > writesAtBoot, "restore must have written original CVars")
+    t.ns.Highlights.SyncCVars()
+    A.eq(#t.mock.cvarLog, writesAfterRestore, "subsequent SyncCVars must not write CVars")
+    env.noErrors()
+end)
+
+h.test("Combat-deferred restore finishes on PLAYER_REGEN_ENABLED when helpers is disabled", function(t)
+    local A = t.assert
+    local env = setup(t)
+    seedCVars(t, ORIGINAL_CVARS)
+    QuietUICharDB.modules = { chat = true, helpers = true }
+    QuietUICharDB.highlights = { herb = true, ore = true, quest = true }
+
+    t.boot()
+    env.dispatch("PLAYER_SOFT_INTERACT_CHANGED", unpack(ARGS.PLAYER_SOFT_INTERACT_CHANGED))
+    assertCVars(A, t, WANT_CVARS, "precondition: WANT CVars active before combat")
+
+    t.mock.state.combat = true
+    env.dispatch("PLAYER_REGEN_DISABLED")
+    QuietUICharDB.modules = { chat = true, helpers = false }
+    SlashCmdList.QUIETUI("off")
+
+    local writesInCombat = #t.mock.cvarLog
+    assertCVars(A, t, WANT_CVARS, "CVars must not change during combat")
+    A.deep(t.ns.DB().highlightCVars, ORIGINAL_CVARS, "highlightCVars must stay saved until combat ends")
+
+    t.mock.state.combat = false
+    env.dispatch("PLAYER_REGEN_ENABLED")
+
+    assertCVars(A, t, ORIGINAL_CVARS, "combat-deferred restore must restore original CVars")
+    A.eq(t.ns.DB().highlightCVars, nil, "highlightCVars must be cleared after combat-deferred restore")
+    A.eq(t.ns.Highlights.Active(), false, "ns.Highlights.Active() must remain false")
+    A.ok(#t.mock.cvarLog > writesInCombat, "combat-deferred restore must write original CVars on PLAYER_REGEN_ENABLED")
+    env.noErrors()
+end)
