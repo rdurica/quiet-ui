@@ -68,6 +68,7 @@ h.test("ns.ApplyAll calls ApplyHighlights", function(t)
 end)
 
 h.test("Highlight events are registered", function(t)
+    t.boot()
     local frame = t.mock:eventFrame("PLAYER_LOGIN")
     for _, name in ipairs(HL_EVENTS) do
         t.assert.ok(frame:IsEventRegistered(name), "missing registered " .. name)

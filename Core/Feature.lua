@@ -117,9 +117,10 @@ local function Listen(feature, event, fn)
         list = {}
         handlers[event] = list
         eventOrder[#eventOrder + 1] = event
-        Register(feature, event)
     end
     list[#list + 1] = { feature = feature, fn = fn }
+    -- Only early events are delivered before boot; Sync registers the rest for enabled features.
+    if feature.earlySet[event] then Register(feature, event) end
 end
 
 local function Hook(feature, global, fn)

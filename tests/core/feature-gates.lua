@@ -283,10 +283,42 @@ h.test("a failed RegisterEvent of a required event is reported once as '<name> e
     local A = t.assert
     t.ns.Feature({ name = "needy", required = { "BAD_REQUIRED" }, events = { BAD_REQUIRED = function() end } })
     t.ns.Feature({ name = "needy2", required = { "BAD_REQUIRED" }, events = { BAD_REQUIRED = function() end } })
-    local out = t.mock.printed
-    A.eq(errors(out), 1, "reported once")
+    local out = t.boot(false)
+    A.eq(errors(out) + errors(t.mock.printed), 1, "reported once")
     A.ok(table.concat(out, "\n"):find("needy events", 1, true), "names the feature events")
 end, { beforeLoad = badEvents })
+
+h.test("a failed required event of a disabled feature is silent", function(t)
+    t.ns.Feature({
+        name = "offneedy", enabled = function() return false end,
+        required = { "BAD_REQUIRED" }, events = { BAD_REQUIRED = function() end },
+    })
+    t.boot()
+    t.ns.ApplyAll()
+    t.assert.eq(errors(t.mock.printed), 0)
+end, { beforeLoad = badEvents })
+
+h.test("a required event is reported for the second listener that requires it", function(t)
+    local A = t.assert
+    t.ns.Feature({ name = "plain", events = { BAD_REQUIRED = function() end } })
+    t.ns.Feature({ name = "strict", required = { "BAD_REQUIRED" }, events = { BAD_REQUIRED = function() end } })
+    local out = t.boot(false)
+    A.eq(errors(out) + errors(t.mock.printed), 1, "reported once")
+    A.ok(table.concat(out, "\n"):find("strict events", 1, true), "names the requiring feature")
+end, { beforeLoad = badEvents })
+
+h.test("only early events are registered before boot", function(t)
+    local A = t.assert
+    t.ns.Feature({
+        name = "prebird", early = { "PRE_EARLY" },
+        events = { PRE_EARLY = function() end, PRE_PLAIN = function() end },
+    })
+    local regFrame = t.mock:eventFrame("PRE_EARLY")
+    A.ok(regFrame, "early event registered before boot")
+    A.falsy(regFrame:IsEventRegistered("PRE_PLAIN"), "plain event waits for boot")
+    t.boot()
+    A.ok(regFrame:IsEventRegistered("PRE_PLAIN"), "plain event registered at boot")
+end)
 
 h.test("a failed RegisterEvent of a non-required event is silent", function(t)
     t.ns.Feature({ name = "relaxed", events = { BAD_OPTIONAL = function() end } })

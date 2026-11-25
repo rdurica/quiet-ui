@@ -2,13 +2,13 @@
 local h = ...
 
 h.test("RegisterEvent failing for UNIT_QUEST_LOG_CHANGED keeps loading and the other events", function(t)
+    t.boot()
     for _, name in ipairs({ "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "QUEST_LOG_UPDATE",
         "PLAYER_ENTERING_WORLD" }) do
         t.assert.ok(t.mock:eventFrame(name), "Missing registered " .. name)
     end
     local forwarded = 0
     t.ns.QuestMobs.Event = function(name) if name == "QUEST_LOG_UPDATE" then forwarded = forwarded + 1 end end
-    t.boot()
     t.mock:fire("QUEST_LOG_UPDATE")
     t.assert.eq(forwarded, 1, "Other events must still forward")
 end, { beforeLoad = function(mock) mock.badEvents.UNIT_QUEST_LOG_CHANGED = true end })

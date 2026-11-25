@@ -79,6 +79,7 @@ h.test("Save path ns.ApplyAll calls ApplyQuestMobs", function(t)
 end)
 
 h.test("quest mob events are registered, including UNIT_QUEST_LOG_CHANGED", function(t)
+    t.boot()
     for _, name in ipairs(QM_EVENTS) do
         t.assert.ok(t.mock:eventFrame(name), "Missing registered " .. name)
     end
