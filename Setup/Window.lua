@@ -212,8 +212,12 @@ local function Movable(widget)
     handle:SetFrameLevel(widget:GetFrameLevel() + 10)
     handle:EnableMouse(true)
     handle:RegisterForDrag("LeftButton")
-    handle:SetScript("OnDragStart", function() widget:StartMoving() end)
+    handle:SetScript("OnDragStart", function()
+        if InCombatLockdown() then return end
+        widget:StartMoving()
+    end)
     handle:SetScript("OnDragStop", function()
+        if InCombatLockdown() then return end
         widget:StopMovingOrSizing()
         local point, _, relativePoint, x, y = widget:GetPoint(1)
         if point and not ns.IsSecret(x) and not ns.IsSecret(y) then
@@ -263,7 +267,11 @@ local function CreateSetup()
     end
 
     Footer(widget)
+    if type(RegisterStateDriver) == "function" then
+        pcall(RegisterStateDriver, widget, "visibility", "[combat] hide")
+    end
     widget:SetScript("OnHide", function()
+        if InCombatLockdown() then S.reopenAfterCombat = true end
         if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         for _, key in ipairs({ "presetMenu", "layoutMenu", "presetDialog" }) do
             if widget[key] then widget[key]:Hide() end
@@ -282,7 +290,22 @@ function Setup.Refresh()
     Setup.Paint()
 end
 
+function Setup.ReopenWindowAfterCombat()
+    if not S.reopenAfterCombat or InCombatLockdown() then return end
+    S.reopenAfterCombat = nil
+    if not S.frame then return end
+    Place(S.frame)
+    S.frame:Show()
+    ns.RaiseDialog(S.frame)
+    Setup.Paint()
+end
+
 function Setup.Show()
+    if InCombatLockdown() then
+        ns.Print("Leave combat to open setup.")
+        return
+    end
+    S.reopenAfterCombat = nil
     if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
     S.frame = S.frame or CreateSetup()
     Setup.LoadSavedDraft()

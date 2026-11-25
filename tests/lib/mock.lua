@@ -80,6 +80,7 @@ local function newFrame(mock, kind, name, parent, template)
         end
     end
     if template and tostring(template):find("SecureActionButtonTemplate", 1, true) then
+        f._protected = true
         f._attributes = {}
         f.SetAttribute = function(self, key, value) self._attributes[key] = value end
         f.GetAttribute = function(self, key) return self._attributes[key] end
@@ -102,6 +103,54 @@ local function bump(self, key)
     self._mock.calls[key] = (self._mock.calls[key] or 0) + 1
 end
 
+local function isProtectedInCombat(self)
+    local mock = rawget(self, "_mock")
+    if not mock or not mock.state.combat then return false end
+    local prot = {}
+    local queue = {}
+    for _, f in ipairs(mock.frames) do
+        if f._protected then
+            prot[f] = true
+            queue[#queue + 1] = f
+        end
+    end
+    if #queue == 0 then return false end
+    local i = 1
+    while i <= #queue do
+        local p = queue[i]
+        i = i + 1
+        if p == self then return true end
+        local parent = p._parent
+        if parent and not prot[parent] then
+            prot[parent] = true
+            queue[#queue + 1] = parent
+        end
+        for _, pt in ipairs(p._points or {}) do
+            local rel
+            if pt[1] == "ALL" then
+                rel = type(pt[2]) == "table" and pt[2] or parent
+            elseif type(pt[2]) == "table" then
+                rel = pt[2]
+            elseif type(pt[2]) == "string" then
+                rel = mock.G[pt[2]]
+            else
+                rel = parent
+            end
+            if type(rel) == "table" and not prot[rel] then
+                prot[rel] = true
+                queue[#queue + 1] = rel
+            end
+        end
+    end
+    return prot[self] == true
+end
+
+local function checkLockdown(self, method)
+    if isProtectedInCombat(self) then
+        error("ADDON_ACTION_BLOCKED: " .. tostring(self._name or self._kind) .. ":" .. method .. "() blocked in combat", 3)
+    end
+end
+
 function Frame:IsForbidden() return self._forbidden end
 function Frame:GetAlpha() bump(self, "GetAlpha"); return self._alpha end
 function Frame:GetEffectiveAlpha()
@@ -122,11 +171,13 @@ function Frame:IsVisible()
     return true
 end
 function Frame:Show()
+    checkLockdown(self, "Show")
     local was = self._shown
     self._shown = true
     if not was and self._scripts.OnShow then self._scripts.OnShow(self) end
 end
 function Frame:Hide()
+    checkLockdown(self, "Hide")
     local was = self._shown
     self._shown = false
     if was and self._scripts.OnHide then self._scripts.OnHide(self) end
@@ -149,14 +200,14 @@ function Frame:SetWidth(v) self._w = v end
 function Frame:SetHeight(v) self._h = v end
 function Frame:SetSnapToPixelGrid(v) self._snap = v end
 function Frame:SetTexelSnappingBias(v) self._snapBias = v end
-function Frame:SetSize(w, h) self._w, self._h = w, h end
+function Frame:SetSize(w, h) checkLockdown(self, "SetSize"); self._w, self._h = w, h end
 function Frame:GetSize() return self._w, self._h end
 function Frame:GetScale() return self._scale end
-function Frame:SetScale(v) self._scale = v end
+function Frame:SetScale(v) checkLockdown(self, "SetScale"); self._scale = v end
 function Frame:GetEffectiveScale() return self._scale end
-function Frame:ClearAllPoints() self._points = {} end
-function Frame:SetPoint(...) self._points[#self._points + 1] = { ... } end
-function Frame:SetAllPoints(...) self._points = { { "ALL", ... } } end
+function Frame:ClearAllPoints() checkLockdown(self, "ClearAllPoints"); self._points = {} end
+function Frame:SetPoint(...) checkLockdown(self, "SetPoint"); self._points[#self._points + 1] = { ... } end
+function Frame:SetAllPoints(...) checkLockdown(self, "SetAllPoints"); self._points = { { "ALL", ... } } end
 function Frame:GetNumPoints() return #self._points end
 function Frame:GetPoint(i)
     local p = self._points[i or 1]
@@ -259,8 +310,8 @@ end
 function Frame:SetMovable(v) self._movable = v and true or false end
 function Frame:IsMovable() return self._movable == true end
 function Frame:RegisterForDrag(...) self._dragButtons = { ... } end
-function Frame:StartMoving() self._moving = true end
-function Frame:StopMovingOrSizing() self._moving = false end
+function Frame:StartMoving() checkLockdown(self, "StartMoving"); self._moving = true end
+function Frame:StopMovingOrSizing() checkLockdown(self, "StopMovingOrSizing"); self._moving = false end
 function Frame:IsMoving() return self._moving == true end
 function Frame:SetBlendMode(v) self._blend = v end
 function Frame:SetText(v) self._text = v == nil and "" or v end
@@ -350,8 +401,18 @@ function M.new()
     mock.cvars = {}
     mock.cvarLog = {}
     mock.units = {}
-    mock.state = { combat = false, instance = false, instanceType = "none", group = false,
+    local stateData = { combat = false, instance = false, instanceType = "none", group = false,
         raid = false, cursor = { 0, 0 }, focus = nil, mouseFocus = nil, vehicle = false }
+    mock.state = setmetatable({}, {
+        __index = stateData,
+        __newindex = function(_, key, value)
+            local prev = stateData[key]
+            stateData[key] = value
+            if key == "combat" and value and not prev then
+                mock:onEnterCombat()
+            end
+        end,
+    })
     mock.badEvents = {}
     mock.now = 1000
     mock.profile = 0
@@ -732,6 +793,10 @@ function M:build()
     G.C_PlayerInteractionManager = {}
     G.GetSoftTargetInfo = nil
     G.UIDropDownMenu_Initialize = function() end
+    G.RegisterStateDriver = function(f, state, values)
+        f._stateDrivers = f._stateDrivers or {}
+        f._stateDrivers[state] = values
+    end
     G.CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a, GetRGBA = function() return r, g, b, a end } end
     G.Spell = nil
 end
@@ -744,6 +809,15 @@ end
 
 ------------------------------------------------------------------------------
 -- Test helpers
+
+function M:onEnterCombat()
+    for _, f in ipairs(self.frames) do
+        if f._shown and f._stateDrivers and f._stateDrivers.visibility == "[combat] hide" then
+            f._shown = false
+            if f._scripts.OnHide then f._scripts.OnHide(f) end
+        end
+    end
+end
 
 function M:secret(value)
     local box = { value = value }

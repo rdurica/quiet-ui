@@ -104,7 +104,7 @@ local function CreateMinimap()
         end
         if click == "LeftButton" then
             if S.frame and S.frame:IsShown() then
-                S.frame:Hide()
+                if not InCombatLockdown() then S.frame:Hide() end
             else
                 Setup.Show()
             end

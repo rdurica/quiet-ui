@@ -55,7 +55,7 @@ end
 -- A changed set reloads, so it is complete at once; the same set only closes, and the layout prompt follows.
 -- The click saves the answer first (see Setup.ReloadButton); the old set is restored first, out of combat.
 local function Answered(frame, button, reloads)
-    frame:Hide()
+    if not InCombatLockdown() then frame:Hide() end
     if button.changes and not reloads then
         ns.Print("type /reload to finish the new modules")
     end
@@ -209,6 +209,14 @@ local function CreateWelcome()
     frame.note:SetJustifyH("CENTER")
     frame.note:SetPoint("BOTTOM", 0, 18)
     frame:Hide()
+    if type(RegisterStateDriver) == "function" then
+        pcall(RegisterStateDriver, frame, "visibility", "[combat] hide")
+    end
+    frame:SetScript("OnHide", function()
+        if InCombatLockdown() and not ns.Settings.CharDB().welcomed then
+            S.reopenWelcomeAfterCombat = true
+        end
+    end)
     return frame
 end
 
@@ -231,6 +239,11 @@ function Setup.Welcome()
     -- An earlier build kept the answer on the account.
     db.welcomed = nil
     if ns.Settings.CharDB().welcomed then return end
+    if InCombatLockdown() then
+        S.reopenWelcomeAfterCombat = true
+        return
+    end
+    S.reopenWelcomeAfterCombat = nil
     S.welcome = S.welcome or CreateWelcome()
     local known = ns.Settings.Modernize() or db.layoutHash ~= nil or ns.Settings.ActivePreset() ~= nil
     S.welcome.note:SetText(Note())
@@ -239,3 +252,29 @@ function Setup.Welcome()
     S.welcome:Show()
     ns.RaiseDialog(S.welcome)
 end
+
+local function ReopenWelcomeAfterCombat()
+    if not S.reopenWelcomeAfterCombat or InCombatLockdown() then return end
+    S.reopenWelcomeAfterCombat = nil
+    if ns.Settings.CharDB().welcomed then return end
+    if S.welcome then
+        S.welcome:Show()
+        ns.RaiseDialog(S.welcome)
+    else
+        Setup.Welcome()
+    end
+end
+
+function Setup.ReopenAfterCombat()
+    Setup.ReopenWindowAfterCombat()
+    ReopenWelcomeAfterCombat()
+end
+
+ns.Feature({
+    name = "setup",
+    always = { "PLAYER_REGEN_ENABLED" },
+    early = { "PLAYER_REGEN_ENABLED" },
+    events = {
+        PLAYER_REGEN_ENABLED = function() Setup.ReopenAfterCombat() end,
+    },
+})
