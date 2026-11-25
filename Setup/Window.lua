@@ -271,7 +271,8 @@ local function CreateSetup()
         pcall(RegisterStateDriver, widget, "visibility", "[combat] hide")
     end
     widget:SetScript("OnHide", function()
-        if InCombatLockdown() then S.reopenAfterCombat = true end
+        -- The [combat] driver can hide the window before lockdown begins.
+        if InCombatLockdown() or UnitAffectingCombat("player") then S.reopenAfterCombat = true end
         if ns.Layout.CancelPreview then ns.Layout.CancelPreview() end
         for _, key in ipairs({ "presetMenu", "layoutMenu", "presetDialog" }) do
             if widget[key] then widget[key]:Hide() end

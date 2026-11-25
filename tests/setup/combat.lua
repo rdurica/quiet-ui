@@ -67,6 +67,26 @@ h.test("QuietUISetup hides on combat and reopens on PLAYER_REGEN_ENABLED preserv
     A.eq(QuietUICharDB.chatFade, nil, "draft stays unsaved until Save")
 end)
 
+h.test("QuietUISetup and welcome reopen when the combat driver hides them before lockdown begins", function(t)
+    local ns, mock, A = t.ns, t.mock, t.assert
+    QuietUICharDB = {}
+    t.boot()
+    ns.Setup.Show()
+    local ui = mock:findByName("QuietUISetup")
+    local wel = welcome(mock)
+    A.ok(ui:IsShown() and wel and wel:IsShown(), "both start shown")
+
+    local lockdown = InCombatLockdown
+    InCombatLockdown = function() return false end
+    mock.state.combat = true
+    InCombatLockdown = lockdown
+    A.falsy(ui:IsShown() or wel:IsShown(), "driver hid both")
+
+    leaveCombat(mock)
+    A.ok(ui:IsShown(), "setup reopens")
+    A.ok(wel:IsShown(), "welcome reopens")
+end)
+
 h.test("PLAYER_REGEN_ENABLED does not open QuietUISetup when it was never open or closed out of combat", function(t)
     local ns, mock, A = t.ns, t.mock, t.assert
     QuietUICharDB = { welcomed = true }

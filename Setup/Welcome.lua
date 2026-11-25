@@ -213,7 +213,9 @@ local function CreateWelcome()
         pcall(RegisterStateDriver, frame, "visibility", "[combat] hide")
     end
     frame:SetScript("OnHide", function()
-        if InCombatLockdown() and not ns.Settings.CharDB().welcomed then
+        -- The [combat] driver can hide the window before lockdown begins.
+        local combat = InCombatLockdown() or UnitAffectingCombat("player")
+        if combat and not ns.Settings.CharDB().welcomed then
             S.reopenWelcomeAfterCombat = true
         end
     end)
