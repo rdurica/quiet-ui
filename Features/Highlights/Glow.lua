@@ -8,7 +8,7 @@ local GLINT = "Interface\\AddOns\\QuietUI\\Media\\glint.tga"
 local SPARK = "Interface\\AddOns\\QuietUI\\Media\\spark.tga"
 -- The soft-target icon floats above the object; the plate gives no world position,
 -- so the glow drops by a fixed offset measured in game.
-local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = -115 }
+local ANCHOR = { point = "CENTER", relative = "CENTER", x = 0, y = -90 }
 local GLOW_STRENGTH = { herb = 0.72, ore = 0.8, quest = 0.64 }
 local COLORS = {
     herb = { 0.30, 0.74, 0.40 },

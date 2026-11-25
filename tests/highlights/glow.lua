@@ -12,6 +12,8 @@ case("Ore target with the mine icon shows a gold glow on its plate", function(t,
     local point = root._points[1]
     A.ok(point[1] == "CENTER" and point[2] == plate.soft and (point[3] == "CENTER" or point[3] == nil),
         "the glow is not anchored to the SoftTargetFrame center")
+    A.eq(point[4], 0, "the glow horizontal offset is not 0")
+    A.eq(point[5], -90, "the glow vertical offset is not -90")
     A.ok(w.hasColor(root, H.ORE), "no texture uses the ore color 0.95, 0.75, 0.25")
     A.ok(root:GetFrameLevel() < plate.soft:GetFrameLevel(), "the glow frame level is not below the SoftTargetFrame")
     A.eq(root:IsMouseEnabled(), false, "the glow does not disable the mouse")
