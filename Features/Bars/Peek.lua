@@ -15,7 +15,7 @@ local ZONE_OF = {
     LeftClassAction = "L",
     RightCenteredAnchor = "R",
     RightClassAction = "R",
-    BottomCenteredAnchor = "C",
+    BottomCenteredAnchor = "B",
     PageTracker = "C",
 }
 
@@ -35,7 +35,8 @@ local function Binding(pad, index)
     return name
 end
 
--- Held zones as letters: L (LT), R (RT), C (both triggers, or a shoulder button). "" when none.
+-- Held zones as letters: L (LT), R (RT), C (both triggers, or a shoulder button), B (the LT+RT bar,
+-- both triggers only). "" when none.
 local function ReadPad()
     local pad = _G.C_GamePad
     if type(pad) ~= "table" or type(pad.GetActiveDeviceID) ~= "function"
@@ -63,7 +64,19 @@ local function ReadPad()
     if lt and not rt then key = "L" end
     if rt and not lt then key = "R" end
     if (lt and rt) or shoulder then key = key .. "C" end
+    if lt and rt then key = key .. "B" end
     return key
+end
+
+-- The pad drives these menus while they are open. Start opens the radial menu, not GameMenuFrame.
+local MENUS = { "GamepadRadial", "GameMenuFrame" }
+
+local function MenuOpen()
+    for _, name in ipairs(MENUS) do
+        local menu = _G[name]
+        if ns.Usable(menu) and menu.IsShown and menu:IsShown() then return true end
+    end
+    return false
 end
 
 function Bars.PollPad(elapsed)
@@ -80,7 +93,7 @@ function Bars.PollPad(elapsed)
         S.peekKey = ""
         return
     end
-    local key = ReadPad()
+    local key = MenuOpen() and "" or ReadPad()
     if key == S.peekKey then return end
     S.peekKey = key
     S.peekDirty = true
@@ -91,10 +104,48 @@ function Bars.Peeking()
     return S.peekKey ~= ""
 end
 
+-- Other page children, such as the unnamed "RB + RT" hint under a class action, go with the zone
+-- whose anchor is nearest horizontally.
+local ANCHOR_OF = { L = "LeftCenteredAnchor", R = "RightCenteredAnchor", C = "BottomCenteredAnchor" }
+
+local function CenterX(frame)
+    if type(frame.GetCenter) ~= "function" then return nil end
+    local ok, x = pcall(frame.GetCenter, frame)
+    if ok and not ns.IsSecret(x) and type(x) == "number" then return x end
+end
+
+local function NearestZone(frame)
+    local x = CenterX(frame)
+    if not x then return "C" end
+    local best, gap = "C", math.huge
+    for zone, suffix in pairs(ANCHOR_OF) do
+        local anchor = _G[PAGE .. suffix]
+        local ax = ns.Usable(anchor) and CenterX(anchor)
+        if ax and math.abs(ax - x) < gap then best, gap = zone, math.abs(ax - x) end
+    end
+    return best
+end
+
+-- fn(frame, zone, extra). extra marks objects outside the known zones: peek only hides them.
 local function EachZoneFrame(fn)
     for suffix, zone in pairs(ZONE_OF) do
         local frame = _G[PAGE .. suffix]
         if ns.Usable(frame) then fn(frame, zone) end
+    end
+    local page = _G[PAGE]
+    if ns.Usable(page) and page.GetChildren then
+        for _, child in ipairs({ page:GetChildren() }) do
+            local suffix = (ns.FrameName(child) or ""):sub(#PAGE + 1)
+            if ns.Usable(child) and not ZONE_OF[suffix] and suffix ~= "TopCenteredAnchor" then
+                fn(child, NearestZone(child), true)
+            end
+        end
+        -- The LB and RB targeting icons are drawn on the page itself.
+        if page.GetRegions then
+            for _, region in ipairs({ page:GetRegions() }) do
+                if ns.Usable(region) then fn(region, "C", true) end
+            end
+        end
     end
     local top = _G[PAGE .. "TopCenteredAnchor"]
     if not (ns.Usable(top) and top.GetChildren) then return end
@@ -129,8 +180,17 @@ function Bars.ApplyPeek(bar, show, alpha)
         if next(held) and (show or current <= 0) then Bars.ReleasePeek() end
         return
     end
-    EachZoneFrame(function(frame, zone)
+    EachZoneFrame(function(frame, zone, extra)
+        local on = key:find(zone, 1, true) ~= nil
+        if extra and on then
+            -- Left to Blizzard, which may keep it hidden on purpose.
+            if held[frame] then
+                ns.ReleaseAlpha(frame, true)
+                held[frame] = nil
+            end
+            return
+        end
         held[frame] = true
-        ns.HoldAlpha(frame, key:find(zone, 1, true) and 1 or 0)
+        ns.HoldAlpha(frame, on and 1 or 0)
     end)
 end

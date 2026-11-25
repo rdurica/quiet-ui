@@ -23,6 +23,12 @@ local function gamepad()
         stance = named(PAGE .. "TopCenteredAnchorStanceBar", top),
     }
     CreateFrame("Button", nil, z.top)
+    -- Unnamed "RB + RT" hint under the right class action, and the LB/RB icons drawn on the page.
+    z.hint = CreateFrame("Frame", nil, page)
+    z.icon = page:CreateTexture()
+    local centre = function(x) return function() return x, 100 end end
+    z.left.GetCenter, z.bottom.GetCenter, z.right.GetCenter = centre(445), centre(640), centre(835)
+    z.hint.GetCenter = centre(778)
     return bar, z
 end
 
@@ -81,7 +87,7 @@ h.test("RT shows the right zone with the stance bar", function(t)
     zones(A, z, { right = 1, stance = 1 }, "RT")
 end)
 
-h.test("both triggers or a shoulder button show the centre", function(t)
+h.test("a shoulder button shows the centre, both triggers add the LT+RT bar", function(t)
     local A = t.assert
     local _, z, held = boot(t)
     settle(t)
@@ -91,10 +97,76 @@ h.test("both triggers or a shoulder button show the centre", function(t)
     held.PADLTRIGGER, held.PADRTRIGGER = nil, nil
     held.PADRSHOULDER = true
     settle(t)
-    zones(A, z, { top = 1, bottom = 1 }, "RB")
+    zones(A, z, { top = 1 }, "RB")
+    held.PADRSHOULDER = nil
+    held.PADLSHOULDER = true
+    settle(t)
+    zones(A, z, { top = 1 }, "LB")
+    held.PADLSHOULDER = nil
+    held.PADRSHOULDER = true
     held.PADRTRIGGER = true
     settle(t)
-    zones(A, z, { right = 1, stance = 1, top = 1, bottom = 1 }, "RB+RT")
+    zones(A, z, { right = 1, stance = 1, top = 1 }, "RB+RT")
+end)
+
+h.test("unclassified page parts follow their zone and are never forced visible", function(t)
+    local A = t.assert
+    local _, z, held = boot(t)
+    z.icon:SetAlpha(0.4)
+    settle(t)
+    held.PADLTRIGGER = true
+    settle(t)
+    A.alpha(z.hint, 0, "LT showed the RB + RT hint of the right zone")
+    A.alpha(z.icon, 0, "LT showed the shoulder icons of the centre")
+    held.PADLTRIGGER = nil
+    held.PADRSHOULDER = true
+    settle(t)
+    A.alpha(z.hint, 0, "RB showed the RB + RT hint of the right zone")
+    A.alpha(z.icon, 0.4, "RB did not give the shoulder icons back their own alpha")
+    held.PADRSHOULDER = nil
+    held.PADRTRIGGER = true
+    settle(t)
+    A.alpha(z.hint, 1, "RT hid the RB + RT hint")
+    A.alpha(z.icon, 0, "RT showed the shoulder icons of the centre")
+end)
+
+h.test("the radial menu opened by Start turns peek off", function(t)
+    local A = t.assert
+    local bar, _, held = boot(t)
+    local menu = named("GamepadRadial", UIParent)
+    menu:Hide()
+    settle(t)
+    held.PADRTRIGGER = true
+    settle(t)
+    A.alpha(bar, 1, "RT did not show the gamepad bar with the radial menu closed")
+    menu:Show()
+    settle(t)
+    A.alpha(bar, 0, "RT showed the gamepad bar behind the radial menu")
+    menu:Hide()
+    settle(t)
+    A.alpha(bar, 1, "Peek did not come back after the radial menu closed")
+end)
+
+h.test("an open game menu turns peek off", function(t)
+    local A = t.assert
+    local bar, z, held = boot(t)
+    local menu = named("GameMenuFrame", UIParent)
+    menu:Hide()
+    settle(t)
+    held.PADLTRIGGER = true
+    settle(t)
+    A.alpha(bar, 1, "LT did not show the gamepad bar with the menu closed")
+    menu:Show()
+    settle(t)
+    A.alpha(bar, 0, "The gamepad bar stayed up after the game menu opened")
+    held.PADLTRIGGER = nil
+    held.PADRSHOULDER = true
+    settle(t)
+    A.alpha(bar, 0, "A pad button showed the gamepad bar behind the game menu")
+    menu:Hide()
+    settle(t)
+    A.alpha(bar, 1, "Peek did not come back after the game menu closed")
+    zones(A, z, { top = 1 }, "RB after menu")
 end)
 
 h.test("release fades the bar out before freeing the zones", function(t)
