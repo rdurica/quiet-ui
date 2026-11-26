@@ -144,6 +144,13 @@ local function Wanted(bar, show)
     return show and "show" or "fade"
 end
 
+local GAMEPAD = "GamepadMainActionBarFrame"
+
+-- A held gamepad button shows the gamepad bar; Bars.ApplyPeek then picks its zones.
+local function PeekShow(bar, show)
+    return show or (Bars.Peeking() and bar == _G[GAMEPAD])
+end
+
 -- Hover groups skip automatic triggers; explicit HUD and bar editing still show them.
 local function RowForced(id, showAllForced)
     local mode = ns.Settings.GroupVisibility(ns.Settings.BarGroup(id))
@@ -156,7 +163,8 @@ function Bars.Update(showAll, elapsed, rescan)
     if rescan == nil then rescan = true end
     local showAllForced = showAll or ns.Glance.Active()
     -- ApplyBar reads hosts/covered, which ForgetBarButtons drops between rescans.
-    if S.dirty then settled = false; fullDue = true end
+    if S.dirty or S.peekDirty then settled = false; fullDue = true end
+    S.peekDirty = false
     local lap = ns.Profiler.Clock()
     S.Collect()
     lap = ns.Profiler.Lap("bars / collect", lap)
@@ -198,7 +206,7 @@ function Bars.Update(showAll, elapsed, rescan)
         for _, entry in ipairs(resolved) do
             local show = RowForced(entry.id, showAllForced) or barShow[entry.id]
             for _, bar in ipairs(entry.frames) do
-                if applied[bar] ~= Wanted(bar, show) then settled = false end
+                if applied[bar] ~= Wanted(bar, PeekShow(bar, show)) then settled = false end
             end
         end
         lap = ns.Profiler.Lap("bars / settled check", lap)
@@ -216,7 +224,8 @@ function Bars.Update(showAll, elapsed, rescan)
     for _, entry in ipairs(resolved) do
         local show = RowForced(entry.id, showAllForced) or barShow[entry.id]
         for _, bar in ipairs(entry.frames) do
-            local want = Wanted(bar, show)
+            local showBar = PeekShow(bar, show)
+            local want = Wanted(bar, showBar)
             if full or applied[bar] ~= want or not done[bar] then
                 applied[bar] = want
                 done[bar] = true
@@ -224,15 +233,16 @@ function Bars.Update(showAll, elapsed, rescan)
                 want = "skip"
             end
             if want ~= "hidden" and want ~= "skip" then
-                local name, alpha = ApplyBar(bar, show, elapsed)
-                if type(alpha) == "number" and alpha ~= (show and 1 or 0) then
+                local name, alpha = ApplyBar(bar, showBar, elapsed)
+                if name == GAMEPAD then Bars.ApplyPeek(bar, show, alpha) end
+                if type(alpha) == "number" and alpha ~= (showBar and 1 or 0) then
                     settled = false
                     done[bar] = nil
                 end
                 if type(alpha) == "number" then
                     if MAIN_BAR[name] then
                         mainAlpha = alpha
-                    elseif name == "GamepadMainActionBarFrame" then
+                    elseif name == GAMEPAD then
                         gamepadAlpha = alpha
                     end
                 end
@@ -253,11 +263,15 @@ ns.Feature({
     name = "bars",
     enabled = function() return ns.Settings.Module("fading") end,
     apply = function() Bars.ForgetButtons() end,
-    restore = function() Bars.HideCatchers() end,
+    restore = function()
+        Bars.HideCatchers()
+        Bars.ResetPeek()
+    end,
     -- The idle pass (no focus change, nothing hot) skips bars.
     fade = function(elapsed, rescan, showAll, idle)
         if not idle then Bars.Update(showAll, elapsed, rescan) end
     end,
+    frame = function(elapsed) Bars.PollPad(elapsed) end,
     rescan = function(deep)
         Bars.ScanSwing()
         if not deep and Bars.ChildrenChanged() then Bars.ForgetButtons() end
